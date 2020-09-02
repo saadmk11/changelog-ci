@@ -12,6 +12,7 @@ LABEL "maintainer"="saadmk11"
 RUN pip install requests
 
 COPY entrypoint.sh /entrypoint.sh
+COPY changelog-ci.py /changelog-ci.py
 
 RUN ["chmod", "+x", "/entrypoint.sh"]
 ENTRYPOINT ["/entrypoint.sh"]
