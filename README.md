@@ -24,8 +24,12 @@ To integrate ``Changelog-CI`` with your repository Actions,
 Put this inside your ``.github/workflows/workflow.yml`` file:
 
 ```yaml
-    - name: changelog-ci
+    - name: Run Changelog-CI
         uses: saadmk11/changelog-ci@master
+        # You can provide any name for your changelog file,
+        # defaults to ``CHANGELOG.md`` if not provided.
+        with:
+          changelog_filename: MY_CHANGELOG.md
         env:
           USERNAME:  'test'
           EMAIL:  'test@test.com'
