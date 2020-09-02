@@ -1,7 +1,16 @@
 name: changelog-ci
 description: This is an action that commits on a release pull request with the changelog
 author: Maksudul Haque
-
 branding:
   icon: 'clock'
   color: 'blue'
+inputs:
+  changelog_filename:
+    description: 'the name of the changelog file if not provided defaults to CHANGELOG.md'
+    required: false
+    default: 'CHANGELOG.md'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.changelog_file_name }}
