@@ -14,3 +14,6 @@ runs:
   image: 'Dockerfile'
   args:
     - ${{ inputs.changelog_file_name }}
+  env:
+    USERNAME: ${{ secrets.USERNAME }}
+    EMAIL: ${{ secrets.EMAIL }}

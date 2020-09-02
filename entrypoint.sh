@@ -2,15 +2,10 @@
 
 set -e
 
-echo ${GITHUB_REF}
-echo ${GITHUB_EVENT_PATH}
-echo ${GITHUB_REPOSITORY}
-echo ${INPUT_CHANGELOG_FILENAME}
+git config user.name ${USERNAME}
+git config user.email ${EMAIL}
 
-git config user.name ${secrets.USERNAME}
-git config user.email ${secrets.EMAIL}
-
-python changeolg-ci
+python ./changelog-ci.py
 
 git add .
 git commit -m "Added Changelog"
