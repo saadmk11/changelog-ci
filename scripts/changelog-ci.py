@@ -78,7 +78,7 @@ class ChangelogCI:
                 data = {
                     'title': item['title'],
                     'number': item['number'],
-                    'url': item['url']
+                    'url': item['html_url']
                 }
                 items.append(data)
 
