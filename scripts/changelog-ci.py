@@ -95,6 +95,13 @@ class ChangelogCI:
             return
 
         items = self._get_pull_requests_after_last_release()
+
+        if not items:
+            print(
+                'There was no pull request made after last release.'
+            )
+            return
+
         file_mode = self._get_file_mode()
         filename = self.filename
 
