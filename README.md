@@ -31,6 +31,8 @@ Put this inside your ``.github/workflows/workflow.yml`` file:
         with:
           changelog_filename: MY_CHANGELOG.md
         env:
+          # This will be used to configure git
+          # you can use secrets for it as well
           USERNAME:  'test'
           EMAIL:  'test@test.com'
 ```
