@@ -5,6 +5,7 @@ import requests
 
 
 class ChangelogCI:
+
     def __init__(self, repository, event_path, filename='CHANGELOG.md'):
         self.repository = repository
         self.event_path = event_path
@@ -90,16 +91,15 @@ class ChangelogCI:
         if not version:
             print(
                 'The title of the pull request is incorrect. ',
-                'Please use title like: ``release <version_number> <other_text>``'
+                'Please use title like: '
+                '``release <version_number> <other_text>``'
             )
             return
 
         items = self._get_pull_requests_after_last_release()
 
         if not items:
-            print(
-                'There was no pull request made after last release.'
-            )
+            print('There was no pull request made after last release.')
             return
 
         file_mode = self._get_file_mode()
