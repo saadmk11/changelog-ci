@@ -100,6 +100,7 @@ class ChangelogCI:
 
         with open(filename, file_mode) as f:
             body = f.read()
+            version = 'Version: ' + version
 
             f.seek(0, 0)
 
