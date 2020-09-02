@@ -7,7 +7,7 @@ Changelog-CI is a GitHub Action that generates and commits changelog to
 a release ``pull_request``.
 
 
-## How Does It Work:
+## How Does It Works:
 
 It uses a python script with GitHub API to get the last release.
 Then it checks all the pull request merged after the last release and
