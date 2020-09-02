@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 
 import requests
 
@@ -127,3 +128,5 @@ if __name__ == '__main__':
 
     ci = ChangelogCI(repository, event_path, filename=filename)
     ci.write_changelog()
+
+    subprocess.call(['bash', './commit.sh'])
