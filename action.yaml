@@ -1,0 +1,7 @@
+name: changelog-ci
+description: This is an action that commits on a release pull request with the changelog
+author: Maksudul Haque
+
+branding:
+  icon: 'clock'
+  color: 'blue'
