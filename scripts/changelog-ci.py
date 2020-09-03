@@ -89,17 +89,27 @@ class ChangelogCI:
 
         response = requests.get(url)
 
-        response_data = response.json()
+        if response.status_code == 200:
+            response_data = response.json()
 
-        if response_data['total_count'] > 0:
-
-            for item in response_data['items']:
-                data = {
-                    'title': item['title'],
-                    'number': item['number'],
-                    'url': item['html_url']
-                }
-                items.append(data)
+            if response_data['total_count'] > 0:
+                for item in response_data['items']:
+                    data = {
+                        'title': item['title'],
+                        'number': item['number'],
+                        'url': item['html_url']
+                    }
+                    items.append(data)
+            else:
+                logger.warning(
+                    'There was no pull request made on %s after last release.',
+                    self.repository
+                )
+        else:
+            logger.error(
+                'GitHub API returned error response for %s, status code: %s',
+                self.repository, response.status_code
+            )
 
         return items
 
@@ -107,7 +117,7 @@ class ChangelogCI:
         version = self._get_version_number()
 
         if not version:
-            print(
+            logger.warning(
                 'The title of the pull request is incorrect. ',
                 'Please use title like: '
                 '``release <version_number> <other_text>``'
@@ -116,8 +126,8 @@ class ChangelogCI:
 
         items = self._get_pull_requests_after_last_release()
 
+        # exit the function if there is not pull request found
         if not items:
-            print('There was no pull request made after last release.')
             return
 
         file_mode = self._get_file_mode()
