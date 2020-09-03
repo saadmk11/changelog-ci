@@ -35,6 +35,8 @@ Put this inside your ``.github/workflows/workflow.yml`` file:
           # you can use secrets for it as well
           USERNAME:  'test'
           EMAIL:  'test@test.com'
+          # optional only required for ``private`` repositories
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 ```
 
 
