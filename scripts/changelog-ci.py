@@ -1,7 +1,11 @@
 import json
+import logging
 import os
 
 import requests
+
+
+logger = logging.getLogger(__name__)
 
 
 class ChangelogCI:
@@ -24,11 +28,18 @@ class ChangelogCI:
             'https://api.github.com/repos/{repo_name}/releases/latest'
         ).format(repo_name=self.repository)
 
+        published_date = ''
+
         response = requests.get(url)
 
-        response_data = response.json()
-
-        published_date = response_data['published_at']
+        if response.status_code == 200:
+            response_data = response.json()
+            published_date = response_data['published_at']
+        else:
+            logger.warning(
+                'Could not find any release for %s, status code: %s',
+                self.repository, response.status_code
+            )
 
         return published_date
 
@@ -56,17 +67,24 @@ class ChangelogCI:
 
         previous_release_date = self._get_latest_release_date()
 
+        if previous_release_date:
+            merged_date_filter = 'merged:>=' + previous_release_date
+        else:
+            # if there is no release for the repo then
+            # do not filter by merged date
+            merged_date_filter = ''
+
         url = (
             'https://api.github.com/search/issues'
             '?q=repo:{repo_name}'
             '+is:pr+'
             'is:merged+'
             'sort:author-date-asc+'
-            'merged:>={date}'
+            '{merged_date_filter}'
             '&sort=merged'
         ).format(
             repo_name=self.repository,
-            date=previous_release_date
+            merged_date_filter=merged_date_filter
         )
 
         response = requests.get(url)
