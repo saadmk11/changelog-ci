@@ -1,0 +1,18 @@
+name: Changelog CI
+
+on:
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Run Changelog CI
+        uses: saadmk11/changelog-ci@master
+        env:
+          USERNAME:  ${{secrets.USERNAME}}
+          EMAIL:  ${{secrets.EMAIL}}
