@@ -10,10 +10,15 @@ logger = logging.getLogger(__name__)
 
 class ChangelogCI:
 
-    def __init__(self, repository, event_path, filename='CHANGELOG.md'):
+    def __init__(
+        self, repository,
+        event_path, filename='CHANGELOG.md',
+        token=None
+    ):
         self.repository = repository
         self.event_path = event_path
         self.filename = filename
+        self.token = token
 
     def _pull_request_title(self):
         title = ''
@@ -23,6 +28,18 @@ class ChangelogCI:
 
         return title
 
+    def _get_request_headers(self):
+        headers = {
+            'Accept': 'application/vnd.github.v3+json'
+        }
+
+        if self.token:
+            headers.update({
+                'authorization': 'Bearer {token}'.format(token=self.token)
+            })
+        print(headers)
+        return headers
+
     def _get_latest_release_date(self):
         url = (
             'https://api.github.com/repos/{repo_name}/releases/latest'
@@ -30,7 +47,7 @@ class ChangelogCI:
 
         published_date = ''
 
-        response = requests.get(url)
+        response = requests.get(url, headers=self._get_request_headers())
 
         if response.status_code == 200:
             response_data = response.json()
@@ -87,7 +104,7 @@ class ChangelogCI:
             merged_date_filter=merged_date_filter
         )
 
-        response = requests.get(url)
+        response = requests.get(url, headers=self._get_request_headers())
 
         if response.status_code == 200:
             response_data = response.json()
@@ -160,6 +177,7 @@ if __name__ == '__main__':
     event_path = os.environ['GITHUB_EVENT_PATH']
     repository = os.environ['GITHUB_REPOSITORY']
     filename = os.environ['INPUT_CHANGELOG_FILENAME']
+    token = os.environ['GITHUB_TOKEN']
 
-    ci = ChangelogCI(repository, event_path, filename=filename)
+    ci = ChangelogCI(repository, event_path, filename=filename, token=token)
     ci.write_changelog()
