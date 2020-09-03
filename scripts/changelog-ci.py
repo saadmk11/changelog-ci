@@ -76,8 +76,8 @@ class ChangelogCI:
 
         url = (
             'https://api.github.com/search/issues'
-            '?q=repo:{repo_name}'
-            '+is:pr+'
+            '?q=repo:{repo_name}+'
+            'is:pr+'
             'is:merged+'
             'sort:author-date-asc+'
             '{merged_date_filter}'
