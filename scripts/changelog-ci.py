@@ -37,7 +37,7 @@ class ChangelogCI:
             headers.update({
                 'authorization': 'Bearer {token}'.format(token=self.token)
             })
-        print(headers)
+
         return headers
 
     def _get_latest_release_date(self):
@@ -177,7 +177,7 @@ if __name__ == '__main__':
     event_path = os.environ['GITHUB_EVENT_PATH']
     repository = os.environ['GITHUB_REPOSITORY']
     filename = os.environ['INPUT_CHANGELOG_FILENAME']
-    token = os.environ['GITHUB_TOKEN']
+    token = os.environ.get('GITHUB_TOKEN')
 
     ci = ChangelogCI(repository, event_path, filename=filename, token=token)
     ci.write_changelog()
