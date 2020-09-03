@@ -117,7 +117,7 @@ class ChangelogCI:
         version = self._get_version_number()
 
         if not version:
-            print(
+            logger.warning(
                 'The title of the pull request is incorrect. ',
                 'Please use title like: '
                 '``release <version_number> <other_text>``'
