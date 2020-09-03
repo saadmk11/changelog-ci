@@ -3,8 +3,8 @@
 
 ## What is Changelog CI?
 
-Changelog CI is a GitHub Action that generates and commits changelog to
-a release ``pull_request``.
+Changelog CI is a GitHub Action that generates changelog, 
+prepends it to CHANGELOG.md file and commits it to a release pull request
 
 
 ## How Does It Works:
