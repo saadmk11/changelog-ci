@@ -1,9 +1,9 @@
-# Changelog-CI
+# Changelog CI
 
 
-## What is Changelog-CI?
+## What is Changelog CI?
 
-Changelog-CI is a GitHub Action that generates and commits changelog to
+Changelog CI is a GitHub Action that generates and commits changelog to
 a release ``pull_request``.
 
 
@@ -14,17 +14,17 @@ Then it checks all the pull request merged after the last release and
 writes it to ``CHANGELOG.md`` or user provided file.
 The pull request title must start with ``release <space> <version_number><space> *anything else``
 for example: ``Release 0.1.1 releasing a new version``
-The Changelog-CI will see the pull request and submit a commit to the pull request
+The Changelog CI will see the pull request and submit a commit to the pull request
 with the changes written in the ``CHANGELOG.md`` file.
 
 
 ## Usage:
 
-To integrate ``Changelog-CI`` with your repository Actions,
+To integrate ``Changelog CI`` with your repository Actions,
 Put this inside your ``.github/workflows/workflow.yml`` file:
 
 ```yaml
-    - name: Run Changelog-CI
+    - name: Run Changelog CI
         uses: saadmk11/changelog-ci@master
         # You can provide any name for your changelog file,
         # defaults to ``CHANGELOG.md`` if not provided.
@@ -41,7 +41,7 @@ Put this inside your ``.github/workflows/workflow.yml`` file:
 ## Example Workflow
 
 ```yaml
-    name: Changelog-CI
+    name: Changelog CI
 
     # Controls when the action will run. Triggers the workflow on pull request
     on:
@@ -56,7 +56,7 @@ Put this inside your ``.github/workflows/workflow.yml`` file:
           # Checks-out your repository
           - uses: actions/checkout@v2
 
-          - name: Run Changelog-CI
+          - name: Run Changelog CI
             uses: saadmk11/changelog-ci@master
             env:
               USERNAME:  ${{secrets.USERNAME}}

@@ -1,4 +1,4 @@
-name: changelog-ci
+name: Changelog CI
 description: This is an action that commits on a release pull request with the changelog
 author: Maksudul Haque
 branding:
@@ -6,7 +6,7 @@ branding:
   color: 'blue'
 inputs:
   changelog_filename:
-    description: 'the name of the changelog file if not provided defaults to CHANGELOG.md'
+    description: 'Name of the changelog file if not provided defaults to CHANGELOG.md'
     required: false
     default: 'CHANGELOG.md'
 runs:
