@@ -25,7 +25,7 @@ Put this inside your ``.github/workflows/workflow.yml`` file:
 
 ```yaml
     - name: Run Changelog CI
-        uses: saadmk11/changelog-ci@0.4.0
+        uses: saadmk11/changelog-ci@0.4.1
         # You can provide any name for your changelog file,
         # defaults to ``CHANGELOG.md`` if not provided.
         with:
