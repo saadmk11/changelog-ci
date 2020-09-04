@@ -7,7 +7,7 @@ Changelog CI is a GitHub Action that generates changelog,
 prepends it to CHANGELOG.md file and commits it to a release pull request
 
 
-## How Does It Works:
+## How Does It Work:
 
 It uses a python script with GitHub API to get the last release.
 Then it checks all the pull request merged after the last release and
