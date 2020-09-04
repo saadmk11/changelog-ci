@@ -135,7 +135,7 @@ class ChangelogCI:
 
         if not version:
             logger.warning(
-                'The title of the pull request is incorrect. ',
+                'The title of the pull request is incorrect. '
                 'Please use title like: '
                 '``release <version_number> <other_text>``'
             )
