@@ -1,3 +1,10 @@
+Version: 0.4.1
+==============
+
+* [#9](https://github.com/saadmk11/changelog-ci/pull/9): Fix Typo
+* [#10](https://github.com/saadmk11/changelog-ci/pull/10): Fix Logging Error
+
+
 Version: 0.4.0
 ==============
 
