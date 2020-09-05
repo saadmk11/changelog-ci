@@ -73,7 +73,7 @@ jobs:
 ```
 
 
-### Group changelog by labels and titles
+## Group changelog by labels and titles
 
 To group your changelog by labels and titles and have more control
 over how your changelog looks you need to use Changelog CI's config file.
