@@ -24,52 +24,58 @@ To integrate ``Changelog CI`` with your repository Actions,
 Put this inside your ``.github/workflows/workflow.yml`` file:
 
 ```yaml
-    - name: Run Changelog CI
-        uses: saadmk11/changelog-ci@0.4.0
-        # You can provide any name for your changelog file,
-        # defaults to ``CHANGELOG.md`` if not provided.
-        with:
-          changelog_filename: MY_CHANGELOG.md
-          # optional, only required when you want to
-          # group your changelog by labels and titles
-          config_file: changelog-ci-config.json
-        env:
-          # This will be used to configure git
-          # you can use secrets for it as well
-          USERNAME:  'test'
-          EMAIL:  'test@test.com'
-          # optional, only required for ``private`` repositories
-          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+- name: Run Changelog CI
+    uses: saadmk11/changelog-ci@0.4.0
+    # You can provide any name for your changelog file,
+    # defaults to ``CHANGELOG.md`` if not provided.
+    with:
+      changelog_filename: MY_CHANGELOG.md
+      # optional, only required when you want to
+      # group your changelog by labels and titles
+      config_file: changelog-ci-config.json
+    env:
+      # This will be used to configure git
+      # you can use secrets for it as well
+      USERNAME:  'test'
+      EMAIL:  'test@test.com'
+      # optional, only required for ``private`` repositories
+      GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 ```
 
+### Group changelog by labels and titles
 
-## Example Workflow
+To group your changelog by labels and titles you need to use
+our config file. Example:
 
-```yaml
-    name: Changelog CI
-
-    # Controls when the action will run. Triggers the workflow on pull request
-    on:
-      pull_request:
-        types: [opened, reopened]
-
-    jobs:
-      build:
-        runs-on: ubuntu-latest
-
-        steps:
-          # Checks-out your repository
-          - uses: actions/checkout@v2
-
-          - name: Run Changelog CI
-            uses: saadmk11/changelog-ci@master
-            env:
-              USERNAME:  ${{secrets.USERNAME}}
-              EMAIL:  ${{secrets.EMAIL}}
+```json
+{
+  "header_prefix": "Version:",
+  "sort_config": [
+    {
+      "title": "Bug Fixes",
+      "labels": ["bug", "bugfix"]
+    },
+    {
+      "title": "Improvements to Code",
+      "labels": ["improvements", "enhancement"]
+    },
+    {
+      "title": "New Features",
+      "labels": ["feature"]
+    },
+    {
+      "title": "Documentation Updates",
+      "labels": ["docs", "documentation", "doc"]
+    }
+  ]
+}
 ```
 
+This will look at the pull request ``labels`` and put them under the provided title.
+By using the config file the output will be:
 
-## Example Changelog Output:
+## Example Changelog Output with config file:
+
 
 Version: 0.0.2
 ==============
@@ -78,17 +84,10 @@ Version: 0.0.2
 
 * [#53](https://github.com/test/test/pull/57): Keep updating the readme
 * [#54](https://github.com/test/test/pull/56): Again updating the Same Readme file :(
-* [#55](https://github.com/test/test/pull/55): README update
 
 #### New Features
 
 * [#68](https://github.com/test/test/pull/68): Update README.md
-* [#65](https://github.com/test/test/pull/65): New feature
-
-#### Improvements to Code
-
-* [#53](https://github.com/test/test/pull/53): Testing again and again
-* [#54](https://github.com/test/test/pull/54): This is again another test
 
 #### Documentation Updates
 
@@ -102,21 +101,62 @@ Version: 0.0.1
 
 * [#53](https://github.com/test/test/pull/57): Keep updating the readme
 * [#54](https://github.com/test/test/pull/56): Again updating the Same Readme file :(
-* [#55](https://github.com/test/test/pull/55): README update
-
-#### New Features
-
-* [#68](https://github.com/test/test/pull/68): Update README.md
-* [#65](https://github.com/test/test/pull/65): New feature
-
-#### Improvements to Code
-
-* [#53](https://github.com/test/test/pull/53): Testing again and again
-* [#54](https://github.com/test/test/pull/54): This is again another test
 
 #### Documentation Updates
 
 * [#66](https://github.com/test/test/pull/66): Docs update
+
+
+## Example Workflow
+
+```yaml
+name: Changelog CI
+
+# Controls when the action will run. Triggers the workflow on pull request
+on:
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checks-out your repository
+      - uses: actions/checkout@v2
+
+      - name: Run Changelog CI
+        uses: saadmk11/changelog-ci@master
+        env:
+          USERNAME:  ${{secrets.USERNAME}}
+          EMAIL:  ${{secrets.EMAIL}}
+```
+
+
+## Example Changelog Output without config file:
+
+Version: 0.0.3
+==============
+
+* [#53](https://github.com/test/test/pull/57): Keep updating the readme
+* [#54](https://github.com/test/test/pull/56): Again updating the Same Readme file :(
+* [#55](https://github.com/test/test/pull/55): README update
+
+
+Version: 0.0.2
+==============
+
+* [#53](https://github.com/test/test/pull/53): Testing again and again
+* [#54](https://github.com/test/test/pull/54): This is again another test
+
+
+Version: 0.0.1
+==============
+
+* [#43](https://github.com/test/test/pull/43): It feels like testing never ends :(
+* [#35](https://github.com/test/test/pull/35): Testing again and again
+* [#44](https://github.com/test/test/pull/44): This is again another test, getting tired
+* [#37](https://github.com/test/test/pull/37): This is again another test
 
 
 ## License

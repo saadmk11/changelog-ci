@@ -217,15 +217,18 @@ class ChangelogCI:
             f.seek(0, 0)
             f.write(version + '\n')
             f.write('=' * len(version))
-            f.write('\n\n')
+            f.write('\n')
 
             for data in data_to_write:
                 title = data['title']
-                if title:
+                items = data['items']
+
+                if title and items:
+                    f.write('\n')
                     f.write(title)
 
-                f.writelines(data['items'])
                 f.write('\n')
+                f.writelines(items)
 
             if body:
                 f.write('\n\n')
