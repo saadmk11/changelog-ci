@@ -64,10 +64,10 @@ class ChangelogCI:
                 return config
             except Exception as e:
                 logger.error(
-                    '::error Invalid Configuration file, error: %s\n', e
+                    'Invalid Configuration file, error: %s\n', e
                 )
         logger.warning(
-            ':debug::Using Default Config to parse changelog'
+            'Using Default Config to parse changelog'
         )
         return self._default_config()
 
