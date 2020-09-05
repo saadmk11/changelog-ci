@@ -9,6 +9,9 @@ inputs:
     description: 'Name of the changelog file if not provided defaults to CHANGELOG.md'
     required: false
     default: 'CHANGELOG.md'
+  config_file:
+    description: 'Location of the config JSON file'
+    required: false
 runs:
   using: 'docker'
   image: 'Dockerfile'
