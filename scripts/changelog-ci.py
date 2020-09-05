@@ -47,7 +47,7 @@ class ChangelogCI:
     def __init__(
         self, repository,
         event_path, filename='CHANGELOG.md',
-        config_file='test.json', token=None
+        config_file=None, token=None
     ):
         self.repository = repository
         self.event_path = event_path
@@ -66,7 +66,7 @@ class ChangelogCI:
                 logger.error(
                     'Invalid Configuration file, error: %s\n', e
                 )
-        logger.info(
+        logger.warning(
             'Using Default Config to parse changelog'
         )
         return self._default_config()
@@ -242,10 +242,10 @@ class ChangelogCI:
 
                 for pull_request in pull_request_data:
                     if (
-                            any(
-                                label in pull_request['labels']
-                                for label in config['labels']
-                            )
+                        any(
+                            label in pull_request['labels']
+                            for label in config['labels']
+                        )
                     ):
                         items.append(self._get_changelog_line(pull_request))
                         pull_request_data.remove(pull_request)
@@ -271,40 +271,6 @@ class ChangelogCI:
             url=item['url'],
             title=item['title']
         )
-
-
-def validate_config(config):
-    if not isinstance(config, dict):
-        raise TypeError(
-            'Configuration does not contain required key, value pairs'
-        )
-
-    header_prefix = config.get('header_prefix')
-    sort_config = config.get('sort_config')
-
-    if not header_prefix:
-        raise KeyError('Configuration Must Contain header_prefix')
-
-    if not isinstance(sort_config, list):
-        raise TypeError('sort_config must be an Array')
-
-    for config in sort_config:
-        if not isinstance(config, dict):
-            raise TypeError(
-                'sort_config items must have key, '
-                'value pairs of title and labels'
-            )
-        title = config.get('title')
-        labels = config.get('labels')
-
-        if not title:
-            raise KeyError('sort_config item must contain title')
-
-        if not labels:
-            raise KeyError('sort_config item must contain labels')
-
-        if not isinstance(labels, list):
-            raise TypeError('sort_config labels must be an Array')
 
 
 if __name__ == '__main__':
