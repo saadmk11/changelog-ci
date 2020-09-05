@@ -57,6 +57,23 @@ class ChangelogCI:
         self.config = self._parse_config(config_file)
         self.token = token
 
+    @staticmethod
+    def _default_config():
+        """Default configuration for Changelog CI"""
+        return {
+            "header_prefix": "Version:",
+            "group_config": []
+        }
+
+    @staticmethod
+    def _get_changelog_line(item):
+        """Generate each line of changelog"""
+        return ("* [#{number}]({url}): {title}\n").format(
+            number=item['number'],
+            url=item['url'],
+            title=item['title']
+        )
+
     def _parse_config(self, config_file):
         """parse the config file if not provided use default config"""
         if config_file:
@@ -76,13 +93,6 @@ class ChangelogCI:
         # if config file not provided
         # or invalid fall back to default config
         return self._default_config()
-
-    def _default_config(self):
-        """Default configuration for Changelog CI"""
-        return {
-            "header_prefix": "Version:",
-            "group_config": []
-        }
 
     def _pull_request_title(self):
         """Gets pull request title from ``GITHUB_EVENT_PATH``"""
@@ -308,23 +318,19 @@ class ChangelogCI:
 
         return data
 
-    def _get_changelog_line(self, item):
-        """Generate each line of changelog"""
-        return ("* [#{number}]({url}): {title}\n").format(
-            number=item['number'],
-            url=item['url'],
-            title=item['title']
-        )
-
 
 if __name__ == '__main__':
+    # Default environment variable from GihHub
+    # https://docs.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables
     event_path = os.environ['GITHUB_EVENT_PATH']
     repository = os.environ['GITHUB_REPOSITORY']
+    # User inputs from workflow
     filename = os.environ['INPUT_CHANGELOG_FILENAME']
     config_file = os.environ['INPUT_CONFIG_FILE']
+    # Token provided from the workflow
     token = os.environ.get('GITHUB_TOKEN')
 
-    # initialize the Changelog CI
+    # Initialize the Changelog CI
     ci = ChangelogCI(
         repository, event_path, filename=filename,
         config_file=config_file, token=token
