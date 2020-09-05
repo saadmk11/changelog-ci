@@ -42,6 +42,36 @@ Put this inside your ``.github/workflows/workflow.yml`` file:
       GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 ```
 
+
+## Example Workflow
+
+```yaml
+name: Changelog CI
+
+# Controls when the action will run. Triggers the workflow on pull request
+on:
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checks-out your repository
+      - uses: actions/checkout@v2
+
+      - name: Run Changelog CI
+        uses: saadmk11/changelog-ci@master
+        with:
+          changelog_filename: CHANGELOG.md
+          config_file: changelog-ci-config.json
+        env:
+          USERNAME:  ${{secrets.USERNAME}}
+          EMAIL:  ${{secrets.EMAIL}}
+```
+
+
 ### Group changelog by labels and titles
 
 To group your changelog by labels and titles you need to use
@@ -105,32 +135,6 @@ Version: 0.0.1
 #### Documentation Updates
 
 * [#66](https://github.com/test/test/pull/66): Docs update
-
-
-## Example Workflow
-
-```yaml
-name: Changelog CI
-
-# Controls when the action will run. Triggers the workflow on pull request
-on:
-  pull_request:
-    types: [opened, reopened]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-      # Checks-out your repository
-      - uses: actions/checkout@v2
-
-      - name: Run Changelog CI
-        uses: saadmk11/changelog-ci@master
-        env:
-          USERNAME:  ${{secrets.USERNAME}}
-          EMAIL:  ${{secrets.EMAIL}}
-```
 
 
 ## Example Changelog Output without config file:
