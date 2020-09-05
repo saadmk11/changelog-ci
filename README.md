@@ -118,7 +118,7 @@ Example Config File:
 This will look at the pull request ``labels`` and put them under the provided title.
 By using the config file the output will be:
 
-## Example Changelog Output using config file:
+# Example Changelog Output using config file:
 
 
 Version: 0.0.2
@@ -151,7 +151,7 @@ Version: 0.0.1
 * [#66](https://github.com/test/test/pull/66): Docs update
 
 
-## Example Changelog Output without config file:
+# Example Changelog Output without using config file:
 
 Version: 0.0.3
 ==============
