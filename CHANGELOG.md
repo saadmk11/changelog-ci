@@ -1,3 +1,9 @@
+Version: 0.5.0
+==============
+
+* [#13](https://github.com/saadmk11/changelog-ci/pull/13): Add Support to group changelog items by labels
+
+
 Version: 0.4.1
 ==============
 
