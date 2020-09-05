@@ -75,12 +75,20 @@ jobs:
 
 ### Group changelog by labels and titles
 
-To group your changelog by labels and titles you need to use
-Changelog CI's config file. Example Config File:
+To group your changelog by labels and titles and have more control
+over how your changelog looks you need to use Changelog CI's config file.
+Its a ``json`` file you can add it to your workflow by adding this:
 
-```json
+```yaml
+with:
+  config_file: changelog-ci-config.json
+```
+
+Example Config File:
+
+```
 {
-  //  This will be before the version number. "eg": ``Version: 0.0.2``
+  //  The prefix before the version number. "eg": ``Version: 0.0.2``
   "header_prefix": "Version:",
   "sort_config": [
     // You can add any number of sections to group by
@@ -110,7 +118,7 @@ Changelog CI's config file. Example Config File:
 This will look at the pull request ``labels`` and put them under the provided title.
 By using the config file the output will be:
 
-## Example Changelog Output with config file:
+## Example Changelog Output using config file:
 
 
 Version: 0.0.2
