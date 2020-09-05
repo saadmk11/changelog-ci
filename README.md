@@ -16,15 +16,16 @@ After that it parses the data and generates the ``changelog``. Finally,
 It writes the generated changelog at the beginning of the ``CHANGELOG.md`` (or user provided filename) file.
 In addition to that, if an user provides a config (json file), Changelog CI parses the user provided config file
 and renders the changelog according to users config. Then the changes are committed to the release Pull request.
----
-The pull **request title** must start with ``release <space> <version_number><space> <anything else>``
-for example: ``Release 0.1.1 releasing a new version``
-The Changelog CI will see the pull request and only commit the changes to that pull request.
----
+
 
 ## Usage:
 
-To integrate ``Changelog CI`` with your repository Actions,
+To use this Action The pull **request title** must start with
+``release <space> <version_number><space> <anything else>``
+for example: ``Release 0.1.1 releasing a new version``
+Changelog CI will see the pull request and only commit the changes to that pull request.
+
+To integrate ``Changelog CI`` with your repositories Actions,
 Put this step inside your ``.github/workflows/workflow.yml`` file:
 
 ```yaml
@@ -174,6 +175,6 @@ Version: 0.0.1
 * [#37](https://github.com/test/test/pull/37): This is again another test
 
 
-## License
+# License
 
 The code in this project is released under the [MIT License](LICENSE).
