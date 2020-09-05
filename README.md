@@ -26,9 +26,9 @@ Put this inside your ``.github/workflows/workflow.yml`` file:
 ```yaml
 - name: Run Changelog CI
     uses: saadmk11/changelog-ci@0.4.0
-    # You can provide any name for your changelog file,
-    # defaults to ``CHANGELOG.md`` if not provided.
     with:
+      # You can provide any name for your changelog file,
+      # defaults to ``CHANGELOG.md`` if not provided.
       changelog_filename: MY_CHANGELOG.md
       # optional, only required when you want to
       # group your changelog by labels and titles
