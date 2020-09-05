@@ -30,12 +30,15 @@ Put this inside your ``.github/workflows/workflow.yml`` file:
         # defaults to ``CHANGELOG.md`` if not provided.
         with:
           changelog_filename: MY_CHANGELOG.md
+          # optional, only required when you want to
+          # group your changelog by labels and titles
+          config_file: changelog-ci-config.json
         env:
           # This will be used to configure git
           # you can use secrets for it as well
           USERNAME:  'test'
           EMAIL:  'test@test.com'
-          # optional only required for ``private`` repositories
+          # optional, only required for ``private`` repositories
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 ```
 
@@ -68,30 +71,52 @@ Put this inside your ``.github/workflows/workflow.yml`` file:
 
 ## Example Changelog Output:
 
-Version: 0.0.3
+Version: 0.0.2
 ==============
+
+#### Bug Fixes
 
 * [#53](https://github.com/test/test/pull/57): Keep updating the readme
 * [#54](https://github.com/test/test/pull/56): Again updating the Same Readme file :(
 * [#55](https://github.com/test/test/pull/55): README update
 
+#### New Features
 
-Version: 0.0.2
-==============
+* [#68](https://github.com/test/test/pull/68): Update README.md
+* [#65](https://github.com/test/test/pull/65): New feature
+
+#### Improvements to Code
 
 * [#53](https://github.com/test/test/pull/53): Testing again and again
 * [#54](https://github.com/test/test/pull/54): This is again another test
+
+#### Documentation Updates
+
+* [#66](https://github.com/test/test/pull/66): Docs update
 
 
 Version: 0.0.1
 ==============
 
-* [#43](https://github.com/test/test/pull/43): It feels like testing never ends :(
-* [#35](https://github.com/test/test/pull/35): Testing again and again
-* [#44](https://github.com/test/test/pull/44): This is again another test, getting tired
-* [#37](https://github.com/test/test/pull/37): This is again another test
-* [#47](https://github.com/test/test/pull/47): This is another test
-* [#51](https://github.com/test/test/pull/51): This is a test
+#### Bug Fixes
+
+* [#53](https://github.com/test/test/pull/57): Keep updating the readme
+* [#54](https://github.com/test/test/pull/56): Again updating the Same Readme file :(
+* [#55](https://github.com/test/test/pull/55): README update
+
+#### New Features
+
+* [#68](https://github.com/test/test/pull/68): Update README.md
+* [#65](https://github.com/test/test/pull/65): New feature
+
+#### Improvements to Code
+
+* [#53](https://github.com/test/test/pull/53): Testing again and again
+* [#54](https://github.com/test/test/pull/54): This is again another test
+
+#### Documentation Updates
+
+* [#66](https://github.com/test/test/pull/66): Docs update
 
 
 ## License

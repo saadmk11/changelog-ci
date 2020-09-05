@@ -311,7 +311,7 @@ if __name__ == '__main__':
     event_path = os.environ['GITHUB_EVENT_PATH']
     repository = os.environ['GITHUB_REPOSITORY']
     filename = os.environ['INPUT_CHANGELOG_FILENAME']
-    config_file = os.environ['INPUT_CHANGELOG_FILENAME']
+    config_file = os.environ['INPUT_CONFIG_FILE']
     token = os.environ.get('GITHUB_TOKEN')
 
     ci = ChangelogCI(
