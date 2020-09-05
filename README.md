@@ -3,20 +3,24 @@
 
 ## What is Changelog CI?
 
-Changelog CI is a GitHub Action that generates changelog, 
-prepends it to CHANGELOG.md file and commits it to a release pull request
+Changelog CI is a GitHub Action that generates changelog,
+prepends it to ``CHANGELOG.md`` file and commits it to a release pull request
 
 
 ## How Does It Work:
 
-It uses a python script with GitHub API to get the last release.
-Then it checks all the pull request merged after the last release and
-writes it to ``CHANGELOG.md`` or user provided file.
-The pull request title must start with ``release <space> <version_number><space> *anything else``
+Changelog CI uses ``python`` and ``GitHub API`` to generate changelog for a repository.
+First, it tries to get the ``latest release`` from the repository (If available).
+Then, it checks all the pull requests merged after the last release using the GitHub API.
+After that it parses the data and generates the ``changelog``. Finally,
+It writes the generated changelog at the beginning of the ``CHANGELOG.md`` (or user provided filename) file.
+In addition to that, if an user provides a config (json file), Changelog CI parses the user provided config file
+and renders the changelog according to users config. Then the changes are committed to the release Pull request.
+---
+The pull **request title** must start with ``release <space> <version_number><space> <anything else>``
 for example: ``Release 0.1.1 releasing a new version``
-The Changelog CI will see the pull request and submit a commit to the pull request
-with the changes written in the ``CHANGELOG.md`` file.
-
+The Changelog CI will see the pull request and only commit the changes to that pull request.
+---
 
 ## Usage:
 
@@ -153,19 +157,12 @@ Version: 0.0.1
 
 # Example Changelog Output without using config file:
 
-Version: 0.0.3
+Version: 0.0.2
 ==============
 
 * [#53](https://github.com/test/test/pull/57): Keep updating the readme
 * [#54](https://github.com/test/test/pull/56): Again updating the Same Readme file :(
 * [#55](https://github.com/test/test/pull/55): README update
-
-
-Version: 0.0.2
-==============
-
-* [#53](https://github.com/test/test/pull/53): Testing again and again
-* [#54](https://github.com/test/test/pull/54): This is again another test
 
 
 Version: 0.0.1
