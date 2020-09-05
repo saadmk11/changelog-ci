@@ -21,7 +21,7 @@ with the changes written in the ``CHANGELOG.md`` file.
 ## Usage:
 
 To integrate ``Changelog CI`` with your repository Actions,
-Put this inside your ``.github/workflows/workflow.yml`` file:
+Put this step inside your ``.github/workflows/workflow.yml`` file:
 
 ```yaml
 - name: Run Changelog CI
@@ -69,24 +69,30 @@ jobs:
         env:
           USERNAME:  ${{secrets.USERNAME}}
           EMAIL:  ${{secrets.EMAIL}}
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 ```
 
 
 ### Group changelog by labels and titles
 
 To group your changelog by labels and titles you need to use
-our config file. Example:
+Changelog CI's config file. Example Config File:
 
 ```json
 {
+  //  This will be before the version number. "eg": ``Version: 0.0.2``
   "header_prefix": "Version:",
   "sort_config": [
+    // You can add any number of sections to group by
     {
+      // This will be the title of each section of the changelog
       "title": "Bug Fixes",
+      // List of labels from your repository. You can add any number of labels
+      // Pull Requests with these labels will be under the title above
       "labels": ["bug", "bugfix"]
     },
     {
-      "title": "Improvements to Code",
+      "title": "Code Improvements",
       "labels": ["improvements", "enhancement"]
     },
     {
