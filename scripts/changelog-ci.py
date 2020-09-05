@@ -15,31 +15,31 @@ def validate_config(config):
         )
 
     header_prefix = config.get('header_prefix')
-    sort_config = config.get('sort_config')
+    group_config = config.get('group_config')
 
     if not header_prefix:
         raise KeyError('Configuration Must Contain header_prefix')
 
-    if not isinstance(sort_config, list):
-        raise TypeError('sort_config must be an Array')
+    if not isinstance(group_config, list):
+        raise TypeError('group_config must be an Array')
 
-    for config in sort_config:
+    for config in group_config:
         if not isinstance(config, dict):
             raise TypeError(
-                'sort_config items must have key, '
+                'group_config items must have key, '
                 'value pairs of title and labels'
             )
         title = config.get('title')
         labels = config.get('labels')
 
         if not title:
-            raise KeyError('sort_config item must contain title')
+            raise KeyError('group_config item must contain title')
 
         if not labels:
-            raise KeyError('sort_config item must contain labels')
+            raise KeyError('group_config item must contain labels')
 
         if not isinstance(labels, list):
-            raise TypeError('sort_config labels must be an Array')
+            raise TypeError('group_config labels must be an Array')
 
 
 class ChangelogCI:
@@ -74,7 +74,7 @@ class ChangelogCI:
     def _default_config(self):
         return {
             "header_prefix": "Version:",
-            "sort_config": []
+            "group_config": []
         }
 
     def _pull_request_title(self):
@@ -236,10 +236,10 @@ class ChangelogCI:
 
     def _parse_data(self, pull_request_data):
         data = []
-        sort_config = self.config['sort_config']
+        group_config = self.config['group_config']
 
-        if sort_config:
-            for config in sort_config:
+        if group_config:
+            for config in group_config:
                 title = '#### ' + config['title'] + '\n\n'
                 items = []
 
@@ -284,10 +284,7 @@ if __name__ == '__main__':
     token = os.environ.get('GITHUB_TOKEN')
 
     ci = ChangelogCI(
-        repository,
-        event_path,
-        filename=filename,
-        config_file=config_file,
-        token=token
+        repository, event_path, filename=filename,
+        config_file=config_file, token=token
     )
     ci.write_changelog()

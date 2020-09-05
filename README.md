@@ -90,7 +90,7 @@ Example Config File:
 {
   //  The prefix before the version number. "eg": ``Version: 0.0.2``
   "header_prefix": "Version:",
-  "sort_config": [
+  "group_config": [
     // You can add any number of sections to group by
     {
       // This will be the title of each section of the changelog
