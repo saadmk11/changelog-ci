@@ -23,8 +23,8 @@ and renders the changelog according to users config. Then the changes are commit
 To use this Action The pull **request title** must match with the default ``regex``
 or the user provided ``regex`` in the config file.
 
-The default title regex: ``^(?i)release`` (Title starts with the word "release")
-The default version number regex follows ``SemVer`` (Semantic Versioning) pattern.
+**The default title regex:** ``^(?i)release`` (Title starts with the word "release")
+**The default version number regex:** This follows ``SemVer`` (Semantic Versioning) pattern.
 e.g. ``1.0.0``, ``1.0``, ``v1.0.1`` etc.
 for more details go to this link: https://regex101.com/r/Ly7O1x/3/
 
