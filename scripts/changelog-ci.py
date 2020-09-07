@@ -363,7 +363,7 @@ def parse_config(config):
     header_prefix = config.get('header_prefix')
     group_config = config.get('group_config')
 
-    if not header_prefix:
+    if not header_prefix or not isinstance(group_config, str):
         logger.warning(
             '``header_prefix`` was not provided or not valid '
             'Falling back to default regex.'
@@ -374,7 +374,7 @@ def parse_config(config):
             "header_prefix": DEFAULT_VERSION_PREFIX
         })
 
-    if not group_config:
+    if not group_config or not isinstance(group_config, list):
         logger.warning(
             '``group_config`` was not provided or not valid '
             'Falling back to default regex.'
@@ -384,28 +384,25 @@ def parse_config(config):
         config.update({
             "group_config": DEFAULT_GROUP_CONFIG
         })
+    else:
+        # Check if all the group configs match the schema
+        for config in group_config:
+            if not isinstance(config, dict):
+                raise TypeError(
+                    'group_config items must have key, '
+                    'value pairs of title and labels'
+                )
+            title = config.get('title')
+            labels = config.get('labels')
 
-    if not isinstance(group_config, list):
-        raise TypeError('group_config must be an Array')
+            if not title:
+                raise KeyError('group_config item must contain title')
 
-    # Check if all the group configs match the schema
-    for config in group_config:
-        if not isinstance(config, dict):
-            raise TypeError(
-                'group_config items must have key, '
-                'value pairs of title and labels'
-            )
-        title = config.get('title')
-        labels = config.get('labels')
+            if not labels:
+                raise KeyError('group_config item must contain labels')
 
-        if not title:
-            raise KeyError('group_config item must contain title')
-
-        if not labels:
-            raise KeyError('group_config item must contain labels')
-
-        if not isinstance(labels, list):
-            raise TypeError('group_config labels must be an Array')
+            if not isinstance(labels, list):
+                raise TypeError('group_config labels must be an Array')
 
 
 if __name__ == '__main__':
