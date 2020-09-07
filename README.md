@@ -23,7 +23,7 @@ and renders the changelog according to users config. Then the changes are commit
 To use this Action The pull **request title** must match with the default ``regex``
 or the user provided ``regex`` from the config file.
 
-**Default title regex:** ``^(?i)release`` (title must start with the word "release")
+**Default title regex:** ``^(?i)release`` (title must start with the word "release" (case insensitive))
 
 **Default version number regex:** This follows [``SemVer``](https://regex101.com/r/Ly7O1x/3/) (Semantic Versioning) pattern.
 e.g. ``1.0.0``, ``1.0``, ``v1.0.1`` etc.
@@ -66,19 +66,19 @@ with:
 
 The config file will give you more flexibility and customization options.
 
-### Config file structure:
+### Configuration Options:
 
 * **header_prefix:** The prefix before the version number. e.g. ``Version: 1.0.2``
 * **pull_request_title_regex:** If the pull request title matches with this ``regex`` Changelog CI will generate changelog for it.
-otherwise it will skip changelog generation.
+Otherwise it will skip changelog generation.
 * **version_regex:** This ``regex`` tries to find the version number from pull request title.
 if not provided defaults to [``SemVer``](https://regex101.com/r/Ly7O1x/3/) pattern.
-* **group_config:** By adding this you can group changelog items by your repository labels and custom title.
+* **group_config:** By adding this you can group changelog items by your repository labels with custom titles.
 ```
 {
   // Custom title for groups
   "title": "Bug Fixes",
-  // GitHub labels that would match this group
+  // pull request labels that will match this group
   "labels": ["bug", "bugfix"]
 }
 ```
