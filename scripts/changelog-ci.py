@@ -65,7 +65,7 @@ class ChangelogCI:
             try:
                 with open(config_file, 'r') as config_json:
                     config = json.load(config_json)
-                # validate user provided config file
+                # parse and validate user provided config file
                 parse_config(config)
                 return config
             except Exception as e:
