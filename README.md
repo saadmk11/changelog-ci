@@ -39,17 +39,17 @@ Put this step inside your ``.github/workflows/workflow.yml`` file:
 - name: Run Changelog CI
     uses: saadmk11/changelog-ci@v0.5.5
     with:
-      # optional, you can provide any name for your changelog file,
+      # Optional, you can provide any name for your changelog file,
       # defaults to ``CHANGELOG.md`` if not provided.
       changelog_filename: MY_CHANGELOG.md
-      # optional, only required when you want to
+      # Optional, only required when you want to
       # group your changelog by labels and titles
       config_file: changelog-ci-config.json
+      # Optional, This will be used to configure git
+      # defaults to ``github-actions[bot]`` if not provided.
+      comitter_username:  'test'
+      comitter_email:  'test@test.com'
     env:
-      # This will be used to configure git
-      # you can use secrets for it as well
-      USERNAME:  'test'
-      EMAIL:  'test@test.com'
       # optional, only required for ``private`` repositories
       GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 ```
@@ -146,8 +146,6 @@ jobs:
           changelog_filename: CHANGELOG.md
           config_file: changelog-ci-config.json
         env:
-          USERNAME:  ${{secrets.USERNAME}}
-          EMAIL:  ${{secrets.EMAIL}}
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 ```
 
