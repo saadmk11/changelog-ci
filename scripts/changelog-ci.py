@@ -364,6 +364,10 @@ def parse_config(config):
     group_config = config.get('group_config')
 
     if not header_prefix:
+        logger.warning(
+            '``header_prefix`` was not provided or not valid '
+            'Falling back to default regex.'
+        )
         # if the header_prefix is not not available
         # fallback to default prefix
         config.update({
@@ -371,6 +375,10 @@ def parse_config(config):
         })
 
     if not group_config:
+        logger.warning(
+            '``group_config`` was not provided or not valid '
+            'Falling back to default regex.'
+        )
         # if the group_config is not not available
         # fallback to default group_config
         config.update({
