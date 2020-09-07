@@ -1,3 +1,9 @@
+Version: 0.5.6
+==============
+
+* [#19](https://github.com/saadmk11/changelog-ci/pull/19): Make Username and Email input optional and default to github-actions[bot]
+
+
 Version: 0.5.5
 ==============
 
