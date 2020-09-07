@@ -1,3 +1,10 @@
+Version: 0.5.5
+==============
+
+* [#16](https://github.com/saadmk11/changelog-ci/pull/16): Added regex config for pull request title and version number
+* [#17](https://github.com/saadmk11/changelog-ci/pull/17): Make Documentation Clearer
+
+
 Version: 0.5.0
 ==============
 
