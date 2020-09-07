@@ -28,7 +28,7 @@ or the user provided ``regex`` from the config file.
 **Default version number regex:** This follows [``SemVer``](https://regex101.com/r/Ly7O1x/3/) (Semantic Versioning) pattern.
 e.g. ``1.0.0``, ``1.0``, ``v1.0.1`` etc.
 
-**for more details on Semantic Versioning pattern go to this link:** https://regex101.com/r/Ly7O1x/3/
+**For more details on Semantic Versioning pattern go to this link:** https://regex101.com/r/Ly7O1x/3/
 
 **Note:** [you can provide your own ``regex`` through the ``config`` file](#config-file-usage-optional)
 
@@ -114,9 +114,10 @@ if not provided defaults to [``SemVer``](https://regex101.com/r/Ly7O1x/3/) patte
 
 In this Example **``version_regex``** matches any version number including date. e.g: **``v1.1.0 (01-23-2018)``**
 If you don't provide any ``regex`` Changelog CI will use default 
-[``SemVer``](https://regex101.com/r/Ly7O1x/3/) pattern. e.g. **``1.0.1``**, **``v1.0.2``**
-and **``pull_request_title_regex``** will match any pull request that starts with **``Release``**
-you can match **Any Pull Request Title** by adding this regex **``.*``**
+[``SemVer``](https://regex101.com/r/Ly7O1x/3/) pattern. e.g. **``1.0.1``**, **``v1.0.2``**.
+
+Here **``pull_request_title_regex``** will match any pull request that starts with **``Release``**
+you can match **Any Pull Request Title** by adding this **``pull_request_title_regex": ".*"``**,
 
 **[Click here to see the example output using this config](#example-changelog-output-using-config-file)**
 
