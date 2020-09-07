@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import os
 
 import requests
@@ -8,40 +9,12 @@ import requests
 logger = logging.getLogger(__name__)
 
 
-def validate_config(config):
-    """Validates the user provided config, raises Error if not valid"""
-    if not isinstance(config, dict):
-        raise TypeError(
-            'Configuration does not contain required key, value pairs'
-        )
-
-    header_prefix = config.get('header_prefix')
-    group_config = config.get('group_config')
-
-    if not header_prefix:
-        raise KeyError('Configuration Must Contain header_prefix')
-
-    if not isinstance(group_config, list):
-        raise TypeError('group_config must be an Array')
-
-    # Check if all the group configs match the schema
-    for config in group_config:
-        if not isinstance(config, dict):
-            raise TypeError(
-                'group_config items must have key, '
-                'value pairs of title and labels'
-            )
-        title = config.get('title')
-        labels = config.get('labels')
-
-        if not title:
-            raise KeyError('group_config item must contain title')
-
-        if not labels:
-            raise KeyError('group_config item must contain labels')
-
-        if not isinstance(labels, list):
-            raise TypeError('group_config labels must be an Array')
+# Regex is taken from https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+# It was modified a little bit to make it a bit less restrictive
+DEFAULT_SEMVER_REGEX = r"v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.?(0|[1-9]\d*)?(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?"
+DEFAULT_PULL_REQUEST_TITLE_REGEX = r"^(?i:release)"
+DEFAULT_VERSION_PREFIX = "Version:"
+DEFAULT_GROUP_CONFIG = []
 
 
 class ChangelogCI:
@@ -52,7 +25,7 @@ class ChangelogCI:
         config_file=None, token=None
     ):
         self.repository = repository
-        self.event_path = event_path
+        self.pull_request_title = self._pull_request_title(event_path)
         self.filename = filename
         self.config = self._parse_config(config_file)
         self.token = token
@@ -61,8 +34,10 @@ class ChangelogCI:
     def _default_config():
         """Default configuration for Changelog CI"""
         return {
-            "header_prefix": "Version:",
-            "group_config": []
+            "header_prefix": DEFAULT_VERSION_PREFIX,
+            "pull_request_title_regex": DEFAULT_PULL_REQUEST_TITLE_REGEX,
+            "version_regex": DEFAULT_SEMVER_REGEX,
+            "group_config": DEFAULT_GROUP_CONFIG
         }
 
     @staticmethod
@@ -74,6 +49,16 @@ class ChangelogCI:
             title=item['title']
         )
 
+    @staticmethod
+    def _pull_request_title(event_path):
+        """Gets pull request title from ``GITHUB_EVENT_PATH``"""
+        with open(event_path, 'r') as json_file:
+            # This is just a webhook payload available to the Action
+            data = json.load(json_file)
+            title = data["pull_request"]['title']
+
+        return title
+
     def _parse_config(self, config_file):
         """parse the config file if not provided use default config"""
         if config_file:
@@ -81,7 +66,7 @@ class ChangelogCI:
                 with open(config_file, 'r') as config_json:
                     config = json.load(config_json)
                 # validate user provided config file
-                validate_config(config)
+                parse_config(config)
                 return config
             except Exception as e:
                 logger.error(
@@ -94,14 +79,38 @@ class ChangelogCI:
         # or invalid fall back to default config
         return self._default_config()
 
-    def _pull_request_title(self):
-        """Gets pull request title from ``GITHUB_EVENT_PATH``"""
-        with open(self.event_path, 'r') as json_file:
-            # This is just a webhook payload available to the Action
-            data = json.load(json_file)
-            title = data["pull_request"]['title']
+    def _validate_pull_request(self):
+        """Check if changelog should be generated for this pull request"""
+        pattern = re.compile(self.config['pull_request_title_regex'])
+        match = pattern.search(self.pull_request_title)
 
-        return title
+        if match:
+            return True
+
+        return
+
+    def _get_version_number(self):
+        """Get version number from the pull request title"""
+        pattern = re.compile(self.config['version_regex'])
+        match = pattern.search(self.pull_request_title)
+
+        if match:
+            return match.group()
+
+        return
+
+    def _get_file_mode(self):
+        """Gets the mode that the changelog file should be opened in"""
+        if os.path.exists(self.filename):
+            # if the changelog file exists
+            # opens it in read-write mode
+            file_mode = 'r+'
+        else:
+            # if the changelog file does not exists
+            # opens it in read-write mode
+            # but creates the file first also
+            file_mode = 'w+'
+        return file_mode
 
     def _get_request_headers(self):
         """Get headers for GitHub API request"""
@@ -139,34 +148,6 @@ class ChangelogCI:
             )
 
         return published_date
-
-    def _get_version_number(self):
-        """Get version number from the pull request title"""
-        title = self._pull_request_title()
-        version = ''
-        try:
-            # version number should be after the ``release`` keyword
-            if title.lower().startswith('release'):
-                slices = title.split(' ')
-                # get the version number from second element of the list
-                version = slices[1]
-        except Exception:
-            pass
-
-        return version
-
-    def _get_file_mode(self):
-        """Gets the mode that the changelog file should be opened in"""
-        if os.path.exists(self.filename):
-            # if the changelog file exists
-            # opens it in read-write mode
-            file_mode = 'r+'
-        else:
-            # if the changelog file does not exists
-            # opens it in read-write mode
-            # but creates the file first also
-            file_mode = 'w+'
-        return file_mode
 
     def _get_pull_requests_after_last_release(self):
         """Get all the merged pull request after latest release"""
@@ -223,59 +204,6 @@ class ChangelogCI:
 
         return items
 
-    def write_changelog(self):
-        """Write changelog to the changelog file"""
-        version = self._get_version_number()
-
-        if not version:
-            # if the pull request title is not valid, exit the function
-            # It might happen if the pull request is not meant to be release
-            # or the title was not accurate.
-            logger.warning(
-                'The title of the pull request is incorrect. '
-                'Please use title like: '
-                '``release <version_number> <other_text>``'
-            )
-            return
-
-        pull_request_data = self._get_pull_requests_after_last_release()
-
-        # exit the function if there is not pull request found
-        if not pull_request_data:
-            return
-
-        file_mode = self._get_file_mode()
-        data_to_write = self._parse_data(pull_request_data)
-
-        with open(self.filename, file_mode) as f:
-            # read the existing data and store it in a variable
-            body = f.read()
-            # get the version header prefix from the config
-            version = self.config['header_prefix'] + ' ' + version
-
-            # write at the top of the file
-            f.seek(0, 0)
-            f.write(version + '\n')
-            f.write('=' * len(version))
-            f.write('\n')
-
-            for data in data_to_write:
-                title = data['title']
-                items = data['items']
-
-                # Only write title if data contains items
-                if title and items:
-                    f.write('\n')
-                    f.write(title)
-
-                f.write('\n')
-                f.writelines(items)
-
-            if body:
-                # re-write the existing data
-                f.write('\n\n')
-                f.write(body)
-
     def _parse_data(self, pull_request_data):
         """Parse the pull requests data and return a writable data structure"""
         data = []
@@ -317,6 +245,164 @@ class ChangelogCI:
             data.append({'title': title, 'items': items})
 
         return data
+
+    def write_changelog(self):
+        """Write changelog to the changelog file"""
+        is_valid_pull_request = self._validate_pull_request()
+
+        if not is_valid_pull_request:
+            logger.warning(
+                'The title of the pull request did not match. '
+                'Regex tried: %s \n'
+                'Aborting Changelog Generation',
+                self.config['pull_request_title_regex']
+            )
+            return
+
+        version = self._get_version_number()
+
+        if not version:
+            # if the pull request title is not valid, exit the method
+            # It might happen if the pull request is not meant to be release
+            # or the title was not accurate.
+            logger.warning(
+                'Could not find matching version number. '
+                'Regex tried: %s \n'
+                'Aborting Changelog Generation',
+                self.config['version_regex']
+            )
+            return
+
+        pull_request_data = self._get_pull_requests_after_last_release()
+
+        # exit the function if there is not pull request found
+        if not pull_request_data:
+            return
+
+        file_mode = self._get_file_mode()
+        data_to_write = self._parse_data(pull_request_data)
+
+        with open(self.filename, file_mode) as f:
+            # read the existing data and store it in a variable
+            body = f.read()
+            # get the version header prefix from the config
+            version = self.config['header_prefix'] + ' ' + version
+
+            # write at the top of the file
+            f.seek(0, 0)
+            f.write(version + '\n')
+            f.write('=' * len(version))
+            f.write('\n')
+
+            for data in data_to_write:
+                title = data['title']
+                items = data['items']
+
+                # Only write title if data contains items
+                if title and items:
+                    f.write('\n')
+                    f.write(title)
+
+                f.write('\n')
+                f.writelines(items)
+
+            if body:
+                # re-write the existing data
+                f.write('\n\n')
+                f.write(body)
+
+
+def parse_config(config):
+    """Parse and Validates user provided config, raises Error if not valid"""
+    if not isinstance(config, dict):
+        raise TypeError(
+            'Configuration does not contain required key, value pairs'
+        )
+
+    pull_request_title_regex = config.get('pull_request_title_regex')
+    version_regex = config.get('version_regex')
+
+    try:
+        # if the regex is not provided or is an empty string
+        # just raise KeyError and fallback to default
+        if not pull_request_title_regex:
+            raise KeyError
+
+        # This will raise an error if the provided regex is not valid
+        re.compile(pull_request_title_regex)
+    except Exception:
+        logger.warning(
+            '``pull_request_title_regex`` was not provided or not valid '
+            'Falling back to default regex.'
+        )
+        # if the pull_request_title_regex is not valid or not available
+        # fallback to default regex
+        config.update({
+            "pull_request_title_regex": DEFAULT_PULL_REQUEST_TITLE_REGEX
+        })
+
+    try:
+        # if the regex is not provided or is an empty string
+        # just raise KeyError and fallback to default
+        if not version_regex:
+            raise KeyError
+
+        # This will raise an error if the provided regex is not valid
+        re.compile(version_regex)
+    except Exception:
+        logger.warning(
+            '``version_regex`` was not provided or not valid '
+            'Falling back to default regex.'
+        )
+        # if the version_regex is not valid or not available
+        # fallback to default regex
+        config.update({
+            "version_regex": DEFAULT_SEMVER_REGEX
+        })
+
+    header_prefix = config.get('header_prefix')
+    group_config = config.get('group_config')
+
+    if not header_prefix or not isinstance(header_prefix, str):
+        logger.warning(
+            '``header_prefix`` was not provided or not valid '
+            'Falling back to default regex.'
+        )
+        # if the header_prefix is not not available
+        # fallback to default prefix
+        config.update({
+            "header_prefix": DEFAULT_VERSION_PREFIX
+        })
+
+    if not group_config or not isinstance(group_config, list):
+        logger.warning(
+            '``group_config`` was not provided or not valid '
+            'Falling back to default regex.'
+        )
+        # if the group_config is not not available
+        # fallback to default group_config
+        config.update({
+            "group_config": DEFAULT_GROUP_CONFIG
+        })
+    else:
+        # Check if all the group configs match the schema
+        for config in group_config:
+            if not isinstance(config, dict):
+                raise TypeError(
+                    'group_config items must have key, '
+                    'value pairs of title and labels'
+                )
+            title = config.get('title')
+            labels = config.get('labels')
+
+            if not title:
+                raise KeyError('group_config item must contain title')
+
+            if not labels:
+                raise KeyError('group_config item must contain labels')
+
+            if not isinstance(labels, list):
+                raise TypeError('group_config labels must be an Array')
 
 
 if __name__ == '__main__':
