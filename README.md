@@ -47,8 +47,8 @@ Put this step inside your ``.github/workflows/workflow.yml`` file:
       config_file: changelog-ci-config.json
       # Optional, This will be used to configure git
       # defaults to ``github-actions[bot]`` if not provided.
-      comitter_username:  'test'
-      comitter_email:  'test@test.com'
+      committer_username:  'test'
+      committer_email:  'test@test.com'
     env:
       # optional, only required for ``private`` repositories
       GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
