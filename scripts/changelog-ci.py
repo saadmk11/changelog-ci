@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 # Regex is taken from https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
 # It was modified a little bit to make it a bit less restrictive
 DEFAULT_SEMVER_REGEX = r"v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.?(0|[1-9]\d*)?(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?"
-DEFAULT_PULL_REQUEST_TITLE_REGEX = r"^(?i)release"
+DEFAULT_PULL_REQUEST_TITLE_REGEX = r"^(?i:release)"
 DEFAULT_VERSION_PREFIX = "Version:"
 DEFAULT_GROUP_CONFIG = []
 
