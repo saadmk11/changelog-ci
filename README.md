@@ -146,8 +146,8 @@ jobs:
         with:
           changelog_filename: CHANGELOG.md
           config_file: changelog-ci-config.json
+        # Add this if you are using it on a private repository
         env:
-          # Add this if you are using it on a private repository
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 ```
 
