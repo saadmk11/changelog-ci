@@ -42,8 +42,9 @@ Put this step inside your ``.github/workflows/workflow.yml`` file:
       # Optional, you can provide any name for your changelog file,
       # defaults to ``CHANGELOG.md`` if not provided.
       changelog_filename: MY_CHANGELOG.md
-      # Optional, only required when you want to
-      # group your changelog by labels and titles
+      # Optional, only required when you want more customization
+      # e.g: group your changelog by labels with custom titles,
+      # different version prefix, pull request title and version number regex etc.
       config_file: changelog-ci-config.json
       # Optional, This will be used to configure git
       # defaults to ``github-actions[bot]`` if not provided.
@@ -146,6 +147,7 @@ jobs:
           changelog_filename: CHANGELOG.md
           config_file: changelog-ci-config.json
         env:
+          # Add this if you are using it on a private repository
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 ```
 
