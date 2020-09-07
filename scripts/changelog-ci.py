@@ -363,7 +363,7 @@ def parse_config(config):
     header_prefix = config.get('header_prefix')
     group_config = config.get('group_config')
 
-    if not header_prefix or not isinstance(group_config, str):
+    if not header_prefix or not isinstance(header_prefix, str):
         logger.warning(
             '``header_prefix`` was not provided or not valid '
             'Falling back to default regex.'
