@@ -6,6 +6,7 @@
 [![GitHub Marketplace](https://img.shields.io/badge/Get%20It-on%20Marketplace-orange?style=flat-square)](https://github.com/marketplace/actions/changelog-ci)
 [![GitHub stars](https://img.shields.io/github/stars/saadmk11/changelog-ci?color=success&style=flat-square)](https://github.com/saadmk11/changelog-ci/stargazers)
 
+
 ## What is Changelog CI?
 
 Changelog CI is a GitHub Action that generates changelog,
@@ -59,6 +60,16 @@ Put this step inside your ``.github/workflows/workflow.yml`` file:
       # optional, only required for ``private`` repositories
       GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 ```
+
+**Changelog CI Badge:**
+
+```markdown
+![Changelog CI Status](https://github.com/<username>/<repo_name>/workflows/Changelog%20CI/badge.svg)
+``` 
+
+**Output:**
+
+![Changelog CI Status](https://github.com/saadmk11/changelog-ci/workflows/Changelog%20CI/badge.svg)
 
 
 ## Config File Usage (Optional):
