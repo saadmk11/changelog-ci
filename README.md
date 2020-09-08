@@ -1,4 +1,5 @@
-# Changelog CI
+![Changelog CI Banner](https://i.imgur.com/72lxPjs.png)
+
 
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/saadmk11/changelog-ci?style=flat-square)](https://github.com/saadmk11/changelog-ci/releases/latest)
 ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/saadmk11/changelog-ci/Changelog%20CI?label=Changelog%20CI&style=flat-square)
