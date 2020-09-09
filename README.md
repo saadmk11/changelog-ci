@@ -48,7 +48,7 @@ Put this step inside your ``.github/workflows/workflow.yml`` file:
 
 ```yaml
 - name: Run Changelog CI
-    uses: saadmk11/changelog-ci@v0.5.6
+    uses: saadmk11/changelog-ci@v0.6.0
     with:
       # Optional, you can provide any name for your changelog file,
       # defaults to ``CHANGELOG.md`` if not provided.
@@ -177,7 +177,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Run Changelog CI
-        uses: saadmk11/changelog-ci@v0.5.6
+        uses: saadmk11/changelog-ci@v0.6.0
         with:
           changelog_filename: CHANGELOG.md
           config_file: changelog-ci-config.json

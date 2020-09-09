@@ -1,3 +1,13 @@
+# Version: v0.6.0
+
+* [#24](https://github.com/saadmk11/changelog-ci/pull/24): Added Changelog CI Banner
+* [#23](https://github.com/saadmk11/changelog-ci/pull/23): Document adding Changelog CI badge
+* [#22](https://github.com/saadmk11/changelog-ci/pull/22): Add badges to README.md
+* [#21](https://github.com/saadmk11/changelog-ci/pull/21): Update Documentation and comments
+* [#25](https://github.com/saadmk11/changelog-ci/pull/25): Update Group Config Parsing
+* [#26](https://github.com/saadmk11/changelog-ci/pull/26): Add Comment support
+
+
 Version: 0.5.6
 ==============
 
