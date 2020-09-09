@@ -40,7 +40,7 @@ For more details on **Semantic Versioning pattern** go to this link: https://reg
 
 **Note:** [you can provide your own ``regex`` through the ``config`` file](#config-file-usage-optional)
 
-To **Enable Commenting, Disable Committing, Group changed items** and many more options
+To **Enable Commenting, Disable Committing, Group changelog items** and many more options
 Look at the [config file docs](#config-file-usage-optional).
 
 To integrate ``Changelog CI`` with your repositories Actions,
