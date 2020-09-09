@@ -426,6 +426,10 @@ def parse_config(config):
             "commit_changelog": bool(commit_changelog)
         })
     except Exception:
+        logger.warning(
+            '``commit_changelog`` was not provided or not valid '
+            'Falling back to ``True``.'
+        )
         # if commit_changelog is not provided default to True
         config.update({
             "commit_changelog": True
@@ -437,9 +441,13 @@ def parse_config(config):
             "comment_changelog": bool(comment_changelog)
         })
     except Exception:
+        logger.warning(
+            '``comment_changelog`` was not provided or not valid '
+            'Falling back to ``False``.'
+        )
         # if comment_changelog is not provided default to False
         config.update({
-            "comment_changelog": True
+            "comment_changelog": False
         })
 
     header_prefix = config.get('header_prefix')
