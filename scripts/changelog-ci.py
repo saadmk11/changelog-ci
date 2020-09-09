@@ -42,7 +42,7 @@ class ChangelogCI:
             "comment_changelog": False,
             "pull_request_title_regex": DEFAULT_PULL_REQUEST_TITLE_REGEX,
             "version_regex": DEFAULT_SEMVER_REGEX,
-            "group_config": DEFAULT_GROUP_CONFIG,
+            "group_config": DEFAULT_GROUP_CONFIG
         }
 
     @staticmethod
@@ -230,10 +230,10 @@ class ChangelogCI:
                     # check if the pull request label matches with
                     # any label of the config
                     if (
-                            any(
-                                label in pull_request['labels']
-                                for label in config['labels']
-                            )
+                        any(
+                            label in pull_request['labels']
+                            for label in config['labels']
+                        )
                     ):
                         items_string += self._get_changelog_line(pull_request)
                         # remove the item so that one item
@@ -273,8 +273,9 @@ class ChangelogCI:
 
     def _comment_changelog(self, string_data):
         """Comments Changelog to the pull request"""
-
         if not self.token:
+            # Token is required by the GitHub API to create a Comment
+            # if not provided exit with error message
             logger.error(
                 "Could not create a comment. "
                 "``GITHUB_TOKEN`` is required for this operation.\n"
@@ -304,7 +305,9 @@ class ChangelogCI:
             url, headers=self._get_request_headers(),
             json=payload
         )
+
         if response.status_code != 201:
+            # API should return 201, otherwise show error message
             logger.error(
                 'Error while trying to create a comment.\n'
                 'GitHub API returned error response for %s, status code: %s',
@@ -312,10 +315,13 @@ class ChangelogCI:
             )
 
     def run(self):
+        """Entrypoint to the Changelog CI"""
         if (
-                not self.config['commit_changelog'] and
-                not self.config['comment_changelog']
+            not self.config['commit_changelog'] and
+            not self.config['comment_changelog']
         ):
+            # if both commit_changelog and comment_changelog is set to false
+            # then exit with warning and don't generate Changelog
             logger.warning(
                 'Skipping Changelog generation as both ``commit_changelog`` '
                 'and ``comment_changelog`` is set to False. '
@@ -327,6 +333,8 @@ class ChangelogCI:
         is_valid_pull_request = self._validate_pull_request()
 
         if not is_valid_pull_request:
+            # if pull request regex doesn't match then exit
+            # and don't generate changelog
             logger.warning(
                 'The title of the pull request did not match. '
                 'Regex tried: %s \n'
@@ -416,9 +424,11 @@ def parse_config(config):
     comment_changelog = config.get('comment_changelog')
 
     if not commit_changelog:
+        # set default to True
         commit_changelog = True
 
     if not comment_changelog:
+        # set default to False
         comment_changelog = False
 
     config.update({
