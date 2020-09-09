@@ -213,7 +213,7 @@ class ChangelogCI:
     def _parse_data(self, version, pull_request_data):
         """Parse the pull requests data and return a writable data structure"""
         string_data = (
-                '## ' + self.config['header_prefix'] + ' ' + version + '\n\n'
+                '# ' + self.config['header_prefix'] + ' ' + version + '\n\n'
         )
 
         group_config = self.config['group_config']
