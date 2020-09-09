@@ -31,16 +31,16 @@ Then the changes are **committed** and/or **commented** to the release Pull requ
 To use this Action The pull **request title** must match with the default ``regex``
 or the user provided ``regex`` from the config file.
 
-**Default title regex:** ``^(?i:release)`` (title must start with the word "release" (case insensitive))
+**Default Title Regex:** ``^(?i:release)`` (title must start with the word "release" (case insensitive))
 
-**Default version number regex:** This follows [``SemVer``](https://regex101.com/r/Ly7O1x/3/) (Semantic Versioning) pattern.
+**Default Version Number Regex:** This follows [``SemVer``](https://regex101.com/r/Ly7O1x/3/) (Semantic Versioning) pattern.
 e.g. ``1.0.0``, ``1.0``, ``v1.0.1`` etc.
 
-**For more details on Semantic Versioning pattern go to this link:** https://regex101.com/r/Ly7O1x/3/
+For more details on **Semantic Versioning pattern** go to this link: https://regex101.com/r/Ly7O1x/3/
 
 **Note:** [you can provide your own ``regex`` through the ``config`` file](#config-file-usage-optional)
 
-To **Enable Commenting**, **Disable Committing**, **Group changed items** and many more options
+To **Enable Commenting, Disable Committing, Group changed items** and many more options
 Look at the [config file docs](#config-file-usage-optional).
 
 To integrate ``Changelog CI`` with your repositories Actions,
@@ -93,10 +93,11 @@ The config file will give you more flexibility and customization options.
 ### Configuration Options:
 
 * **header_prefix:** The prefix before the version number. e.g. ``Version: 1.0.2``
-* **commit_changelog:** Value can be ``true`` or ``false`` if not provided defaults to ``true``.
+* **commit_changelog:** Value can be ``true`` or ``false``. if not provided defaults to ``true``.
 If it is set to ``true`` then Changelog CI will commit to the release pull request.
-* **comment_changelog:** Value can be ``true`` or ``false`` if not provided defaults to ``false``
+* **comment_changelog:** Value can be ``true`` or ``false``. if not provided defaults to ``false``.
 If it is set to ``true`` then Changelog CI will comment on the release pull request.
+This requires ``GITHUB_TOKEN`` to be added to the workflow.
 * **pull_request_title_regex:** If the pull request title matches with this ``regex`` Changelog CI will generate changelog for it.
 Otherwise it will skip changelog generation.
 * **version_regex:** This ``regex`` tries to find the version number from pull request title.
