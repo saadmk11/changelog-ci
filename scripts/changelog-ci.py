@@ -292,7 +292,7 @@ class ChangelogCI:
 
         response = requests.post(
             url, headers=self._get_request_headers(),
-            data=payload
+            json=payload
         )
         print(response.status_code)
         print(response.json())
