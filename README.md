@@ -92,7 +92,7 @@ The config file will give you more flexibility and customization options.
 
 ### Configuration Options:
 
-* **header_prefix:** The prefix before the version number. e.g. ``Version: 1.0.2``
+* **header_prefix:** The prefix before the version number. e.g. ``version:`` in ``Version: 1.0.2``
 * **commit_changelog:** Value can be ``true`` or ``false``. if not provided defaults to ``true``.
 If it is set to ``true`` then Changelog CI will commit to the release pull request.
 * **comment_changelog:** Value can be ``true`` or ``false``. if not provided defaults to ``false``.
