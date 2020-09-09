@@ -273,6 +273,17 @@ class ChangelogCI:
 
     def _comment_changelog(self, string_data):
         """Comments Changelog to the pull request"""
+
+        if not self.token:
+            logger.error(
+                "Could not create a comment.\n"
+                "``GITHUB_TOKEN`` is required for this operation"
+                "If you want to enable Comments please add "
+                "``GITHUB_TOKEN`` to your workflow yaml file"
+                "Look at Changelog CI's documentation for more information"
+            )
+            return
+
         owner, repo = self.repository.split('/')
 
         payload = {
@@ -281,7 +292,6 @@ class ChangelogCI:
             'issue_number': self.pull_request_number,
             'body': string_data
         }
-        print(payload)
 
         url = (
             'https://api.github.com/repos/{repo}/issues/{number}/comments'
@@ -294,8 +304,12 @@ class ChangelogCI:
             url, headers=self._get_request_headers(),
             json=payload
         )
-        print(response.status_code)
-        print(response.json())
+        if response.status_code != 201:
+            logger.error(
+                'Error while trying to create a comment.\n'
+                'GitHub API returned error response for %s, status code: %s',
+                self.repository, response.status_code
+            )
 
     def run(self):
         if (
