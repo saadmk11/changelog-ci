@@ -20,9 +20,9 @@ DEFAULT_GROUP_CONFIG = []
 class ChangelogCI:
 
     def __init__(
-            self, repository,
-            event_path, filename='CHANGELOG.md',
-            config_file=None, token=None
+        self, repository,
+        event_path, filename='CHANGELOG.md',
+        config_file=None, token=None
     ):
         self.repository = repository
         self.filename = filename
