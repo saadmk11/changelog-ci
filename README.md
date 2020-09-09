@@ -99,8 +99,9 @@ If it is set to ``true`` then Changelog CI will commit to the release pull reque
 If it is set to ``true`` then Changelog CI will comment on the release pull request.
 This requires ``GITHUB_TOKEN`` to be added to the workflow.
 * **pull_request_title_regex:** If the pull request title matches with this ``regex`` Changelog CI will generate changelog for it.
-Otherwise it will skip changelog generation.
+Otherwise it will skip changelog generation. If not provided defaults to ``^(?i:release)`` (title must start with the word "release" (case insensitive)).
 * **version_regex:** This ``regex`` tries to find the version number from pull request title.
+in case of no match changelog generation will be skipped.
 if not provided defaults to [``SemVer``](https://regex101.com/r/Ly7O1x/3/) pattern.
 * **group_config:** By adding this you can group changelog items by your repository labels with custom titles.
 ```
@@ -111,7 +112,10 @@ if not provided defaults to [``SemVer``](https://regex101.com/r/Ly7O1x/3/) patte
   "labels": ["bug", "bugfix"]
 }
 ```
-[See this example](#example-changelog-output-using-config-file)
+
+[See this example with group_config](#example-changelog-output-using-config-file)
+
+[See this example without group_config](#example-changelog-output-without-using-config-file)
 
 #### Example Config File:
 
