@@ -377,7 +377,7 @@ def parse_config(config):
     if not group_config or not isinstance(group_config, list):
         logger.warning(
             '``group_config`` was not provided or not valid '
-            'Falling back to default regex.'
+            'Falling back to default group config.'
         )
         # if the group_config is not not available
         # fallback to default group_config
@@ -385,24 +385,35 @@ def parse_config(config):
             "group_config": DEFAULT_GROUP_CONFIG
         })
     else:
-        # Check if all the group configs match the schema
-        for config in group_config:
-            if not isinstance(config, dict):
-                raise TypeError(
-                    'group_config items must have key, '
-                    'value pairs of title and labels'
-                )
-            title = config.get('title')
-            labels = config.get('labels')
+        try:
+            # Check if all the group configs match the schema
+            for config in group_config:
+                if not isinstance(config, dict):
+                    raise TypeError(
+                        'group_config items must have key, '
+                        'value pairs of title and labels'
+                    )
+                title = config.get('title')
+                labels = config.get('labels')
 
-            if not title:
-                raise KeyError('group_config item must contain title')
+                if not title:
+                    raise KeyError('group_config item must contain title')
 
-            if not labels:
-                raise KeyError('group_config item must contain labels')
+                if not labels:
+                    raise KeyError('group_config item must contain labels')
 
-            if not isinstance(labels, list):
-                raise TypeError('group_config labels must be an Array')
+                if not isinstance(labels, list):
+                    raise TypeError('group_config labels must be an Array')
+
+        except Exception as e:
+            logger.warning(
+                'An error occurred while parsing ``group_config``. Error: %s'
+                'Falling back to default group config.', e
+            )
+            # Fallback to default group_config
+            config.update({
+                "group_config": DEFAULT_GROUP_CONFIG
+            })
 
 
 if __name__ == '__main__':
