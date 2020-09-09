@@ -22,7 +22,8 @@ Then, it checks all the pull requests merged after the last release using the Gi
 After that it parses the data and generates the ``changelog``. Finally,
 It writes the generated changelog at the beginning of the ``CHANGELOG.md`` (or user provided filename) file.
 In addition to that, if an user provides a config (json file), Changelog CI parses the user provided config file
-and renders the changelog according to users config. Then the changes are committed to the release Pull request.
+and renders the changelog according to users config.
+Then the changes are **committed** and/or **commented** to the release Pull request.
 
 
 ## Usage:
@@ -30,14 +31,17 @@ and renders the changelog according to users config. Then the changes are commit
 To use this Action The pull **request title** must match with the default ``regex``
 or the user provided ``regex`` from the config file.
 
-**Default title regex:** ``^(?i:release)`` (title must start with the word "release" (case insensitive))
+**Default Title Regex:** ``^(?i:release)`` (title must start with the word "release" (case insensitive))
 
-**Default version number regex:** This follows [``SemVer``](https://regex101.com/r/Ly7O1x/3/) (Semantic Versioning) pattern.
+**Default Version Number Regex:** This follows [``SemVer``](https://regex101.com/r/Ly7O1x/3/) (Semantic Versioning) pattern.
 e.g. ``1.0.0``, ``1.0``, ``v1.0.1`` etc.
 
-**For more details on Semantic Versioning pattern go to this link:** https://regex101.com/r/Ly7O1x/3/
+For more details on **Semantic Versioning pattern** go to this link: https://regex101.com/r/Ly7O1x/3/
 
 **Note:** [you can provide your own ``regex`` through the ``config`` file](#config-file-usage-optional)
+
+To **Enable Commenting, Disable Committing, Group changelog items** and many more options
+Look at the [config file docs](#config-file-usage-optional).
 
 To integrate ``Changelog CI`` with your repositories Actions,
 Put this step inside your ``.github/workflows/workflow.yml`` file:
@@ -59,6 +63,8 @@ Put this step inside your ``.github/workflows/workflow.yml`` file:
       committer_email:  'test@test.com'
     env:
       # optional, only required for ``private`` repositories
+      # and required if the changelog comment 
+      # option is turned on through the config file
       GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 ```
 
@@ -86,11 +92,18 @@ The config file will give you more flexibility and customization options.
 
 ### Configuration Options:
 
-* **header_prefix:** The prefix before the version number. e.g. ``Version: 1.0.2``
+* **header_prefix:** The prefix before the version number. e.g. ``version:`` in ``Version: 1.0.2``
+* **commit_changelog:** Value can be ``true`` or ``false``. if not provided defaults to ``true``.
+If it is set to ``true`` then Changelog CI will commit to the release pull request.
+* **comment_changelog:** Value can be ``true`` or ``false``. if not provided defaults to ``false``.
+If it is set to ``true`` then Changelog CI will comment on the release pull request.
+This requires ``GITHUB_TOKEN`` to be added to the workflow.
 * **pull_request_title_regex:** If the pull request title matches with this ``regex`` Changelog CI will generate changelog for it.
-Otherwise it will skip changelog generation.
+Otherwise it will skip changelog generation. 
+If ``pull_request_title_regex`` is not provided defaults to ``^(?i:release)`` (title must start with the word "release" (case insensitive)).
 * **version_regex:** This ``regex`` tries to find the version number from pull request title.
-if not provided defaults to [``SemVer``](https://regex101.com/r/Ly7O1x/3/) pattern.
+in case of no match changelog generation will be skipped.
+if ``version_regex`` is not provided defaults to [``SemVer``](https://regex101.com/r/Ly7O1x/3/) pattern.
 * **group_config:** By adding this you can group changelog items by your repository labels with custom titles.
 ```
 {
@@ -100,13 +113,18 @@ if not provided defaults to [``SemVer``](https://regex101.com/r/Ly7O1x/3/) patte
   "labels": ["bug", "bugfix"]
 }
 ```
-[See this example](#example-changelog-output-using-config-file)
+
+[See this example with group_config](#example-changelog-output-using-config-file)
+
+[See this example without group_config](#example-changelog-output-without-using-config-file)
 
 #### Example Config File:
 
 ```json
 {
   "header_prefix": "Version:",
+  "commit_changelog": true,
+  "comment_changelog": true,
   "pull_request_title_regex": "^Release",
   "version_regex": "v?([0-9]{1,2})+[.]+([0-9]{1,2})+[.]+([0-9]{1,2})\\s\\(\\d{1,2}-\\d{1,2}-\\d{4}\\)",
   "group_config": [
@@ -171,8 +189,7 @@ jobs:
 
 # Example Changelog Output using config file:
 
-Version: v2.1.0 (02-25-2020)
-============================
+# Version: v2.1.0 (02-25-2020)
 
 #### Bug Fixes
 
@@ -188,8 +205,7 @@ Version: v2.1.0 (02-25-2020)
 * [#66](https://github.com/test/test/pull/66): Docs update
 
 
-Version: v1.1.0 (01-01-2020)
-============================
+# Version: v1.1.0 (01-01-2020)
 
 #### Bug Fixes
 
@@ -203,16 +219,14 @@ Version: v1.1.0 (01-01-2020)
 
 # Example Changelog Output without using config file:
 
-Version: 0.0.2
-==============
+# Version: 0.0.2
 
 * [#53](https://github.com/test/test/pull/57): Keep updating the readme
 * [#54](https://github.com/test/test/pull/56): Again updating the Same Readme file
 * [#55](https://github.com/test/test/pull/55): README update
 
 
-Version: 0.0.1
-==============
+# Version: 0.0.1
 
 * [#43](https://github.com/test/test/pull/43): It feels like testing never ends
 * [#35](https://github.com/test/test/pull/35): Testing again and again

@@ -25,16 +25,21 @@ class ChangelogCI:
         config_file=None, token=None
     ):
         self.repository = repository
-        self.pull_request_title = self._pull_request_title(event_path)
         self.filename = filename
         self.config = self._parse_config(config_file)
         self.token = token
+
+        title, number = self._get_pull_request_title_and_number(event_path)
+        self.pull_request_title = title
+        self.pull_request_number = number
 
     @staticmethod
     def _default_config():
         """Default configuration for Changelog CI"""
         return {
             "header_prefix": DEFAULT_VERSION_PREFIX,
+            "commit_changelog": True,
+            "comment_changelog": False,
             "pull_request_title_regex": DEFAULT_PULL_REQUEST_TITLE_REGEX,
             "version_regex": DEFAULT_SEMVER_REGEX,
             "group_config": DEFAULT_GROUP_CONFIG
@@ -50,14 +55,15 @@ class ChangelogCI:
         )
 
     @staticmethod
-    def _pull_request_title(event_path):
+    def _get_pull_request_title_and_number(event_path):
         """Gets pull request title from ``GITHUB_EVENT_PATH``"""
         with open(event_path, 'r') as json_file:
             # This is just a webhook payload available to the Action
             data = json.load(json_file)
             title = data["pull_request"]['title']
+            number = data['number']
 
-        return title
+        return title, number
 
     def _parse_config(self, config_file):
         """parse the config file if not provided use default config"""
@@ -204,15 +210,21 @@ class ChangelogCI:
 
         return items
 
-    def _parse_data(self, pull_request_data):
+    def _parse_data(self, version, pull_request_data):
         """Parse the pull requests data and return a writable data structure"""
-        data = []
+        string_data = (
+            '# ' + self.config['header_prefix'] + ' ' + version + '\n\n'
+        )
+
         group_config = self.config['group_config']
 
         if group_config:
             for config in group_config:
-                title = '#### ' + config['title'] + '\n\n'
-                items = []
+
+                if len(pull_request_data) == 0:
+                    break
+
+                items_string = ''
 
                 for pull_request in pull_request_data:
                     # check if the pull request label matches with
@@ -223,34 +235,106 @@ class ChangelogCI:
                             for label in config['labels']
                         )
                     ):
-                        items.append(self._get_changelog_line(pull_request))
+                        items_string += self._get_changelog_line(pull_request)
                         # remove the item so that one item
                         # does not match multiple groups
                         pull_request_data.remove(pull_request)
 
-                data.append({'title': title, 'items': items})
+                if items_string:
+                    string_data += '\n#### ' + config['title'] + '\n\n'
+                    string_data += '\n' + items_string
 
             if pull_request_data:
+                # if they do not match any user provided group
                 # Add items in ``Other Changes`` group
-                # if they do not match any provided group
-                title = '#### Other Changes' + '\n\n'
-                items = map(self._get_changelog_line, pull_request_data)
-
-                data.append({'title': title, 'items': items})
+                string_data += '\n#### Other Changes\n\n'
+                string_data += ''.join(map(self._get_changelog_line, pull_request_data))
         else:
             # If group config does not exist then append it without and groups
-            title = ''
-            items = map(self._get_changelog_line, pull_request_data)
+            string_data += ''.join(map(self._get_changelog_line, pull_request_data))
 
-            data.append({'title': title, 'items': items})
+        return string_data
 
-        return data
-
-    def write_changelog(self):
+    def _write_changelog(self, string_data):
         """Write changelog to the changelog file"""
+        file_mode = self._get_file_mode()
+
+        with open(self.filename, file_mode) as f:
+            # read the existing data and store it in a variable
+            body = f.read()
+            # write at the top of the file
+            f.seek(0, 0)
+            f.write(string_data)
+
+            if body:
+                # re-write the existing data
+                f.write('\n\n')
+                f.write(body)
+
+    def _comment_changelog(self, string_data):
+        """Comments Changelog to the pull request"""
+        if not self.token:
+            # Token is required by the GitHub API to create a Comment
+            # if not provided exit with error message
+            logger.error(
+                "Could not create a comment. "
+                "``GITHUB_TOKEN`` is required for this operation.\n"
+                "If you want to enable Changelog comment, please add "
+                "``GITHUB_TOKEN`` to your workflow yaml file.\n"
+                "Look at Changelog CI's documentation for more information."
+            )
+            return
+
+        owner, repo = self.repository.split('/')
+
+        payload = {
+            'owner': owner,
+            'repo': repo,
+            'issue_number': self.pull_request_number,
+            'body': string_data
+        }
+
+        url = (
+            'https://api.github.com/repos/{repo}/issues/{number}/comments'
+        ).format(
+            repo=self.repository,
+            number=self.pull_request_number
+        )
+
+        response = requests.post(
+            url, headers=self._get_request_headers(),
+            json=payload
+        )
+
+        if response.status_code != 201:
+            # API should return 201, otherwise show error message
+            logger.error(
+                'Error while trying to create a comment.\n'
+                'GitHub API returned error response for %s, status code: %s',
+                self.repository, response.status_code
+            )
+
+    def run(self):
+        """Entrypoint to the Changelog CI"""
+        if (
+            not self.config['commit_changelog'] and
+            not self.config['comment_changelog']
+        ):
+            # if both commit_changelog and comment_changelog is set to false
+            # then exit with warning and don't generate Changelog
+            logger.warning(
+                'Skipping Changelog generation as both ``commit_changelog`` '
+                'and ``comment_changelog`` is set to False.\n'
+                'If you did not intend to do this please set '
+                'one or both of them to True.'
+            )
+            return
+
         is_valid_pull_request = self._validate_pull_request()
 
         if not is_valid_pull_request:
+            # if pull request regex doesn't match then exit
+            # and don't generate changelog
             logger.warning(
                 'The title of the pull request did not match. '
                 'Regex tried: %s \n'
@@ -279,37 +363,13 @@ class ChangelogCI:
         if not pull_request_data:
             return
 
-        file_mode = self._get_file_mode()
-        data_to_write = self._parse_data(pull_request_data)
+        string_data = self._parse_data(version, pull_request_data)
 
-        with open(self.filename, file_mode) as f:
-            # read the existing data and store it in a variable
-            body = f.read()
-            # get the version header prefix from the config
-            version = self.config['header_prefix'] + ' ' + version
+        if self.config['commit_changelog']:
+            self._write_changelog(string_data)
 
-            # write at the top of the file
-            f.seek(0, 0)
-            f.write(version + '\n')
-            f.write('=' * len(version))
-            f.write('\n')
-
-            for data in data_to_write:
-                title = data['title']
-                items = data['items']
-
-                # Only write title if data contains items
-                if title and items:
-                    f.write('\n')
-                    f.write(title)
-
-                f.write('\n')
-                f.writelines(items)
-
-            if body:
-                # re-write the existing data
-                f.write('\n\n')
-                f.write(body)
+        if self.config['comment_changelog']:
+            self._comment_changelog(string_data)
 
 
 def parse_config(config):
@@ -360,6 +420,36 @@ def parse_config(config):
             "version_regex": DEFAULT_SEMVER_REGEX
         })
 
+    try:
+        commit_changelog = config['commit_changelog']
+        config.update({
+            "commit_changelog": bool(commit_changelog)
+        })
+    except Exception:
+        logger.warning(
+            '``commit_changelog`` was not provided or not valid '
+            'Falling back to ``True``.'
+        )
+        # if commit_changelog is not provided default to True
+        config.update({
+            "commit_changelog": True
+        })
+
+    try:
+        comment_changelog = config['comment_changelog']
+        config.update({
+            "comment_changelog": bool(comment_changelog)
+        })
+    except Exception:
+        logger.warning(
+            '``comment_changelog`` was not provided or not valid '
+            'Falling back to ``False``.'
+        )
+        # if comment_changelog is not provided default to False
+        config.update({
+            "comment_changelog": False
+        })
+
     header_prefix = config.get('header_prefix')
     group_config = config.get('group_config')
 
@@ -407,7 +497,7 @@ def parse_config(config):
 
         except Exception as e:
             logger.warning(
-                'An error occurred while parsing ``group_config``. Error: %s'
+                'An error occurred while parsing ``group_config``. Error: %s\n'
                 'Falling back to default group config.', e
             )
             # Fallback to default group_config
@@ -432,4 +522,4 @@ if __name__ == '__main__':
         repository, event_path, filename=filename,
         config_file=config_file, token=token
     )
-    ci.write_changelog()
+    ci.run()
