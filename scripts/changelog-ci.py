@@ -324,7 +324,7 @@ class ChangelogCI:
             # then exit with warning and don't generate Changelog
             logger.warning(
                 'Skipping Changelog generation as both ``commit_changelog`` '
-                'and ``comment_changelog`` is set to False. '
+                'and ``comment_changelog`` is set to False.\n'
                 'If you did not intend to do this please set '
                 'one or both of them to True.'
             )
