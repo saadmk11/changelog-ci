@@ -453,7 +453,7 @@ def parse_config(config):
     if not group_config or not isinstance(group_config, list):
         logger.warning(
             '``group_config`` was not provided or not valid '
-            'Falling back to default regex.'
+            'Falling back to default group config.'
         )
         # if the group_config is not not available
         # fallback to default group_config
