@@ -420,21 +420,27 @@ def parse_config(config):
             "version_regex": DEFAULT_SEMVER_REGEX
         })
 
-    commit_changelog = config.get('commit_changelog')
-    comment_changelog = config.get('comment_changelog')
+    try:
+        commit_changelog = config['commit_changelog']
+        config.update({
+            "commit_changelog": bool(commit_changelog)
+        })
+    except Exception:
+        # if commit_changelog is not provided default to True
+        config.update({
+            "commit_changelog": True
+        })
 
-    if not commit_changelog:
-        # set default to True
-        commit_changelog = True
-
-    if not comment_changelog:
-        # set default to False
-        comment_changelog = False
-
-    config.update({
-        "commit_changelog": bool(commit_changelog),
-        "comment_changelog": bool(comment_changelog)
-    })
+    try:
+        comment_changelog = config['comment_changelog']
+        config.update({
+            "comment_changelog": bool(comment_changelog)
+        })
+    except Exception:
+        # if comment_changelog is not provided default to False
+        config.update({
+            "comment_changelog": True
+        })
 
     header_prefix = config.get('header_prefix')
     group_config = config.get('group_config')
