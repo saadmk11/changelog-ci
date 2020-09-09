@@ -483,7 +483,7 @@ def parse_config(config):
 
         except Exception as e:
             logger.warning(
-                'An error occurred while parsing ``group_config``. Error: %s'
+                'An error occurred while parsing ``group_config``. Error: %s\n'
                 'Falling back to default group config.', e
             )
             # Fallback to default group_config
