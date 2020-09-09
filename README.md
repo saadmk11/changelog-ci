@@ -30,7 +30,7 @@ and renders the changelog according to users config. Then the changes are commit
 To use this Action The pull **request title** must match with the default ``regex``
 or the user provided ``regex`` from the config file.
 
-**Default title regex:** ``^(?i)release`` (title must start with the word "release" (case insensitive))
+**Default title regex:** ``^(?i:release)`` (title must start with the word "release" (case insensitive))
 
 **Default version number regex:** This follows [``SemVer``](https://regex101.com/r/Ly7O1x/3/) (Semantic Versioning) pattern.
 e.g. ``1.0.0``, ``1.0``, ``v1.0.1`` etc.
