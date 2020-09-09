@@ -276,11 +276,11 @@ class ChangelogCI:
 
         if not self.token:
             logger.error(
-                "Could not create a comment.\n"
-                "``GITHUB_TOKEN`` is required for this operation"
-                "If you want to enable Comments please add "
-                "``GITHUB_TOKEN`` to your workflow yaml file"
-                "Look at Changelog CI's documentation for more information"
+                "Could not create a comment. "
+                "``GITHUB_TOKEN`` is required for this operation.\n"
+                "If you want to enable Changelog comment, please add "
+                "``GITHUB_TOKEN`` to your workflow yaml file.\n"
+                "Look at Changelog CI's documentation for more information."
             )
             return
 
