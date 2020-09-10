@@ -11,7 +11,8 @@
 ## What is Changelog CI?
 
 Changelog CI is a GitHub Action that generates changelog,
-prepends it to ``CHANGELOG.md`` file and commits it to a release pull request
+Then the changelog is prepended to ``CHANGELOG.md`` file and **committed** 
+and/or **commented** to the release Pull request.
 
 
 ## How Does It Work:
@@ -19,9 +20,9 @@ prepends it to ``CHANGELOG.md`` file and commits it to a release pull request
 Changelog CI uses ``python`` and ``GitHub API`` to generate changelog for a repository.
 First, it tries to get the ``latest release`` from the repository (If available).
 Then, it checks all the pull requests merged after the last release using the GitHub API.
-After that it parses the data and generates the ``changelog``. Finally,
-It writes the generated changelog at the beginning of the ``CHANGELOG.md`` (or user provided filename) file.
-In addition to that, if an user provides a config (json file), Changelog CI parses the user provided config file
+After that, it parses the data and generates the ``changelog``. Finally,
+It writes the generated changelog at the beginning of the ``CHANGELOG.md`` (or user-provided filename) file.
+In addition to that, if a user provides a config (JSON file), Changelog CI parses the user-provided config file
 and renders the changelog according to users config.
 Then the changes are **committed** and/or **commented** to the release Pull request.
 
@@ -29,7 +30,7 @@ Then the changes are **committed** and/or **commented** to the release Pull requ
 ## Usage:
 
 To use this Action The pull **request title** must match with the default ``regex``
-or the user provided ``regex`` from the config file.
+or the user-provided ``regex`` from the config file.
 
 **Default Title Regex:** ``^(?i:release)`` (title must start with the word "release" (case insensitive))
 
@@ -99,10 +100,10 @@ If it is set to ``true`` then Changelog CI will commit to the release pull reque
 If it is set to ``true`` then Changelog CI will comment on the release pull request.
 This requires ``GITHUB_TOKEN`` to be added to the workflow.
 * **pull_request_title_regex:** If the pull request title matches with this ``regex`` Changelog CI will generate changelog for it.
-Otherwise it will skip changelog generation. 
+Otherwise, it will skip the changelog generation. 
 If ``pull_request_title_regex`` is not provided defaults to ``^(?i:release)`` (title must start with the word "release" (case insensitive)).
-* **version_regex:** This ``regex`` tries to find the version number from pull request title.
-in case of no match changelog generation will be skipped.
+* **version_regex:** This ``regex`` tries to find the version number from the pull request title.
+in case of no match, changelog generation will be skipped.
 if ``version_regex`` is not provided defaults to [``SemVer``](https://regex101.com/r/Ly7O1x/3/) pattern.
 * **group_config:** By adding this you can group changelog items by your repository labels with custom titles.
 ```
@@ -114,9 +115,9 @@ if ``version_regex`` is not provided defaults to [``SemVer``](https://regex101.c
 }
 ```
 
-[See this example with group_config](#example-changelog-output-using-config-file)
+[See this example output with group_config](#example-changelog-output-using-config-file)
 
-[See this example without group_config](#example-changelog-output-without-using-config-file)
+[See this example output without group_config](#example-changelog-output-without-using-config-file)
 
 #### Example Config File:
 
@@ -163,7 +164,7 @@ you can match **Any Pull Request Title** by adding this **``pull_request_title_r
 ```yaml
 name: Changelog CI
 
-# Controls when the action will run. Triggers the workflow on pull request
+# Controls when the action will run. Triggers the workflow on a pull request
 on:
   pull_request:
     types: [opened, reopened]
@@ -182,6 +183,7 @@ jobs:
           changelog_filename: CHANGELOG.md
           config_file: changelog-ci-config.json
         # Add this if you are using it on a private repository
+        # Or if you have turned on commenting through the config file.
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 ```
@@ -189,7 +191,7 @@ jobs:
 
 # Example Changelog Output using config file:
 
-# Version: v2.1.0 (02-25-2020)
+## Version: v2.1.0 (02-25-2020)
 
 #### Bug Fixes
 
@@ -205,7 +207,7 @@ jobs:
 * [#66](https://github.com/test/test/pull/66): Docs update
 
 
-# Version: v1.1.0 (01-01-2020)
+## Version: v1.1.0 (01-01-2020)
 
 #### Bug Fixes
 
@@ -219,14 +221,14 @@ jobs:
 
 # Example Changelog Output without using config file:
 
-# Version: 0.0.2
+## Version: 0.0.2
 
 * [#53](https://github.com/test/test/pull/57): Keep updating the readme
 * [#54](https://github.com/test/test/pull/56): Again updating the Same Readme file
 * [#55](https://github.com/test/test/pull/55): README update
 
 
-# Version: 0.0.1
+## Version: 0.0.1
 
 * [#43](https://github.com/test/test/pull/43): It feels like testing never ends
 * [#35](https://github.com/test/test/pull/35): Testing again and again
