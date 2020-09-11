@@ -1,5 +1,5 @@
 name: Changelog CI
-description: This is an action that commits on a release pull request with the changelog
+description: A GitHub Action that generates changelog, Then the changelog is committed and/or commented to the release Pull request.
 author: Maksudul Haque
 branding:
   icon: 'clock'
