@@ -188,6 +188,9 @@ jobs:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 ```
 
+## Changelog CI at Action (Comment & Commit)
+![Changelog CI](https://media.giphy.com/media/J5SWNI4JNdzUy4ap5e/source.gif)
+
 
 # Example Changelog Output using config file:
 
