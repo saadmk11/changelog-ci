@@ -188,7 +188,7 @@ jobs:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 ```
 
-## Changelog CI at Action (Comment & Commit)
+## Changelog CI in Action (Comment & Commit)
 ![Changelog CI](https://user-images.githubusercontent.com/24854406/93024522-1844d180-f619-11ea-9c25-57b4e95b822b.gif)
 
 
