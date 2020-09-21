@@ -29,10 +29,6 @@ class ChangelogCI:
         self.config = self._parse_config(config_file)
         self.token = token
 
-        title, number = self._get_pull_request_title_and_number(event_path)
-        self.pull_request_title = title
-        self.pull_request_number = number
-
     @staticmethod
     def _default_config():
         """Default configuration for Changelog CI"""
@@ -96,14 +92,15 @@ class ChangelogCI:
         return
 
     def _get_version_number(self):
-        """Get version number from the pull request title"""
-        pattern = re.compile(self.config['version_regex'])
-        match = pattern.search(self.pull_request_title)
+        import subprocess
 
-        if match:
-            return match.group()
+        tag_lines = subprocess.check_output(['git', 'tag', '-l', '--sort=-creatordate', '--format=%(refname)']).decode("utf-8").splitlines()
+        for tag in tag_lines:
+            version = parse_version(tag.strip())
+            if version:
+                return version
 
-        return
+        return None
 
     def _get_file_mode(self):
         """Gets the mode that the changelog file should be opened in"""
@@ -132,76 +129,52 @@ class ChangelogCI:
 
         return headers
 
-    def _get_latest_release_date(self):
-        """Using GitHub API gets latest release date"""
-        url = (
-            'https://api.github.com/repos/{repo_name}/releases/latest'
-        ).format(repo_name=self.repository)
+    def _get_previous_release_date(self):
+        import subprocess
+        tag_times = subprocess.check_output(['git', 'tag', '-l', '--sort=-creatordate', '--format=%(creatordate)'])
+        previous_tag_time = tag_times.decode("utf-8").splitlines()[1].strip()
 
-        response = requests.get(url, headers=self._get_request_headers())
+        import datetime
+        result = datetime.datetime.strptime(previous_tag_time, "%a %b %d %H:%M:%S %Y %z")
 
-        published_date = ''
-
-        if response.status_code == 200:
-            response_data = response.json()
-            # get the published date of the latest release
-            published_date = response_data['published_at']
-        else:
-            # if there is no previous release API will return 404 Not Found
-            logger.warning(
-                'Could not find any release for %s, status code: %s',
-                self.repository, response.status_code
-            )
-
-        return published_date
+        return result
 
     def _get_pull_requests_after_last_release(self):
         """Get all the merged pull request after latest release"""
         items = []
 
-        previous_release_date = self._get_latest_release_date()
+        previous_release_date = self._get_previous_release_date()
 
-        if previous_release_date:
-            merged_date_filter = 'merged:>=' + previous_release_date
-        else:
-            # if there is no release for the repo then
-            # do not filter by merged date
-            merged_date_filter = ''
-
-        url = (
-            'https://api.github.com/search/issues'
-            '?q=repo:{repo_name}+'
-            'is:pr+'
-            'is:merged+'
-            'sort:author-date-asc+'
-            '{merged_date_filter}'
-            '&sort=merged'
-        ).format(
-            repo_name=self.repository,
-            merged_date_filter=merged_date_filter
+        url = 'https://api.github.com/repos/{repo_name}/pulls?state=closed&base=master'.format(
+            repo_name=self.repository
         )
 
         response = requests.get(url, headers=self._get_request_headers())
+        from datetime import datetime
 
         if response.status_code == 200:
             response_data = response.json()
+            for item in response_data:
+                created_at = datetime.strptime(item['created_at'], "%Y-%m-%dT%H:%M:%SZ")
+                ninety_days = 3 * 30 * 24 * 3600
+                if previous_release_date.timestamp() - created_at.timestamp() >= ninety_days:
+                    break
 
-            # ``total_count`` represents the number of
-            # pull requests returned by the API call
-            if response_data['total_count'] > 0:
-                for item in response_data['items']:
-                    data = {
-                        'title': item['title'],
-                        'number': item['number'],
-                        'url': item['html_url'],
-                        'labels': [label['name'] for label in item['labels']]
-                    }
-                    items.append(data)
-            else:
-                logger.warning(
-                    'There was no pull request made on %s after last release.',
-                    self.repository
-                )
+                merged_at = item['merged_at']
+                if not merged_at:
+                    continue
+
+                merged_at = datetime.strptime(merged_at, "%Y-%m-%dT%H:%M:%SZ")
+                if merged_at.timestamp() <= previous_release_date.timestamp():
+                    continue
+
+                data = {
+                    'title': item['title'],
+                    'number': item['number'],
+                    'url': item['html_url'],
+                    'labels': [label['name'] for label in item['labels']]
+                }
+                items.append(data)
         else:
             logger.error(
                 'GitHub API returned error response for %s, status code: %s',
@@ -327,19 +300,6 @@ class ChangelogCI:
                 'and ``comment_changelog`` is set to False.\n'
                 'If you did not intend to do this please set '
                 'one or both of them to True.'
-            )
-            return
-
-        is_valid_pull_request = self._validate_pull_request()
-
-        if not is_valid_pull_request:
-            # if pull request regex doesn't match then exit
-            # and don't generate changelog
-            logger.warning(
-                'The title of the pull request did not match. '
-                'Regex tried: %s \n'
-                'Aborting Changelog Generation',
-                self.config['pull_request_title_regex']
             )
             return
 
@@ -504,6 +464,17 @@ def parse_config(config):
             config.update({
                 "group_config": DEFAULT_GROUP_CONFIG
             })
+
+
+def parse_version(tag):
+    if tag.startswith("refs/tags/v"):
+        return tag[11:]
+
+    if tag.startswith("refs/tags/"):
+        return tag[10:]
+
+    return None
+
 
 
 if __name__ == '__main__':

@@ -15,11 +15,11 @@ inputs:
   committer_username:
     description: 'Username of that user who will commit'
     required: false
-    default: 'github-actions[bot]'
+    default: 'changelog'
   committer_email:
     description: 'Email Address of that user who will commit'
     required: false
-    default: '41898282+github-actions[bot]@users.noreply.github.com'
+    default: 'changelog@detalytics.com'
 runs:
   using: 'docker'
   image: 'Dockerfile'
