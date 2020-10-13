@@ -1,4 +1,4 @@
-FROM python:3
+FROM python:3.7
 
 LABEL "com.github.actions.name"="Changelog CI"
 LABEL "com.github.actions.description"="This is an action that commits on a release pull request with the changelog"
@@ -11,7 +11,7 @@ LABEL "maintainer"="saadmk11"
 
 RUN pip install requests
 
-COPY ./scripts /scripts
+COPY ./scripts/changelog-ci.py /changelog-ci.py
 
-RUN ["chmod", "+x", "/scripts"]
-ENTRYPOINT ["/scripts/entrypoint.sh"]
+RUN ["chmod", "+x", "/changelog-ci.py"]
+ENTRYPOINT ["python", "/changelog-ci.py"]

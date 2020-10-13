@@ -1,12 +1,9 @@
 import json
-import logging
-import re
 import os
+import re
+import subprocess
 
 import requests
-
-
-logger = logging.getLogger(__name__)
 
 
 # Regex is taken from https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
@@ -75,12 +72,12 @@ class ChangelogCI:
                 parse_config(config)
                 return config
             except Exception as e:
-                logger.error(
-                    'Invalid Configuration file, error: %s\n', e
-                )
-        logger.warning(
-            'Using Default Config to parse changelog'
-        )
+                msg = f'Invalid Configuration file, error: {e}'
+                _print_output('error', msg)
+
+        msg = 'Using Default Config to parse changelog'
+        _print_output('warning', msg)
+
         # if config file not provided
         # or invalid fall back to default config
         return self._default_config()
@@ -148,10 +145,11 @@ class ChangelogCI:
             published_date = response_data['published_at']
         else:
             # if there is no previous release API will return 404 Not Found
-            logger.warning(
-                'Could not find any release for %s, status code: %s',
-                self.repository, response.status_code
+            msg = (
+                f'Could not find any previous release for '
+                f'{self.repository}, status code: {response.status_code}'
             )
+            _print_output('warning', msg)
 
         return published_date
 
@@ -198,15 +196,18 @@ class ChangelogCI:
                     }
                     items.append(data)
             else:
-                logger.warning(
-                    'There was no pull request made on %s after last release.',
-                    self.repository
+                msg = (
+                    f'There was no pull request '
+                    f'made on {self.repository} after last release.'
                 )
+                _print_output('error', msg)
         else:
-            logger.error(
-                'GitHub API returned error response for %s, status code: %s',
-                self.repository, response.status_code
+            msg = (
+                f'Could not get pull requests for '
+                f'{self.repository} from GitHub API. '
+                f'response status code: {response.status_code}'
             )
+            _print_output('error', msg)
 
         return items
 
@@ -255,7 +256,7 @@ class ChangelogCI:
 
         return string_data
 
-    def _write_changelog(self, string_data):
+    def _commit_changelog(self, string_data):
         """Write changelog to the changelog file"""
         file_mode = self._get_file_mode()
 
@@ -271,18 +272,24 @@ class ChangelogCI:
                 f.write('\n\n')
                 f.write(body)
 
+        subprocess.run(['git', 'add', filename])
+        subprocess.run(['git', 'commit', '-m', '(Changelog CI) Added Changelog'])
+        subprocess.run(['git', 'push', '-u', 'origin', head_ref])
+
     def _comment_changelog(self, string_data):
         """Comments Changelog to the pull request"""
         if not self.token:
             # Token is required by the GitHub API to create a Comment
             # if not provided exit with error message
-            logger.error(
-                "Could not create a comment. "
-                "``GITHUB_TOKEN`` is required for this operation.\n"
+            msg = (
+                "Could not add a comment. "
+                "``GITHUB_TOKEN`` is required for this operation. "
                 "If you want to enable Changelog comment, please add "
-                "``GITHUB_TOKEN`` to your workflow yaml file.\n"
+                "``GITHUB_TOKEN`` to your workflow yaml file. "
                 "Look at Changelog CI's documentation for more information."
             )
+
+            _print_output('error', msg)
             return
 
         owner, repo = self.repository.split('/')
@@ -308,11 +315,13 @@ class ChangelogCI:
 
         if response.status_code != 201:
             # API should return 201, otherwise show error message
-            logger.error(
-                'Error while trying to create a comment.\n'
-                'GitHub API returned error response for %s, status code: %s',
-                self.repository, response.status_code
+            msg = (
+                f'Error while trying to create a comment. '
+                f'GitHub API returned error response for '
+                f'{self.repository}, status code: {response.status_code}'
             )
+
+            _print_output('error', msg)
 
     def run(self):
         """Entrypoint to the Changelog CI"""
@@ -322,12 +331,13 @@ class ChangelogCI:
         ):
             # if both commit_changelog and comment_changelog is set to false
             # then exit with warning and don't generate Changelog
-            logger.warning(
+            msg = (
                 'Skipping Changelog generation as both ``commit_changelog`` '
-                'and ``comment_changelog`` is set to False.\n'
+                'and ``comment_changelog`` is set to False. '
                 'If you did not intend to do this please set '
                 'one or both of them to True.'
             )
+            _print_output('error', msg)
             return
 
         is_valid_pull_request = self._validate_pull_request()
@@ -335,12 +345,12 @@ class ChangelogCI:
         if not is_valid_pull_request:
             # if pull request regex doesn't match then exit
             # and don't generate changelog
-            logger.warning(
-                'The title of the pull request did not match. '
-                'Regex tried: %s \n'
-                'Aborting Changelog Generation',
-                self.config['pull_request_title_regex']
+            msg = (
+                f'The title of the pull request did not match. '
+                f'Regex tried: "{self.config["pull_request_title_regex"]}", '
+                f'Aborting Changelog Generation.'
             )
+            _print_output('error', msg)
             return
 
         version = self._get_version_number()
@@ -349,12 +359,12 @@ class ChangelogCI:
             # if the pull request title is not valid, exit the method
             # It might happen if the pull request is not meant to be release
             # or the title was not accurate.
-            logger.warning(
-                'Could not find matching version number. '
-                'Regex tried: %s \n'
-                'Aborting Changelog Generation',
-                self.config['version_regex']
+            msg = (
+                f'Could not find matching version number. '
+                f'Regex tried: {self.config["version_regex"]} '
+                f'Aborting Changelog Generation'
             )
+            _print_output('error', msg)
             return
 
         pull_request_data = self._get_pull_requests_after_last_release()
@@ -366,10 +376,14 @@ class ChangelogCI:
         string_data = self._parse_data(version, pull_request_data)
 
         if self.config['commit_changelog']:
-            self._write_changelog(string_data)
+            subprocess.run(['echo', '::group::Commit Changelog'])
+            self._commit_changelog(string_data)
+            subprocess.run(['echo', '::endgroup::'])
 
         if self.config['comment_changelog']:
+            subprocess.run(['echo', '::group::Comment Changelog'])
             self._comment_changelog(string_data)
+            subprocess.run(['echo', '::endgroup::'])
 
 
 def parse_config(config):
@@ -391,10 +405,11 @@ def parse_config(config):
         # This will raise an error if the provided regex is not valid
         re.compile(pull_request_title_regex)
     except Exception:
-        logger.warning(
-            '``pull_request_title_regex`` was not provided or not valid '
+        msg = (
+            '``pull_request_title_regex`` was not provided or not valid, '
             'Falling back to default regex.'
         )
+        _print_output('warning', msg)
         # if the pull_request_title_regex is not valid or not available
         # fallback to default regex
         config.update({
@@ -410,10 +425,11 @@ def parse_config(config):
         # This will raise an error if the provided regex is not valid
         re.compile(version_regex)
     except Exception:
-        logger.warning(
-            '``version_regex`` was not provided or not valid '
+        msg = (
+            '``version_regex`` was not provided or not valid, '
             'Falling back to default regex.'
         )
+        _print_output('warning', msg)
         # if the version_regex is not valid or not available
         # fallback to default regex
         config.update({
@@ -426,10 +442,11 @@ def parse_config(config):
             "commit_changelog": bool(commit_changelog)
         })
     except Exception:
-        logger.warning(
-            '``commit_changelog`` was not provided or not valid '
-            'Falling back to ``True``.'
+        msg = (
+            '``commit_changelog`` was not provided or not valid, '
+            'falling back to ``True``.'
         )
+        _print_output('warning', msg)
         # if commit_changelog is not provided default to True
         config.update({
             "commit_changelog": True
@@ -441,10 +458,11 @@ def parse_config(config):
             "comment_changelog": bool(comment_changelog)
         })
     except Exception:
-        logger.warning(
-            '``comment_changelog`` was not provided or not valid '
-            'Falling back to ``False``.'
+        msg = (
+            '``comment_changelog`` was not provided or not valid, '
+            'falling back to ``False``.'
         )
+        _print_output('warning', msg)
         # if comment_changelog is not provided default to False
         config.update({
             "comment_changelog": False
@@ -454,10 +472,11 @@ def parse_config(config):
     group_config = config.get('group_config')
 
     if not header_prefix or not isinstance(header_prefix, str):
-        logger.warning(
-            '``header_prefix`` was not provided or not valid '
-            'Falling back to default regex.'
+        msg = (
+            '``header_prefix`` was not provided or not valid, '
+            'falling back to default prefix.'
         )
+        _print_output('warning', msg)
         # if the header_prefix is not not available
         # fallback to default prefix
         config.update({
@@ -465,10 +484,11 @@ def parse_config(config):
         })
 
     if not group_config or not isinstance(group_config, list):
-        logger.warning(
-            '``group_config`` was not provided or not valid '
-            'Falling back to default group config.'
+        msg = (
+            '``group_config`` was not provided or not valid, '
+            'falling back to default group config.'
         )
+        _print_output('warning', msg)
         # if the group_config is not not available
         # fallback to default group_config
         config.update({
@@ -496,14 +516,20 @@ def parse_config(config):
                     raise TypeError('group_config labels must be an Array')
 
         except Exception as e:
-            logger.warning(
-                'An error occurred while parsing ``group_config``. Error: %s\n'
-                'Falling back to default group config.', e
+            msg = (
+                f'An error occurred while parsing ``group_config``. Error: {e}'
+                f'falling back to default group config.'
             )
+            _print_output('warning', msg)
             # Fallback to default group_config
             config.update({
                 "group_config": DEFAULT_GROUP_CONFIG
             })
+
+
+def _print_output(type, message):
+    """Helper function to print colorful outputs in GitHub Actions shell"""
+    return subprocess.run(['echo', f'::{type}::{message}'])
 
 
 if __name__ == '__main__':
@@ -511,15 +537,40 @@ if __name__ == '__main__':
     # https://docs.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables
     event_path = os.environ['GITHUB_EVENT_PATH']
     repository = os.environ['GITHUB_REPOSITORY']
+    head_ref = os.environ['GITHUB_HEAD_REF']
     # User inputs from workflow
     filename = os.environ['INPUT_CHANGELOG_FILENAME']
     config_file = os.environ['INPUT_CONFIG_FILE']
     # Token provided from the workflow
     token = os.environ.get('GITHUB_TOKEN')
+    # Committer username and email address
+    username = os.environ['INPUT_COMMITTER_USERNAME']
+    email = os.environ['INPUT_COMMITTER_EMAIL']
 
+    # Group: Checkout git repository
+    subprocess.run(['echo', '::group::Checkout git repository'])
+
+    subprocess.run(['git', 'fetch', '--prune', '--unshallow', 'origin',  head_ref])
+    subprocess.run(['git', 'checkout',  head_ref])
+
+    subprocess.run(['echo', '::endgroup::'])
+
+    # Group: Configure Git
+    subprocess.run(['echo', '::group::Configure Git'])
+
+    subprocess.run(['git', 'config', 'user.name', username])
+    subprocess.run(['git', 'config', 'user.email',  email])
+
+    subprocess.run(['echo', '::endgroup::'])
+
+    # Group: Generate Changelog
+    subprocess.run(['echo', '::group::Generate Changelog'])
     # Initialize the Changelog CI
     ci = ChangelogCI(
         repository, event_path, filename=filename,
         config_file=config_file, token=token
     )
+    # Run Changelog CI
     ci.run()
+
+    subprocess.run(['echo', '::endgroup::'])
