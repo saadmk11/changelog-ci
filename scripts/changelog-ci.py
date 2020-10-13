@@ -570,6 +570,7 @@ if __name__ == '__main__':
         repository, event_path, filename=filename,
         config_file=config_file, token=token
     )
+    # Run Changelog CI
     ci.run()
 
     subprocess.run(['echo', '::endgroup::'])
