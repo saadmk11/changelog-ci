@@ -17,9 +17,9 @@ DEFAULT_GROUP_CONFIG = []
 class ChangelogCI:
 
     def __init__(
-            self, repository,
-            event_path, filename='CHANGELOG.md',
-            config_file=None, token=None
+        self, repository,
+        event_path, filename='CHANGELOG.md',
+        config_file=None, token=None
     ):
         self.repository = repository
         self.filename = filename
@@ -73,10 +73,10 @@ class ChangelogCI:
                 return config
             except Exception as e:
                 msg = f'Invalid Configuration file, error: {e}'
-                print_message('error', msg)
+                _print_output('error', msg)
 
         msg = 'Using Default Config to parse changelog'
-        print_message('warning', msg)
+        _print_output('warning', msg)
 
         # if config file not provided
         # or invalid fall back to default config
@@ -149,7 +149,7 @@ class ChangelogCI:
                 f'Could not find any previous release for '
                 f'{self.repository}, status code: {response.status_code}'
             )
-            print_message('warning', msg)
+            _print_output('warning', msg)
 
         return published_date
 
@@ -200,21 +200,21 @@ class ChangelogCI:
                     f'There was no pull request '
                     f'made on {self.repository} after last release.'
                 )
-                print_message('error', msg)
+                _print_output('error', msg)
         else:
             msg = (
                 f'Could not get pull requests for '
                 f'{self.repository} from GitHub API. '
                 f'response status code: {response.status_code}'
             )
-            print_message('error', msg)
+            _print_output('error', msg)
 
         return items
 
     def _parse_data(self, version, pull_request_data):
         """Parse the pull requests data and return a writable data structure"""
         string_data = (
-                '# ' + self.config['header_prefix'] + ' ' + version + '\n\n'
+            '# ' + self.config['header_prefix'] + ' ' + version + '\n\n'
         )
 
         group_config = self.config['group_config']
@@ -231,10 +231,10 @@ class ChangelogCI:
                     # check if the pull request label matches with
                     # any label of the config
                     if (
-                            any(
-                                label in pull_request['labels']
-                                for label in config['labels']
-                            )
+                        any(
+                            label in pull_request['labels']
+                            for label in config['labels']
+                        )
                     ):
                         items_string += self._get_changelog_line(pull_request)
                         # remove the item so that one item
@@ -289,7 +289,7 @@ class ChangelogCI:
                 "Look at Changelog CI's documentation for more information."
             )
 
-            print_message('error', msg)
+            _print_output('error', msg)
             return
 
         owner, repo = self.repository.split('/')
@@ -321,13 +321,13 @@ class ChangelogCI:
                 f'{self.repository}, status code: {response.status_code}'
             )
 
-            print_message('error', msg)
+            _print_output('error', msg)
 
     def run(self):
         """Entrypoint to the Changelog CI"""
         if (
-                not self.config['commit_changelog'] and
-                not self.config['comment_changelog']
+            not self.config['commit_changelog'] and
+            not self.config['comment_changelog']
         ):
             # if both commit_changelog and comment_changelog is set to false
             # then exit with warning and don't generate Changelog
@@ -337,7 +337,7 @@ class ChangelogCI:
                 'If you did not intend to do this please set '
                 'one or both of them to True.'
             )
-            print_message('error', msg)
+            _print_output('error', msg)
             return
 
         is_valid_pull_request = self._validate_pull_request()
@@ -350,7 +350,7 @@ class ChangelogCI:
                 f'Regex tried: "{self.config["pull_request_title_regex"]}", '
                 f'Aborting Changelog Generation.'
             )
-            print_message('error', msg)
+            _print_output('error', msg)
             return
 
         version = self._get_version_number()
@@ -364,7 +364,7 @@ class ChangelogCI:
                 f'Regex tried: {self.config["version_regex"]} '
                 f'Aborting Changelog Generation'
             )
-            print_message('error', msg)
+            _print_output('error', msg)
             return
 
         pull_request_data = self._get_pull_requests_after_last_release()
@@ -409,7 +409,7 @@ def parse_config(config):
             '``pull_request_title_regex`` was not provided or not valid, '
             'Falling back to default regex.'
         )
-        print_message('warning', msg)
+        _print_output('warning', msg)
         # if the pull_request_title_regex is not valid or not available
         # fallback to default regex
         config.update({
@@ -429,7 +429,7 @@ def parse_config(config):
             '``version_regex`` was not provided or not valid, '
             'Falling back to default regex.'
         )
-        print_message('warning', msg)
+        _print_output('warning', msg)
         # if the version_regex is not valid or not available
         # fallback to default regex
         config.update({
@@ -446,7 +446,7 @@ def parse_config(config):
             '``commit_changelog`` was not provided or not valid, '
             'falling back to ``True``.'
         )
-        print_message('warning', msg)
+        _print_output('warning', msg)
         # if commit_changelog is not provided default to True
         config.update({
             "commit_changelog": True
@@ -462,7 +462,7 @@ def parse_config(config):
             '``comment_changelog`` was not provided or not valid, '
             'falling back to ``False``.'
         )
-        print_message('warning', msg)
+        _print_output('warning', msg)
         # if comment_changelog is not provided default to False
         config.update({
             "comment_changelog": False
@@ -476,7 +476,7 @@ def parse_config(config):
             '``header_prefix`` was not provided or not valid, '
             'falling back to default prefix.'
         )
-        print_message('warning', msg)
+        _print_output('warning', msg)
         # if the header_prefix is not not available
         # fallback to default prefix
         config.update({
@@ -488,7 +488,7 @@ def parse_config(config):
             '``group_config`` was not provided or not valid, '
             'falling back to default group config.'
         )
-        print_message('warning', msg)
+        _print_output('warning', msg)
         # if the group_config is not not available
         # fallback to default group_config
         config.update({
@@ -520,14 +520,15 @@ def parse_config(config):
                 f'An error occurred while parsing ``group_config``. Error: {e}'
                 f'falling back to default group config.'
             )
-            print_message('warning', msg)
+            _print_output('warning', msg)
             # Fallback to default group_config
             config.update({
                 "group_config": DEFAULT_GROUP_CONFIG
             })
 
 
-def print_message(type, message):
+def _print_output(type, message):
+    """Helper function to print colorful outputs in GitHub Actions shell"""
     return subprocess.run(['echo', f'::{type}::{message}'])
 
 
@@ -546,6 +547,7 @@ if __name__ == '__main__':
     username = os.environ['INPUT_COMMITTER_USERNAME']
     email = os.environ['INPUT_COMMITTER_EMAIL']
 
+    # Group: Checkout git repository
     subprocess.run(['echo', '::group::Checkout git repository'])
 
     subprocess.run(['git', 'fetch', '--prune', '--unshallow', 'origin',  head_ref])
@@ -553,6 +555,7 @@ if __name__ == '__main__':
 
     subprocess.run(['echo', '::endgroup::'])
 
+    # Group: Configure Git
     subprocess.run(['echo', '::group::Configure Git'])
 
     subprocess.run(['git', 'config', 'user.name', username])
@@ -560,6 +563,7 @@ if __name__ == '__main__':
 
     subprocess.run(['echo', '::endgroup::'])
 
+    # Group: Generate Changelog
     subprocess.run(['echo', '::group::Generate Changelog'])
     # Initialize the Changelog CI
     ci = ChangelogCI(
