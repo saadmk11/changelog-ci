@@ -1,3 +1,10 @@
+# Version: 0.7.0
+
+* [#31](https://github.com/saadmk11/changelog-ci/pull/31): Update description
+* [#32](https://github.com/saadmk11/changelog-ci/pull/32): Added Changelog CI gif
+* [#35](https://github.com/saadmk11/changelog-ci/pull/35): Organize Changelog CI Build Output and Move to Python Subprocess
+
+
 # Version: 0.6.1
 
 * [#28](https://github.com/saadmk11/changelog-ci/pull/28): Refine documentation
