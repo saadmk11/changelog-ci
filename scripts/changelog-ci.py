@@ -15,6 +15,9 @@ DEFAULT_GROUP_CONFIG = []
 
 
 class ChangelogCI:
+    """The class that generates, commits and/or comments changelog"""
+
+    github_api_url = 'https://api.github.com'
 
     def __init__(
         self, repository,
@@ -132,8 +135,8 @@ class ChangelogCI:
     def _get_latest_release_date(self):
         """Using GitHub API gets latest release date"""
         url = (
-            'https://api.github.com/repos/{repo_name}/releases/latest'
-        ).format(repo_name=self.repository)
+            '{base_url}/repos/{repo_name}/releases/latest'
+        ).format(base_url=self.github_api_url, repo_name=self.repository)
 
         response = requests.get(url, headers=self._get_request_headers())
 
@@ -155,8 +158,6 @@ class ChangelogCI:
 
     def _get_pull_requests_after_last_release(self):
         """Get all the merged pull request after latest release"""
-        items = []
-
         previous_release_date = self._get_latest_release_date()
 
         if previous_release_date:
@@ -167,7 +168,7 @@ class ChangelogCI:
             merged_date_filter = ''
 
         url = (
-            'https://api.github.com/search/issues'
+            '{base_url}/search/issues'
             '?q=repo:{repo_name}+'
             'is:pr+'
             'is:merged+'
@@ -175,9 +176,12 @@ class ChangelogCI:
             '{merged_date_filter}'
             '&sort=merged'
         ).format(
+            base_url=self.github_api_url,
             repo_name=self.repository,
             merged_date_filter=merged_date_filter
         )
+
+        items = []
 
         response = requests.get(url, headers=self._get_request_headers())
 
@@ -302,8 +306,9 @@ class ChangelogCI:
         }
 
         url = (
-            'https://api.github.com/repos/{repo}/issues/{number}/comments'
+            '{base_url}/repos/{repo}/issues/{number}/comments'
         ).format(
+            base_url=self.github_api_url,
             repo=self.repository,
             number=self.pull_request_number
         )
