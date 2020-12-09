@@ -276,7 +276,7 @@ class ChangelogCI:
                 f.write('\n\n')
                 f.write(body)
 
-        subprocess.run(['git', 'add', filename])
+        subprocess.run(['git', 'add', self.filename])
         subprocess.run(['git', 'commit', '-m', '(Changelog CI) Added Changelog'])
         subprocess.run(['git', 'push', '-u', 'origin', head_ref])
 
