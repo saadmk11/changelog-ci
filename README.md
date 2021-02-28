@@ -34,14 +34,15 @@ or the user-provided ``regex`` from the config file.
 
 **Default Title Regex:** ``^(?i:release)`` (title must start with the word "release" (case insensitive))
 
-**Default Version Number Regex:** This follows [``SemVer``](https://regex101.com/r/Ly7O1x/3/) (Semantic Versioning) pattern.
+**Default Version Number Regex:** This Regex will be checked against a Pull Request title.
+This follows [``SemVer``](https://regex101.com/r/Ly7O1x/3/) (Semantic Versioning) pattern.
 e.g. ``1.0.0``, ``1.0``, ``v1.0.1`` etc.
 
 For more details on **Semantic Versioning pattern** go to this link: https://regex101.com/r/Ly7O1x/3/
 
 **Note:** [you can provide your own ``regex`` through the ``config`` file](#config-file-usage-optional)
 
-To **Enable Commenting, Disable Committing, Group changelog items** and many more options
+To **Enable Commenting, Disable Committing, Group changelog items** and some other options
 Look at the [config file docs](#config-file-usage-optional).
 
 To integrate ``Changelog CI`` with your repositories Actions,
@@ -101,10 +102,10 @@ If it is set to ``true`` then Changelog CI will comment on the release pull requ
 This requires ``GITHUB_TOKEN`` to be added to the workflow.
 * **pull_request_title_regex:** If the pull request title matches with this ``regex`` Changelog CI will generate changelog for it.
 Otherwise, it will skip the changelog generation. 
-If ``pull_request_title_regex`` is not provided defaults to ``^(?i:release)`` (title must start with the word "release" (case insensitive)).
+If ``pull_request_title_regex`` is not provided defaults to ``^(?i:release)`` (title must start with the word "release" (case-insensitive)).
 * **version_regex:** This ``regex`` tries to find the version number from the pull request title.
 in case of no match, changelog generation will be skipped.
-if ``version_regex`` is not provided defaults to [``SemVer``](https://regex101.com/r/Ly7O1x/3/) pattern.
+if ``version_regex`` is not provided, it defaults to [``SemVer``](https://regex101.com/r/Ly7O1x/3/) pattern.
 * **group_config:** By adding this you can group changelog items by your repository labels with custom titles.
 ```
 {
@@ -149,11 +150,11 @@ if ``version_regex`` is not provided defaults to [``SemVer``](https://regex101.c
 }
 ```
 
-In this Example **``version_regex``** matches any version number including date. e.g: **``v1.1.0 (01-23-2018)``**
+In this Example **``version_regex``** matches any version number including date (e.g: **``v1.1.0 (01-23-2018)``**) in the pull request title.
 If you don't provide any ``regex`` Changelog CI will use default 
 [``SemVer``](https://regex101.com/r/Ly7O1x/3/) pattern. e.g. **``1.0.1``**, **``v1.0.2``**.
 
-Here **``pull_request_title_regex``** will match any pull request that starts with **``Release``**
+Here **``pull_request_title_regex``** will match any pull request title that starts with **``Release``**
 you can match **Any Pull Request Title** by adding this **``pull_request_title_regex": ".*"``**,
 
 **[Click here to see the example output using this config](#example-changelog-output-using-config-file)**
