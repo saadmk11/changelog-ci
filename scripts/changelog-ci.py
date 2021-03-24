@@ -1,14 +1,18 @@
 import json
+import yaml
 import os
 import re
 import subprocess
 
 import requests
 
-
-# Regex is taken from https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
-# It was modified a little bit to make it a bit less restrictive
-DEFAULT_SEMVER_REGEX = r"v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.?(0|[1-9]\d*)?(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?"
+# The regular expression used to extract semantic versioning is a
+# slightly less restrictive modification of the following regular expression
+# https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+DEFAULT_SEMVER_REGEX = r"v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.?(0|[1-9]\d*)?(?:-((" \
+                       r"?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[" \
+                       r"1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([" \
+                       r"0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))? "
 DEFAULT_PULL_REQUEST_TITLE_REGEX = r"^(?i:release)"
 DEFAULT_VERSION_PREFIX = "Version:"
 DEFAULT_GROUP_CONFIG = []
@@ -56,7 +60,7 @@ class ChangelogCI:
 
     @staticmethod
     def _get_pull_request_title_and_number(event_path):
-        """Gets pull request title from ``GITHUB_EVENT_PATH``"""
+        """Gets pull request title from `GITHUB_EVENT_PATH`"""
         with open(event_path, 'r') as json_file:
             # This is just a webhook payload available to the Action
             data = json.load(json_file)
@@ -65,12 +69,18 @@ class ChangelogCI:
 
         return title, number
 
-    def _parse_config(self, config_file):
+    def _parse_config(self, filepath: str):
         """parse the config file if not provided use default config"""
-        if config_file:
+        if filepath:
             try:
-                with open(config_file, 'r') as config_json:
-                    config = json.load(config_json)
+                file = open(filepath)
+                # parse config files with the extension .yml and .yaml
+                # using YAML syntax
+                if filepath.endswith('yml') or filepath.endswith('yaml'):
+                    config = yaml.load(file)
+                # default to parsing the config file using JSON
+                else:
+                    config = json.load(file)
                 # parse and validate user provided config file
                 parse_config(config)
                 return config
@@ -123,8 +133,8 @@ class ChangelogCI:
         headers = {
             'Accept': 'application/vnd.github.v3+json'
         }
-        # if the user adds ``GITHUB_TOKEN`` add it to API Request
-        # required for ``private`` repositories
+        # if the user adds `GITHUB_TOKEN` add it to API Request
+        # required for `private` repositories
         if self.token:
             headers.update({
                 'authorization': 'Bearer {token}'.format(token=self.token)
@@ -188,7 +198,7 @@ class ChangelogCI:
         if response.status_code == 200:
             response_data = response.json()
 
-            # ``total_count`` represents the number of
+            # `total_count` represents the number of
             # pull requests returned by the API call
             if response_data['total_count'] > 0:
                 for item in response_data['items']:
@@ -237,7 +247,7 @@ class ChangelogCI:
                     if (
                         any(
                             label in pull_request['labels']
-                            for label in config['labels']
+                                for label in config['labels']
                         )
                     ):
                         items_string += self._get_changelog_line(pull_request)
@@ -251,12 +261,14 @@ class ChangelogCI:
 
             if pull_request_data:
                 # if they do not match any user provided group
-                # Add items in ``Other Changes`` group
+                # Add items in `Other Changes` group
                 string_data += '\n#### Other Changes\n\n'
-                string_data += ''.join(map(self._get_changelog_line, pull_request_data))
+                string_data += ''.join(
+                    map(self._get_changelog_line, pull_request_data))
         else:
             # If group config does not exist then append it without and groups
-            string_data += ''.join(map(self._get_changelog_line, pull_request_data))
+            string_data += ''.join(
+                map(self._get_changelog_line, pull_request_data))
 
         return string_data
 
@@ -277,8 +289,9 @@ class ChangelogCI:
                 f.write(body)
 
         subprocess.run(['git', 'add', self.filename])
-        subprocess.run(['git', 'commit', '-m', '(Changelog CI) Added Changelog'])
-        subprocess.run(['git', 'push', '-u', 'origin', head_ref])
+        subprocess.run(
+            ['git', 'commit', '-m', '(Changelog CI) Added Changelog'])
+        subprocess.run(['git', 'push', '-u', 'origin', ref])
 
     def _comment_changelog(self, string_data):
         """Comments Changelog to the pull request"""
@@ -287,9 +300,9 @@ class ChangelogCI:
             # if not provided exit with error message
             msg = (
                 "Could not add a comment. "
-                "``GITHUB_TOKEN`` is required for this operation. "
+                "`GITHUB_TOKEN` is required for this operation. "
                 "If you want to enable Changelog comment, please add "
-                "``GITHUB_TOKEN`` to your workflow yaml file. "
+                "`GITHUB_TOKEN` to your workflow yaml file. "
                 "Look at Changelog CI's documentation for more information."
             )
 
@@ -337,8 +350,8 @@ class ChangelogCI:
             # if both commit_changelog and comment_changelog is set to false
             # then exit with warning and don't generate Changelog
             msg = (
-                'Skipping Changelog generation as both ``commit_changelog`` '
-                'and ``comment_changelog`` is set to False. '
+                'Skipping Changelog generation as both `commit_changelog` '
+                'and `comment_changelog` is set to False. '
                 'If you did not intend to do this please set '
                 'one or both of them to True.'
             )
@@ -411,7 +424,7 @@ def parse_config(config):
         re.compile(pull_request_title_regex)
     except Exception:
         msg = (
-            '``pull_request_title_regex`` was not provided or not valid, '
+            '`pull_request_title_regex` was not provided or not valid, '
             'Falling back to default regex.'
         )
         _print_output('warning', msg)
@@ -431,7 +444,7 @@ def parse_config(config):
         re.compile(version_regex)
     except Exception:
         msg = (
-            '``version_regex`` was not provided or not valid, '
+            '`version_regex` was not provided or not valid, '
             'Falling back to default regex.'
         )
         _print_output('warning', msg)
@@ -448,8 +461,8 @@ def parse_config(config):
         })
     except Exception:
         msg = (
-            '``commit_changelog`` was not provided or not valid, '
-            'falling back to ``True``.'
+            '`commit_changelog` was not provided or not valid, '
+            'falling back to `True`.'
         )
         _print_output('warning', msg)
         # if commit_changelog is not provided default to True
@@ -464,8 +477,8 @@ def parse_config(config):
         })
     except Exception:
         msg = (
-            '``comment_changelog`` was not provided or not valid, '
-            'falling back to ``False``.'
+            '`comment_changelog` was not provided or not valid, '
+            'falling back to `False`.'
         )
         _print_output('warning', msg)
         # if comment_changelog is not provided default to False
@@ -478,7 +491,7 @@ def parse_config(config):
 
     if not header_prefix or not isinstance(header_prefix, str):
         msg = (
-            '``header_prefix`` was not provided or not valid, '
+            '`header_prefix` was not provided or not valid, '
             'falling back to default prefix.'
         )
         _print_output('warning', msg)
@@ -490,7 +503,7 @@ def parse_config(config):
 
     if not group_config or not isinstance(group_config, list):
         msg = (
-            '``group_config`` was not provided or not valid, '
+            '`group_config` was not provided or not valid, '
             'falling back to default group config.'
         )
         _print_output('warning', msg)
@@ -522,7 +535,7 @@ def parse_config(config):
 
         except Exception as e:
             msg = (
-                f'An error occurred while parsing ``group_config``. Error: {e}'
+                f'An error occurred while parsing `group_config`. Error: {e}'
                 f'falling back to default group config.'
             )
             _print_output('warning', msg)
@@ -542,7 +555,7 @@ if __name__ == '__main__':
     # https://docs.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables
     event_path = os.environ['GITHUB_EVENT_PATH']
     repository = os.environ['GITHUB_REPOSITORY']
-    head_ref = os.environ['GITHUB_HEAD_REF']
+    ref = os.environ['GITHUB_HEAD_REF']
     # User inputs from workflow
     filename = os.environ['INPUT_CHANGELOG_FILENAME']
     config_file = os.environ['INPUT_CONFIG_FILE']
@@ -555,8 +568,8 @@ if __name__ == '__main__':
     # Group: Checkout git repository
     subprocess.run(['echo', '::group::Checkout git repository'])
 
-    subprocess.run(['git', 'fetch', '--prune', '--unshallow', 'origin',  head_ref])
-    subprocess.run(['git', 'checkout',  head_ref])
+    subprocess.run(['git', 'fetch', '--prune', '--unshallow', 'origin', ref])
+    subprocess.run(['git', 'checkout', ref])
 
     subprocess.run(['echo', '::endgroup::'])
 
@@ -564,7 +577,7 @@ if __name__ == '__main__':
     subprocess.run(['echo', '::group::Configure Git'])
 
     subprocess.run(['git', 'config', 'user.name', username])
-    subprocess.run(['git', 'config', 'user.email',  email])
+    subprocess.run(['git', 'config', 'user.email', email])
 
     subprocess.run(['echo', '::endgroup::'])
 
