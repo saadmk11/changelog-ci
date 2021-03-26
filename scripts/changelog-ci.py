@@ -12,7 +12,7 @@ import requests
 DEFAULT_SEMVER_REGEX = r"v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.?(0|[1-9]\d*)?(?:-((" \
                        r"?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[" \
                        r"1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([" \
-                       r"0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))? "
+                       r"0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?"
 DEFAULT_PULL_REQUEST_TITLE_REGEX = r"^(?i:release)"
 DEFAULT_VERSION_PREFIX = "Version:"
 DEFAULT_GROUP_CONFIG = []
