@@ -69,7 +69,7 @@ class ChangelogCI:
 
         return title, number
 
-    def _parse_config(self, filepath: str):
+    def _parse_config(self, filepath):
         """parse the config file if not provided use default config"""
         if filepath:
             try:
