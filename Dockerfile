@@ -10,9 +10,8 @@ LABEL "homepage"="https://github.com/saadmk11/changelog-ci"
 LABEL "maintainer"="saadmk11"
 
 COPY requirements.txt /requirements.txt
+COPY changelog.py /changelog.py
+
 RUN pip install -r requirements.txt
 
-COPY ./scripts/changelog-ci.py /changelog-ci.py
-RUN ["chmod", "+x", "/changelog-ci.py"]
-
-ENTRYPOINT ["python", "/changelog-ci.py"]
+ENTRYPOINT ["python", "-m", "changelog"]

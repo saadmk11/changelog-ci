@@ -1,10 +1,10 @@
 import json
-import yaml
 import os
 import re
 import subprocess
 
 import requests
+import yaml
 
 # The regular expression used to extract semantic versioning is a
 # slightly less restrictive modification of the following regular expression
@@ -247,7 +247,7 @@ class ChangelogCI:
                     if (
                         any(
                             label in pull_request['labels']
-                                for label in config['labels']
+                            for label in config['labels']
                         )
                     ):
                         items_string += self._get_changelog_line(pull_request)
@@ -551,7 +551,7 @@ def _print_output(type, message):
 
 
 if __name__ == '__main__':
-    # Default environment variable from GihHub
+    # Default environment variable from GitHub
     # https://docs.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables
     event_path = os.environ['GITHUB_EVENT_PATH']
     repository = os.environ['GITHUB_REPOSITORY']
