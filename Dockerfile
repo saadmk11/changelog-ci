@@ -15,4 +15,5 @@ RUN pip install -r requirements.txt
 
 COPY changelog-ci.py /changelog-ci.py
 
-ENTRYPOINT ["python", "-m", "changelog-ci.py"]
+RUN ["chmod", "+x", "/changelog-ci.py"]
+ENTRYPOINT ["python", "/changelog-ci.py"]
