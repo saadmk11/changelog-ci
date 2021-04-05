@@ -184,7 +184,7 @@ header_prefix: 'Version:'
 commit_changelog: true
 comment_changelog: true
 pull_request_title_regex: '^Release'
-version_regex: v?([0-9]{1,2})+[.]+([0-9]{1,2})+[.]+([0-9]{1,2})\s\(\d{1,2}-\d{1,2}-\d{4}\)
+version_regex: 'v?([0-9]{1,2})+[.]+([0-9]{1,2})+[.]+([0-9]{1,2})\s\(\d{1,2}-\d{1,2}-\d{4}\)'
 group_config:
   - title: Bug Fixes
     labels:
