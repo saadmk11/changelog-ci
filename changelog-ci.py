@@ -77,10 +77,12 @@ class ChangelogCI:
                 # parse config files with the extension .yml and .yaml
                 # using YAML syntax
                 if filepath.endswith('yml') or filepath.endswith('yaml'):
-                    config = yaml.load(file)
+                    config = yaml.load(file, Loader=yaml.FullLoader)
                 # default to parsing the config file using JSON
                 else:
                     config = json.load(file)
+
+                file.close()
                 # parse and validate user provided config file
                 parse_config(config)
                 return config
@@ -146,7 +148,10 @@ class ChangelogCI:
         """Using GitHub API gets latest release date"""
         url = (
             '{base_url}/repos/{repo_name}/releases/latest'
-        ).format(base_url=self.github_api_url, repo_name=self.repository)
+        ).format(
+            base_url=self.github_api_url,
+            repo_name=self.repository
+        )
 
         response = requests.get(url, headers=self._get_request_headers())
 
@@ -264,11 +269,13 @@ class ChangelogCI:
                 # Add items in `Other Changes` group
                 string_data += '\n#### Other Changes\n\n'
                 string_data += ''.join(
-                    map(self._get_changelog_line, pull_request_data))
+                    map(self._get_changelog_line, pull_request_data)
+                )
         else:
             # If group config does not exist then append it without and groups
             string_data += ''.join(
-                map(self._get_changelog_line, pull_request_data))
+                map(self._get_changelog_line, pull_request_data)
+            )
 
         return string_data
 
@@ -290,7 +297,8 @@ class ChangelogCI:
 
         subprocess.run(['git', 'add', self.filename])
         subprocess.run(
-            ['git', 'commit', '-m', '(Changelog CI) Added Changelog'])
+            ['git', 'commit', '-m', '(Changelog CI) Added Changelog']
+        )
         subprocess.run(['git', 'push', '-u', 'origin', ref])
 
     def _comment_changelog(self, string_data):
