@@ -108,7 +108,7 @@ by adding a `JSON` or `YAML` config file to the project. For exmaple:
 
     ```yaml
     with:
-      config_file: config.yml
+      config_file: changelog-ci-config.yml
     ```
 
 ### Valid options
@@ -183,7 +183,7 @@ Written in YAML:
 header_prefix: 'Version:'
 commit_changelog: true
 comment_changelog: true
-pull_request_title_regex: ^Release
+pull_request_title_regex: '^Release'
 version_regex: v?([0-9]{1,2})+[.]+([0-9]{1,2})+[.]+([0-9]{1,2})\s\(\d{1,2}-\d{1,2}-\d{4}\)
 group_config:
   - title: Bug Fixes
