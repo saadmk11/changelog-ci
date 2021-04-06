@@ -11,13 +11,11 @@
 Changelog CI is a GitHub Action that enables a project to utilize an
 automatically generated changelog.
 
-The workflow can be configured to perform any (or all) of the following actions
+The workflow can be configured to perform **any (or all)** of the following actions
 
-* **Prepend** each update to the `CHANGELOG.md` file.
+* **Prepend** the generated changelog to the `CHANGELOG.md` file and  then **Commit** modified `CHANGELOG.md` file to the release pull request.
 
-* **Commit** the modified `CHANGELOG.md` file.
-
-* **Write** updates to the `CHANGELOG.md` file, and submit the pull request of the corresponding release version.
+* Add a **Comment** on the release pull request with the generated changelog.
 
 ## How Does It Work:
 
@@ -27,7 +25,7 @@ available). Then, it checks all the pull requests merged after the last release
 using the GitHub API. After that, it parses the data and generates
 the `changelog`. Finally, It writes the generated changelog at the beginning of
 the `CHANGELOG.md` (or user-provided filename) file. In addition to that, if a
-user provides a config (JSON file), Changelog CI parses the user-provided config
+user provides a config (JSON/YAML file), Changelog CI parses the user-provided config
 file and renders the changelog according to users config. Then the changes
 are **committed** and/or **commented** to the release Pull request.
 
@@ -67,6 +65,7 @@ your `.github/workflows/workflow.yml` file:
       # Optional, only required when you want more customization
       # e.g: group your changelog by labels with custom titles,
       # different version prefix, pull request title and version number regex etc.
+      # config file can be in JSON or YAML format.
       config_file: changelog-ci-config.json
       # Optional, This will be used to configure git
       # defaults to `github-actions[bot]` if not provided.
@@ -104,7 +103,7 @@ by adding a `JSON` or `YAML` config file to the project. For exmaple:
       config_file: changelog-ci-config.json
     ```
 
-* Including `YAML` file `config.yml`:
+* Including `YAML` file `changelog-ci-config.yml`:
 
     ```yaml
     with:
