@@ -1,3 +1,14 @@
+# Version: 0.7.5
+
+* [#37](https://github.com/saadmk11/changelog-ci/pull/37): Separate GitHub API Base URL
+* [#39](https://github.com/saadmk11/changelog-ci/pull/39): use self.filename on _commit_changelog()
+* [#45](https://github.com/saadmk11/changelog-ci/pull/45): Make Documentation about Version Number Regex clearer
+* [#40](https://github.com/saadmk11/changelog-ci/pull/40): Update description
+* [#46](https://github.com/saadmk11/changelog-ci/pull/46): Add support for YAML config files
+* [#47](https://github.com/saadmk11/changelog-ci/pull/47): Add yaml config
+* [#48](https://github.com/saadmk11/changelog-ci/pull/48): Make it Clear what actions can be performed by Changelog CI in the README
+
+
 # Version: 0.7.0
 
 * [#31](https://github.com/saadmk11/changelog-ci/pull/31): Update description
