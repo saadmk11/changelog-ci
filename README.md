@@ -13,7 +13,7 @@ automatically generated changelog.
 
 The workflow can be configured to perform **any (or all)** of the following actions
 
-* **Prepend** the generated changelog to the `CHANGELOG.md` file and  then **Commit** modified `CHANGELOG.md` file to the release pull request.
+* **Prepend** the generated changelog to the `CHANGELOG.md` file and then **Commit** modified `CHANGELOG.md` file to the release pull request.
 
 * Add a **Comment** on the release pull request with the generated changelog.
 
