@@ -2,6 +2,7 @@ import json
 import os
 import re
 import subprocess
+from functools import cached_property
 
 import requests
 import yaml
@@ -9,14 +10,17 @@ import yaml
 # The regular expression used to extract semantic versioning is a
 # slightly less restrictive modification of the following regular expression
 # https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
-DEFAULT_SEMVER_REGEX = r"v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.?(0|[1-9]\d*)?(?:-((" \
-                       r"?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[" \
-                       r"1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([" \
-                       r"0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?"
+DEFAULT_SEMVER_REGEX = (
+    r"v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.?(0|[1-9]\d*)?(?:-(("
+    r"?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|["
+    r"1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(["
+    r"0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?"
+)
 DEFAULT_PULL_REQUEST_TITLE_REGEX = r"^(?i:release)"
 DEFAULT_VERSION_PREFIX = "Version:"
 DEFAULT_GROUP_CONFIG = []
 
+# Changelog types
 PULL_REQUEST = 'pull_request'
 COMMIT = 'commit_message'
 
@@ -27,7 +31,7 @@ DEFAULT_CONFIG = {
     "pull_request_title_regex": DEFAULT_PULL_REQUEST_TITLE_REGEX,
     "version_regex": DEFAULT_SEMVER_REGEX,
     "group_config": DEFAULT_GROUP_CONFIG,
-    "generate_changelog_using": PULL_REQUEST
+    "changelog_type": PULL_REQUEST
 }
 
 
@@ -64,10 +68,25 @@ class ChangelogCIBase:
 
         return title, number
 
+    @cached_property
+    def _get_request_headers(self):
+        """Get headers for GitHub API request"""
+        headers = {
+            'Accept': 'application/vnd.github.v3+json'
+        }
+        # if the user adds `GITHUB_TOKEN` add it to API Request
+        # required for `private` repositories
+        if self.token:
+            headers.update({
+                'authorization': 'Bearer {token}'.format(token=self.token)
+            })
+
+        return headers
+
     def get_changes_after_last_release(self):
         return NotImplemented
 
-    def _parse_changelog(self, version, changes):
+    def parse_changelog(self, version, changes):
         return NotImplemented
 
     def _validate_pull_request(self):
@@ -101,21 +120,8 @@ class ChangelogCIBase:
             # opens it in read-write mode
             # but creates the file first also
             file_mode = 'w+'
+
         return file_mode
-
-    def _get_request_headers(self):
-        """Get headers for GitHub API request"""
-        headers = {
-            'Accept': 'application/vnd.github.v3+json'
-        }
-        # if the user adds `GITHUB_TOKEN` add it to API Request
-        # required for `private` repositories
-        if self.token:
-            headers.update({
-                'authorization': 'Bearer {token}'.format(token=self.token)
-            })
-
-        return headers
 
     def _get_latest_release_date(self):
         """Using GitHub API gets latest release date"""
@@ -126,7 +132,7 @@ class ChangelogCIBase:
             repo_name=self.repository
         )
 
-        response = requests.get(url, headers=self._get_request_headers())
+        response = requests.get(url, headers=self._get_request_headers)
 
         published_date = ''
 
@@ -200,8 +206,7 @@ class ChangelogCIBase:
         )
 
         response = requests.post(
-            url, headers=self._get_request_headers(),
-            json=payload
+            url, headers=self._get_request_headers, json=payload
         )
 
         if response.status_code != 201:
@@ -260,11 +265,11 @@ class ChangelogCIBase:
 
         changes = self.get_changes_after_last_release()
 
-        # exit the function if there is not pull request found
+        # exit the method if there is no changes found
         if not changes:
             return
 
-        string_data = self._parse_changelog(version, changes)
+        string_data = self.parse_changelog(version, changes)
 
         if self.config['commit_changelog']:
             print_message('Commit Changelog', message_type='group')
@@ -318,7 +323,7 @@ class ChangelogCIPullRequest(ChangelogCIBase):
 
         items = []
 
-        response = requests.get(url, headers=self._get_request_headers())
+        response = requests.get(url, headers=self._get_request_headers)
 
         if response.status_code == 200:
             response_data = response.json()
@@ -350,7 +355,7 @@ class ChangelogCIPullRequest(ChangelogCIBase):
 
         return items
 
-    def _parse_changelog(self, version, pull_request_data):
+    def parse_changelog(self, version, pull_request_data):
         """Parse the pull requests data and return a string"""
         string_data = (
             '# ' + self.config['header_prefix'] + ' ' + version + '\n\n'
@@ -370,10 +375,10 @@ class ChangelogCIPullRequest(ChangelogCIBase):
                     # check if the pull request label matches with
                     # any label of the config
                     if (
-                            any(
-                                label in pull_request['labels']
-                                for label in config['labels']
-                            )
+                        any(
+                            label in pull_request['labels']
+                            for label in config['labels']
+                        )
                     ):
                         items_string += self._get_changelog_line(pull_request)
                         # remove the item so that one item
@@ -406,7 +411,7 @@ class ChangelogCICommitMessage(ChangelogCIBase):
     @staticmethod
     def _get_changelog_line(item):
         """Generate each line of changelog"""
-        return ("* [{sha}]({url}): {message}\n").format(
+        return "* [{sha}]({url}): {message}\n".format(
             sha=item['sha'][:6],
             url=item['url'],
             message=item['message']
@@ -416,9 +421,7 @@ class ChangelogCICommitMessage(ChangelogCIBase):
         """Get all the merged pull request after latest release"""
         previous_release_date = self._get_latest_release_date()
 
-        url = (
-            '{base_url}/repos/{repo_name}/commits?since={date}'
-        ).format(
+        url = '{base_url}/repos/{repo_name}/commits?since={date}'.format(
             base_url=self.github_api_url,
             repo_name=self.repository,
             date=previous_release_date or ''
@@ -426,7 +429,7 @@ class ChangelogCICommitMessage(ChangelogCIBase):
 
         items = []
 
-        response = requests.get(url, headers=self._get_request_headers())
+        response = requests.get(url, headers=self._get_request_headers)
 
         if response.status_code == 200:
             response_data = response.json()
@@ -455,7 +458,7 @@ class ChangelogCICommitMessage(ChangelogCIBase):
 
         return items
 
-    def _parse_changelog(self, version, changes):
+    def parse_changelog(self, version, changes):
         """Parse the commit data and return a string"""
         string_data = (
             '# ' + self.config['header_prefix'] + ' ' + version + '\n\n'
@@ -588,23 +591,23 @@ def parse_config(config_file):
             "header_prefix": DEFAULT_VERSION_PREFIX
         })
 
-    generate_changelog_using = config.get('generate_changelog_using')
+    changelog_type = config.get('changelog_type')
 
     if not (
-        generate_changelog_using or
-        isinstance(generate_changelog_using, str) or
-        generate_changelog_using in [PULL_REQUEST, COMMIT]
+        changelog_type or
+        isinstance(changelog_type, str) or
+        changelog_type in [PULL_REQUEST, COMMIT]
     ):
         msg = (
-            '`generate_changelog_using` was not provided or not valid, '
+            '`changelog_type` was not provided or not valid, '
             f'the options are {PULL_REQUEST} or {COMMIT}, '
             f'falling back to default value of "{PULL_REQUEST}".'
         )
         print_message(msg, message_type='warning')
-        # if generate_changelog_using is not not available
+        # if changelog_type is not not available
         # fallback to default PULL_REQUEST
         config.update({
-            "generate_changelog_using": PULL_REQUEST
+            "changelog_type": PULL_REQUEST
         })
 
     group_config = config.get('group_config')
@@ -712,10 +715,11 @@ if __name__ == '__main__':
 
     # Group: Generate Changelog
     print_message('Generate Changelog', message_type='group')
-    # Initialize the Changelog CI
+    # Get CI class using configuration
     changelog_ci_class = CI_CLASSES.get(
-        config['generate_changelog_using']
+        config['changelog_type']
     )
+    # Initialize the Changelog CI
     ci = changelog_ci_class(
         repository,
         event_path,
