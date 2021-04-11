@@ -493,7 +493,7 @@ def parse_config(config_file):
         print_message(msg, message_type='error')
         # if invalid fall back to default config
         return DEFAULT_CONFIG
-
+    print(config)
     if not isinstance(config, dict):
         raise TypeError(
             'Configuration does not contain required key, value pairs'
