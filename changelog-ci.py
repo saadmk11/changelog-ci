@@ -715,6 +715,7 @@ if __name__ == '__main__':
     print_message('Parse Configuration', message_type='group')
 
     config = parse_config(config_file)
+    print(config)
 
     print_message('', message_type='endgroup')
 
@@ -724,6 +725,7 @@ if __name__ == '__main__':
     changelog_ci_class = CI_CLASSES.get(
         config['generate_changelog_using']
     )
+    print(changelog_ci_class)
     # Initialize the Changelog CI
     ci = changelog_ci_class(
         repository,
