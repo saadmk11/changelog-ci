@@ -17,46 +17,41 @@ DEFAULT_PULL_REQUEST_TITLE_REGEX = r"^(?i:release)"
 DEFAULT_VERSION_PREFIX = "Version:"
 DEFAULT_GROUP_CONFIG = []
 
+PULL_REQUEST = 'pull_request'
+COMMIT = 'commit'
 
-class ChangelogCI:
+DEFAULT_CONFIG = {
+    "header_prefix": DEFAULT_VERSION_PREFIX,
+    "commit_changelog": True,
+    "comment_changelog": False,
+    "pull_request_title_regex": DEFAULT_PULL_REQUEST_TITLE_REGEX,
+    "version_regex": DEFAULT_SEMVER_REGEX,
+    "group_config": DEFAULT_GROUP_CONFIG,
+    "generate_changelog_using": PULL_REQUEST
+}
+
+
+class ChangelogCIBase:
     """The class that generates, commits and/or comments changelog"""
 
     github_api_url = 'https://api.github.com'
 
     def __init__(
-        self, repository,
-        event_path, filename='CHANGELOG.md',
-        config_file=None, token=None
+        self,
+        repository,
+        event_path,
+        config,
+        filename='CHANGELOG.md',
+        token=None
     ):
         self.repository = repository
         self.filename = filename
-        self.config = self._parse_config(config_file)
+        self.config = config
         self.token = token
 
         title, number = self._get_pull_request_title_and_number(event_path)
         self.pull_request_title = title
         self.pull_request_number = number
-
-    @staticmethod
-    def _default_config():
-        """Default configuration for Changelog CI"""
-        return {
-            "header_prefix": DEFAULT_VERSION_PREFIX,
-            "commit_changelog": True,
-            "comment_changelog": False,
-            "pull_request_title_regex": DEFAULT_PULL_REQUEST_TITLE_REGEX,
-            "version_regex": DEFAULT_SEMVER_REGEX,
-            "group_config": DEFAULT_GROUP_CONFIG
-        }
-
-    @staticmethod
-    def _get_changelog_line(item):
-        """Generate each line of changelog"""
-        return ("* [#{number}]({url}): {title}\n").format(
-            number=item['number'],
-            url=item['url'],
-            title=item['title']
-        )
 
     @staticmethod
     def _get_pull_request_title_and_number(event_path):
@@ -69,33 +64,11 @@ class ChangelogCI:
 
         return title, number
 
-    def _parse_config(self, filepath):
-        """parse the config file if not provided use default config"""
-        if filepath:
-            try:
-                file = open(filepath)
-                # parse config files with the extension .yml and .yaml
-                # using YAML syntax
-                if filepath.endswith('yml') or filepath.endswith('yaml'):
-                    config = yaml.load(file, Loader=yaml.FullLoader)
-                # default to parsing the config file using JSON
-                else:
-                    config = json.load(file)
+    def get_changes_after_last_release(self):
+        return NotImplemented
 
-                file.close()
-                # parse and validate user provided config file
-                parse_config(config)
-                return config
-            except Exception as e:
-                msg = f'Invalid Configuration file, error: {e}'
-                _print_output('error', msg)
-
-        msg = 'Using Default Config to parse changelog'
-        _print_output('warning', msg)
-
-        # if config file not provided
-        # or invalid fall back to default config
-        return self._default_config()
+    def _parse_changelog(self, version, changes):
+        return NotImplemented
 
     def _validate_pull_request(self):
         """Check if changelog should be generated for this pull request"""
@@ -167,11 +140,158 @@ class ChangelogCI:
                 f'Could not find any previous release for '
                 f'{self.repository}, status code: {response.status_code}'
             )
-            _print_output('warning', msg)
+            print_message('warning', msg)
 
         return published_date
 
-    def _get_pull_requests_after_last_release(self):
+    def _commit_changelog(self, string_data):
+        """Write changelog to the changelog file"""
+        file_mode = self._get_file_mode()
+
+        with open(self.filename, file_mode) as f:
+            # read the existing data and store it in a variable
+            body = f.read()
+            # write at the top of the file
+            f.seek(0, 0)
+            f.write(string_data)
+
+            if body:
+                # re-write the existing data
+                f.write('\n\n')
+                f.write(body)
+
+        subprocess.run(['git', 'add', self.filename])
+        subprocess.run(
+            ['git', 'commit', '-m', '(Changelog CI) Added Changelog']
+        )
+        subprocess.run(['git', 'push', '-u', 'origin', ref])
+
+    def _comment_changelog(self, string_data):
+        """Comments Changelog to the pull request"""
+        if not self.token:
+            # Token is required by the GitHub API to create a Comment
+            # if not provided exit with error message
+            msg = (
+                "Could not add a comment. "
+                "`GITHUB_TOKEN` is required for this operation. "
+                "If you want to enable Changelog comment, please add "
+                "`GITHUB_TOKEN` to your workflow yaml file. "
+                "Look at Changelog CI's documentation for more information."
+            )
+
+            print_message('error', msg)
+            return
+
+        owner, repo = self.repository.split('/')
+
+        payload = {
+            'owner': owner,
+            'repo': repo,
+            'issue_number': self.pull_request_number,
+            'body': string_data
+        }
+
+        url = (
+            '{base_url}/repos/{repo}/issues/{number}/comments'
+        ).format(
+            base_url=self.github_api_url,
+            repo=self.repository,
+            number=self.pull_request_number
+        )
+
+        response = requests.post(
+            url, headers=self._get_request_headers(),
+            json=payload
+        )
+
+        if response.status_code != 201:
+            # API should return 201, otherwise show error message
+            msg = (
+                f'Error while trying to create a comment. '
+                f'GitHub API returned error response for '
+                f'{self.repository}, status code: {response.status_code}'
+            )
+
+            print_message('error', msg)
+
+    def run(self):
+        """Entrypoint to the Changelog CI"""
+        if (
+            not self.config['commit_changelog'] and
+            not self.config['comment_changelog']
+        ):
+            # if both commit_changelog and comment_changelog is set to false
+            # then exit with warning and don't generate Changelog
+            msg = (
+                'Skipping Changelog generation as both `commit_changelog` '
+                'and `comment_changelog` is set to False. '
+                'If you did not intend to do this please set '
+                'one or both of them to True.'
+            )
+            print_message('error', msg)
+            return
+
+        is_valid_pull_request = self._validate_pull_request()
+
+        if not is_valid_pull_request:
+            # if pull request regex doesn't match then exit
+            # and don't generate changelog
+            msg = (
+                f'The title of the pull request did not match. '
+                f'Regex tried: "{self.config["pull_request_title_regex"]}", '
+                f'Aborting Changelog Generation.'
+            )
+            print_message('error', msg)
+            return
+
+        version = self._get_version_number()
+
+        if not version:
+            # if the pull request title is not valid, exit the method
+            # It might happen if the pull request is not meant to be release
+            # or the title was not accurate.
+            msg = (
+                f'Could not find matching version number. '
+                f'Regex tried: {self.config["version_regex"]} '
+                f'Aborting Changelog Generation'
+            )
+            print_message('error', msg)
+            return
+
+        changes = self.get_changes_after_last_release()
+
+        # exit the function if there is not pull request found
+        if not changes:
+            return
+
+        string_data = self._parse_changelog(version, changes)
+
+        if self.config['commit_changelog']:
+            print_message('Commit Changelog', message_type='group')
+            self._commit_changelog(string_data)
+            print_message('', message_type='endgroup')
+
+        if self.config['comment_changelog']:
+            print_message('Comment Changelog', message_type='group')
+            self._comment_changelog(string_data)
+            print_message('', message_type='endgroup')
+
+
+class ChangelogCIPullRequest(ChangelogCIBase):
+    """The class that generates, commits and/or comments changelog using pull requests"""
+
+    github_api_url = 'https://api.github.com'
+
+    @staticmethod
+    def _get_changelog_line(item):
+        """Generate each line of changelog"""
+        return "* [#{number}]({url}): {title}\n".format(
+            number=item['number'],
+            url=item['url'],
+            title=item['title']
+        )
+
+    def get_changes_after_last_release(self):
         """Get all the merged pull request after latest release"""
         previous_release_date = self._get_latest_release_date()
 
@@ -219,19 +339,19 @@ class ChangelogCI:
                     f'There was no pull request '
                     f'made on {self.repository} after last release.'
                 )
-                _print_output('error', msg)
+                print_message('error', msg)
         else:
             msg = (
                 f'Could not get pull requests for '
                 f'{self.repository} from GitHub API. '
                 f'response status code: {response.status_code}'
             )
-            _print_output('error', msg)
+            print_message('error', msg)
 
         return items
 
-    def _parse_data(self, version, pull_request_data):
-        """Parse the pull requests data and return a writable data structure"""
+    def _parse_changelog(self, version, pull_request_data):
+        """Parse the pull requests data and return a string"""
         string_data = (
             '# ' + self.config['header_prefix'] + ' ' + version + '\n\n'
         )
@@ -250,10 +370,10 @@ class ChangelogCI:
                     # check if the pull request label matches with
                     # any label of the config
                     if (
-                        any(
-                            label in pull_request['labels']
-                            for label in config['labels']
-                        )
+                            any(
+                                label in pull_request['labels']
+                                for label in config['labels']
+                            )
                     ):
                         items_string += self._get_changelog_line(pull_request)
                         # remove the item so that one item
@@ -279,141 +399,97 @@ class ChangelogCI:
 
         return string_data
 
-    def _commit_changelog(self, string_data):
-        """Write changelog to the changelog file"""
-        file_mode = self._get_file_mode()
 
-        with open(self.filename, file_mode) as f:
-            # read the existing data and store it in a variable
-            body = f.read()
-            # write at the top of the file
-            f.seek(0, 0)
-            f.write(string_data)
+class ChangelogCICommitMessage(ChangelogCIBase):
+    """The class that generates, commits and/or comments changelog using commit messages"""
 
-            if body:
-                # re-write the existing data
-                f.write('\n\n')
-                f.write(body)
-
-        subprocess.run(['git', 'add', self.filename])
-        subprocess.run(
-            ['git', 'commit', '-m', '(Changelog CI) Added Changelog']
+    @staticmethod
+    def _get_changelog_line(item):
+        """Generate each line of changelog"""
+        return ("* [{sha}]({url}): {message}\n").format(
+            sha=item['sha'][:6],
+            url=item['url'],
+            message=item['message']
         )
-        subprocess.run(['git', 'push', '-u', 'origin', ref])
 
-    def _comment_changelog(self, string_data):
-        """Comments Changelog to the pull request"""
-        if not self.token:
-            # Token is required by the GitHub API to create a Comment
-            # if not provided exit with error message
-            msg = (
-                "Could not add a comment. "
-                "`GITHUB_TOKEN` is required for this operation. "
-                "If you want to enable Changelog comment, please add "
-                "`GITHUB_TOKEN` to your workflow yaml file. "
-                "Look at Changelog CI's documentation for more information."
-            )
-
-            _print_output('error', msg)
-            return
-
-        owner, repo = self.repository.split('/')
-
-        payload = {
-            'owner': owner,
-            'repo': repo,
-            'issue_number': self.pull_request_number,
-            'body': string_data
-        }
+    def get_changes_after_last_release(self):
+        """Get all the merged pull request after latest release"""
+        previous_release_date = self._get_latest_release_date()
 
         url = (
-            '{base_url}/repos/{repo}/issues/{number}/comments'
+            '{base_url}/repos/{repo_name}/commits?since={date}'
         ).format(
             base_url=self.github_api_url,
-            repo=self.repository,
-            number=self.pull_request_number
+            repo_name=self.repository,
+            date=previous_release_date or ''
         )
 
-        response = requests.post(
-            url, headers=self._get_request_headers(),
-            json=payload
+        items = []
+
+        response = requests.get(url, headers=self._get_request_headers())
+
+        if response.status_code == 200:
+            response_data = response.json()
+
+            if len(response_data) > 0:
+                for item in response_data:
+                    data = {
+                        'sha': item['sha'],
+                        'message': item['commit']['message'],
+                        'url': item['html_url']
+                    }
+                    items.append(data)
+            else:
+                msg = (
+                    f'There was no commit '
+                    f'made on {self.repository} after last release.'
+                )
+                print_message('error', msg)
+        else:
+            msg = (
+                f'Could not get commits for '
+                f'{self.repository} from GitHub API. '
+                f'response status code: {response.status_code}'
+            )
+            print_message('error', msg)
+
+        return items
+
+    def _parse_changelog(self, version, changes):
+        """Parse the commit data and return a string"""
+        string_data = (
+            '# ' + self.config['header_prefix'] + ' ' + version + '\n\n'
         )
+        string_data += ''.join(map(self._get_changelog_line, changes))
 
-        if response.status_code != 201:
-            # API should return 201, otherwise show error message
-            msg = (
-                f'Error while trying to create a comment. '
-                f'GitHub API returned error response for '
-                f'{self.repository}, status code: {response.status_code}'
-            )
-
-            _print_output('error', msg)
-
-    def run(self):
-        """Entrypoint to the Changelog CI"""
-        if (
-            not self.config['commit_changelog'] and
-            not self.config['comment_changelog']
-        ):
-            # if both commit_changelog and comment_changelog is set to false
-            # then exit with warning and don't generate Changelog
-            msg = (
-                'Skipping Changelog generation as both `commit_changelog` '
-                'and `comment_changelog` is set to False. '
-                'If you did not intend to do this please set '
-                'one or both of them to True.'
-            )
-            _print_output('error', msg)
-            return
-
-        is_valid_pull_request = self._validate_pull_request()
-
-        if not is_valid_pull_request:
-            # if pull request regex doesn't match then exit
-            # and don't generate changelog
-            msg = (
-                f'The title of the pull request did not match. '
-                f'Regex tried: "{self.config["pull_request_title_regex"]}", '
-                f'Aborting Changelog Generation.'
-            )
-            _print_output('error', msg)
-            return
-
-        version = self._get_version_number()
-
-        if not version:
-            # if the pull request title is not valid, exit the method
-            # It might happen if the pull request is not meant to be release
-            # or the title was not accurate.
-            msg = (
-                f'Could not find matching version number. '
-                f'Regex tried: {self.config["version_regex"]} '
-                f'Aborting Changelog Generation'
-            )
-            _print_output('error', msg)
-            return
-
-        pull_request_data = self._get_pull_requests_after_last_release()
-
-        # exit the function if there is not pull request found
-        if not pull_request_data:
-            return
-
-        string_data = self._parse_data(version, pull_request_data)
-
-        if self.config['commit_changelog']:
-            subprocess.run(['echo', '::group::Commit Changelog'])
-            self._commit_changelog(string_data)
-            subprocess.run(['echo', '::endgroup::'])
-
-        if self.config['comment_changelog']:
-            subprocess.run(['echo', '::group::Comment Changelog'])
-            self._comment_changelog(string_data)
-            subprocess.run(['echo', '::endgroup::'])
+        return string_data
 
 
-def parse_config(config):
+def parse_config(config_file):
     """Parse and Validates user provided config, raises Error if not valid"""
+    if not config_file:
+        return DEFAULT_CONFIG
+
+    try:
+        file = open(config_file)
+        # parse config files with the extension .yml and .yaml
+        # using YAML syntax
+        if config_file.endswith('yml') or config_file.endswith('yaml'):
+            config = yaml.load(file, Loader=yaml.FullLoader)
+        # default to parsing the config file using JSON
+        else:
+            config = json.load(file)
+
+        file.close()
+    except Exception as e:
+        msg = f'Invalid Configuration file, error: {e}'
+        print_message('error', msg)
+        msg = 'Using Default Config to parse changelog'
+        print_message('warning', msg)
+        # if config file not provided
+        # or invalid fall back to default config
+        return DEFAULT_CONFIG
+
     if not isinstance(config, dict):
         raise TypeError(
             'Configuration does not contain required key, value pairs'
@@ -435,7 +511,7 @@ def parse_config(config):
             '`pull_request_title_regex` was not provided or not valid, '
             'Falling back to default regex.'
         )
-        _print_output('warning', msg)
+        print_message('warning', msg)
         # if the pull_request_title_regex is not valid or not available
         # fallback to default regex
         config.update({
@@ -455,7 +531,7 @@ def parse_config(config):
             '`version_regex` was not provided or not valid, '
             'Falling back to default regex.'
         )
-        _print_output('warning', msg)
+        print_message('warning', msg)
         # if the version_regex is not valid or not available
         # fallback to default regex
         config.update({
@@ -472,7 +548,7 @@ def parse_config(config):
             '`commit_changelog` was not provided or not valid, '
             'falling back to `True`.'
         )
-        _print_output('warning', msg)
+        print_message('warning', msg)
         # if commit_changelog is not provided default to True
         config.update({
             "commit_changelog": True
@@ -488,7 +564,7 @@ def parse_config(config):
             '`comment_changelog` was not provided or not valid, '
             'falling back to `False`.'
         )
-        _print_output('warning', msg)
+        print_message('warning', msg)
         # if comment_changelog is not provided default to False
         config.update({
             "comment_changelog": False
@@ -502,11 +578,30 @@ def parse_config(config):
             '`header_prefix` was not provided or not valid, '
             'falling back to default prefix.'
         )
-        _print_output('warning', msg)
+        print_message('warning', msg)
         # if the header_prefix is not not available
         # fallback to default prefix
         config.update({
             "header_prefix": DEFAULT_VERSION_PREFIX
+        })
+
+    generate_changelog_using = config.get('generate_changelog_using')
+
+    if not (
+        generate_changelog_using or
+        isinstance(generate_changelog_using, str) or
+        generate_changelog_using in [PULL_REQUEST, COMMIT]
+    ):
+        msg = (
+            '`generate_changelog_using` was not provided or not valid, '
+            f'the options are {PULL_REQUEST} or {COMMIT}, '
+            f'falling back to default value of "{PULL_REQUEST}".'
+        )
+        print_message('warning', msg)
+        # if generate_changelog_using is not not available
+        # fallback to default PULL_REQUEST
+        config.update({
+            "generate_changelog_using": PULL_REQUEST
         })
 
     if not group_config or not isinstance(group_config, list):
@@ -514,7 +609,7 @@ def parse_config(config):
             '`group_config` was not provided or not valid, '
             'falling back to default group config.'
         )
-        _print_output('warning', msg)
+        print_message('warning', msg)
         # if the group_config is not not available
         # fallback to default group_config
         config.update({
@@ -546,16 +641,30 @@ def parse_config(config):
                 f'An error occurred while parsing `group_config`. Error: {e}'
                 f'falling back to default group config.'
             )
-            _print_output('warning', msg)
+            print_message('warning', msg)
             # Fallback to default group_config
             config.update({
                 "group_config": DEFAULT_GROUP_CONFIG
             })
+    return config
 
 
-def _print_output(type, message):
+def print_message(message, message_type=None):
     """Helper function to print colorful outputs in GitHub Actions shell"""
-    return subprocess.run(['echo', f'::{type}::{message}'])
+    # docs: https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions
+    if not message_type:
+        return subprocess.run(['echo', f'{message}'])
+
+    if message_type == 'endgroup':
+        return print_message('', message_type='endgroup')
+
+    return subprocess.run(['echo', f'::{message_type}::{message}'])
+
+
+CI_CLASSES = {
+    PULL_REQUEST: ChangelogCIPullRequest,
+    COMMIT: ChangelogCICommitMessage
+}
 
 
 if __name__ == '__main__':
@@ -574,29 +683,42 @@ if __name__ == '__main__':
     email = os.environ['INPUT_COMMITTER_EMAIL']
 
     # Group: Checkout git repository
-    subprocess.run(['echo', '::group::Checkout git repository'])
+    print_message('Checkout git repository', message_type='group')
+
 
     subprocess.run(['git', 'fetch', '--prune', '--unshallow', 'origin', ref])
     subprocess.run(['git', 'checkout', ref])
 
-    subprocess.run(['echo', '::endgroup::'])
+    print_message('', message_type='endgroup')
 
     # Group: Configure Git
-    subprocess.run(['echo', '::group::Configure Git'])
+    print_message('Configure Git', message_type='group')
 
     subprocess.run(['git', 'config', 'user.name', username])
     subprocess.run(['git', 'config', 'user.email', email])
 
-    subprocess.run(['echo', '::endgroup::'])
+    print_message('', message_type='endgroup')
+
+    print_message('Parse Configuration', message_type='group')
+
+    config = parse_config(config_file)
+    
+    print_message('', message_type='endgroup')
 
     # Group: Generate Changelog
-    subprocess.run(['echo', '::group::Generate Changelog'])
+    print_message('Generate Changelog', message_type='group')
     # Initialize the Changelog CI
-    ci = ChangelogCI(
-        repository, event_path, filename=filename,
-        config_file=config_file, token=token
+    changelog_ci_class = CI_CLASSES.get(
+        config['generate_changelog_using']
+    )
+    ci = changelog_ci_class(
+        repository,
+        event_path,
+        config,
+        filename=filename,
+        token=token
     )
     # Run Changelog CI
     ci.run()
 
-    subprocess.run(['echo', '::endgroup::'])
+    print_message('', message_type='endgroup')
