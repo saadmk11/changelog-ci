@@ -436,12 +436,15 @@ class ChangelogCICommitMessage(ChangelogCIBase):
 
             if len(response_data) > 0:
                 for item in response_data:
-                    data = {
-                        'sha': item['sha'],
-                        'message': item['commit']['message'],
-                        'url': item['html_url']
-                    }
-                    items.append(data)
+                    message = item['commit']['message']
+                    # Exclude merge commit
+                    if not message.startswith('Merge pull request #'):
+                        data = {
+                            'sha': item['sha'],
+                            'message': message,
+                            'url': item['html_url']
+                        }
+                        items.append(data)
             else:
                 msg = (
                     f'There was no commit '
