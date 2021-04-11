@@ -355,7 +355,7 @@ class ChangelogCIPullRequest(ChangelogCIBase):
 
         return items
 
-    def parse_changelog(self, version, pull_request_data):
+    def parse_changelog(self, version, changes):
         """Parse the pull requests data and return a string"""
         string_data = (
             '# ' + self.config['header_prefix'] + ' ' + version + '\n\n'
@@ -366,12 +366,12 @@ class ChangelogCIPullRequest(ChangelogCIBase):
         if group_config:
             for config in group_config:
 
-                if len(pull_request_data) == 0:
+                if len(changes) == 0:
                     break
 
                 items_string = ''
 
-                for pull_request in pull_request_data:
+                for pull_request in changes:
                     # check if the pull request label matches with
                     # any label of the config
                     if (
@@ -383,23 +383,23 @@ class ChangelogCIPullRequest(ChangelogCIBase):
                         items_string += self._get_changelog_line(pull_request)
                         # remove the item so that one item
                         # does not match multiple groups
-                        pull_request_data.remove(pull_request)
+                        changes.remove(pull_request)
 
                 if items_string:
                     string_data += '\n#### ' + config['title'] + '\n\n'
                     string_data += '\n' + items_string
 
-            if pull_request_data:
+            if changes:
                 # if they do not match any user provided group
                 # Add items in `Other Changes` group
                 string_data += '\n#### Other Changes\n\n'
                 string_data += ''.join(
-                    map(self._get_changelog_line, pull_request_data)
+                    map(self._get_changelog_line, changes)
                 )
         else:
             # If group config does not exist then append it without and groups
             string_data += ''.join(
-                map(self._get_changelog_line, pull_request_data)
+                map(self._get_changelog_line, changes)
             )
 
         return string_data
@@ -717,7 +717,7 @@ if __name__ == '__main__':
     print_message('Generate Changelog', message_type='group')
     # Get CI class using configuration
     changelog_ci_class = CI_CLASSES.get(
-        config['changelog_type']
+        config['generate_changelog_using']
     )
     # Initialize the Changelog CI
     ci = changelog_ci_class(
