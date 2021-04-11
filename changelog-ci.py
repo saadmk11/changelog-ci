@@ -140,7 +140,7 @@ class ChangelogCIBase:
                 f'Could not find any previous release for '
                 f'{self.repository}, status code: {response.status_code}'
             )
-            print_message('warning', msg)
+            print_message(msg, message_type='warning')
 
         return published_date
 
@@ -179,7 +179,7 @@ class ChangelogCIBase:
                 "Look at Changelog CI's documentation for more information."
             )
 
-            print_message('error', msg)
+            print_message(msg, message_type='error')
             return
 
         owner, repo = self.repository.split('/')
@@ -212,7 +212,7 @@ class ChangelogCIBase:
                 f'{self.repository}, status code: {response.status_code}'
             )
 
-            print_message('error', msg)
+            print_message(msg, message_type='error')
 
     def run(self):
         """Entrypoint to the Changelog CI"""
@@ -228,7 +228,7 @@ class ChangelogCIBase:
                 'If you did not intend to do this please set '
                 'one or both of them to True.'
             )
-            print_message('error', msg)
+            print_message(msg, message_type='error')
             return
 
         is_valid_pull_request = self._validate_pull_request()
@@ -241,7 +241,7 @@ class ChangelogCIBase:
                 f'Regex tried: "{self.config["pull_request_title_regex"]}", '
                 f'Aborting Changelog Generation.'
             )
-            print_message('error', msg)
+            print_message(msg, message_type='error')
             return
 
         version = self._get_version_number()
@@ -255,7 +255,7 @@ class ChangelogCIBase:
                 f'Regex tried: {self.config["version_regex"]} '
                 f'Aborting Changelog Generation'
             )
-            print_message('error', msg)
+            print_message(msg, message_type='error')
             return
 
         changes = self.get_changes_after_last_release()
@@ -339,14 +339,14 @@ class ChangelogCIPullRequest(ChangelogCIBase):
                     f'There was no pull request '
                     f'made on {self.repository} after last release.'
                 )
-                print_message('error', msg)
+                print_message(msg, message_type='error')
         else:
             msg = (
                 f'Could not get pull requests for '
                 f'{self.repository} from GitHub API. '
                 f'response status code: {response.status_code}'
             )
-            print_message('error', msg)
+            print_message(msg, message_type='error')
 
         return items
 
@@ -444,14 +444,14 @@ class ChangelogCICommitMessage(ChangelogCIBase):
                     f'There was no commit '
                     f'made on {self.repository} after last release.'
                 )
-                print_message('error', msg)
+                print_message(msg, message_type='error')
         else:
             msg = (
                 f'Could not get commits for '
                 f'{self.repository} from GitHub API. '
                 f'response status code: {response.status_code}'
             )
-            print_message('error', msg)
+            print_message(msg, message_type='error')
 
         return items
 
@@ -468,6 +468,10 @@ class ChangelogCICommitMessage(ChangelogCIBase):
 def parse_config(config_file):
     """Parse and Validates user provided config, raises Error if not valid"""
     if not config_file:
+        print_message(
+            'No Configuration file found, falling back to default configuration',
+            message_type='warning'
+        )
         return DEFAULT_CONFIG
 
     try:
@@ -482,12 +486,12 @@ def parse_config(config_file):
 
         file.close()
     except Exception as e:
-        msg = f'Invalid Configuration file, error: {e}'
-        print_message('error', msg)
-        msg = 'Using Default Config to parse changelog'
-        print_message('warning', msg)
-        # if config file not provided
-        # or invalid fall back to default config
+        msg = (
+            f'Invalid Configuration file, error: {e}, '
+            'falling back to default configuration to parse changelog'
+        )
+        print_message(msg, message_type='error')
+        # if invalid fall back to default config
         return DEFAULT_CONFIG
 
     if not isinstance(config, dict):
@@ -511,7 +515,7 @@ def parse_config(config_file):
             '`pull_request_title_regex` was not provided or not valid, '
             'Falling back to default regex.'
         )
-        print_message('warning', msg)
+        print_message(msg, message_type='warning')
         # if the pull_request_title_regex is not valid or not available
         # fallback to default regex
         config.update({
@@ -531,7 +535,7 @@ def parse_config(config_file):
             '`version_regex` was not provided or not valid, '
             'Falling back to default regex.'
         )
-        print_message('warning', msg)
+        print_message(msg, message_type='warning')
         # if the version_regex is not valid or not available
         # fallback to default regex
         config.update({
@@ -548,7 +552,7 @@ def parse_config(config_file):
             '`commit_changelog` was not provided or not valid, '
             'falling back to `True`.'
         )
-        print_message('warning', msg)
+        print_message(msg, message_type='warning')
         # if commit_changelog is not provided default to True
         config.update({
             "commit_changelog": True
@@ -564,21 +568,20 @@ def parse_config(config_file):
             '`comment_changelog` was not provided or not valid, '
             'falling back to `False`.'
         )
-        print_message('warning', msg)
+        print_message(msg, message_type='warning')
         # if comment_changelog is not provided default to False
         config.update({
             "comment_changelog": False
         })
 
     header_prefix = config.get('header_prefix')
-    group_config = config.get('group_config')
 
     if not header_prefix or not isinstance(header_prefix, str):
         msg = (
             '`header_prefix` was not provided or not valid, '
             'falling back to default prefix.'
         )
-        print_message('warning', msg)
+        print_message(msg, message_type='warning')
         # if the header_prefix is not not available
         # fallback to default prefix
         config.update({
@@ -597,19 +600,21 @@ def parse_config(config_file):
             f'the options are {PULL_REQUEST} or {COMMIT}, '
             f'falling back to default value of "{PULL_REQUEST}".'
         )
-        print_message('warning', msg)
+        print_message(msg, message_type='warning')
         # if generate_changelog_using is not not available
         # fallback to default PULL_REQUEST
         config.update({
             "generate_changelog_using": PULL_REQUEST
         })
 
+    group_config = config.get('group_config')
+
     if not group_config or not isinstance(group_config, list):
         msg = (
             '`group_config` was not provided or not valid, '
             'falling back to default group config.'
         )
-        print_message('warning', msg)
+        print_message(msg, message_type='warning')
         # if the group_config is not not available
         # fallback to default group_config
         config.update({
@@ -641,7 +646,7 @@ def parse_config(config_file):
                 f'An error occurred while parsing `group_config`. Error: {e}'
                 f'falling back to default group config.'
             )
-            print_message('warning', msg)
+            print_message(msg, message_type='warning')
             # Fallback to default group_config
             config.update({
                 "group_config": DEFAULT_GROUP_CONFIG
