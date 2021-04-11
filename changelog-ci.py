@@ -493,7 +493,7 @@ def parse_config(config_file):
         print_message(msg, message_type='error')
         # if invalid fall back to default config
         return DEFAULT_CONFIG
-    print(config)
+
     if not isinstance(config, dict):
         raise TypeError(
             'Configuration does not contain required key, value pairs'
@@ -623,14 +623,14 @@ def parse_config(config_file):
     else:
         try:
             # Check if all the group configs match the schema
-            for config in group_config:
+            for item in group_config:
                 if not isinstance(config, dict):
                     raise TypeError(
                         'group_config items must have key, '
                         'value pairs of title and labels'
                     )
-                title = config.get('title')
-                labels = config.get('labels')
+                title = item.get('title')
+                labels = item.get('labels')
 
                 if not title:
                     raise KeyError('group_config item must contain title')
@@ -707,8 +707,7 @@ if __name__ == '__main__':
     print_message('Parse Configuration', message_type='group')
 
     config = parse_config(config_file)
-    print(config)
-    
+
     print_message('', message_type='endgroup')
 
     # Group: Generate Changelog
