@@ -2,6 +2,7 @@ import json
 import os
 import re
 import subprocess
+from functools import cached_property
 
 import requests
 import yaml
@@ -9,54 +10,52 @@ import yaml
 # The regular expression used to extract semantic versioning is a
 # slightly less restrictive modification of the following regular expression
 # https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
-DEFAULT_SEMVER_REGEX = r"v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.?(0|[1-9]\d*)?(?:-((" \
-                       r"?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[" \
-                       r"1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([" \
-                       r"0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?"
+DEFAULT_SEMVER_REGEX = (
+    r"v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.?(0|[1-9]\d*)?(?:-(("
+    r"?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|["
+    r"1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(["
+    r"0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?"
+)
 DEFAULT_PULL_REQUEST_TITLE_REGEX = r"^(?i:release)"
 DEFAULT_VERSION_PREFIX = "Version:"
 DEFAULT_GROUP_CONFIG = []
 
+# Changelog types
+PULL_REQUEST = 'pull_request'
+COMMIT = 'commit_message'
 
-class ChangelogCI:
+DEFAULT_CONFIG = {
+    "header_prefix": DEFAULT_VERSION_PREFIX,
+    "commit_changelog": True,
+    "comment_changelog": False,
+    "pull_request_title_regex": DEFAULT_PULL_REQUEST_TITLE_REGEX,
+    "version_regex": DEFAULT_SEMVER_REGEX,
+    "group_config": DEFAULT_GROUP_CONFIG,
+    "changelog_type": PULL_REQUEST
+}
+
+
+class ChangelogCIBase:
     """The class that generates, commits and/or comments changelog"""
 
     github_api_url = 'https://api.github.com'
 
     def __init__(
-        self, repository,
-        event_path, filename='CHANGELOG.md',
-        config_file=None, token=None
+        self,
+        repository,
+        event_path,
+        config,
+        filename='CHANGELOG.md',
+        token=None
     ):
         self.repository = repository
         self.filename = filename
-        self.config = self._parse_config(config_file)
+        self.config = config
         self.token = token
 
         title, number = self._get_pull_request_title_and_number(event_path)
         self.pull_request_title = title
         self.pull_request_number = number
-
-    @staticmethod
-    def _default_config():
-        """Default configuration for Changelog CI"""
-        return {
-            "header_prefix": DEFAULT_VERSION_PREFIX,
-            "commit_changelog": True,
-            "comment_changelog": False,
-            "pull_request_title_regex": DEFAULT_PULL_REQUEST_TITLE_REGEX,
-            "version_regex": DEFAULT_SEMVER_REGEX,
-            "group_config": DEFAULT_GROUP_CONFIG
-        }
-
-    @staticmethod
-    def _get_changelog_line(item):
-        """Generate each line of changelog"""
-        return ("* [#{number}]({url}): {title}\n").format(
-            number=item['number'],
-            url=item['url'],
-            title=item['title']
-        )
 
     @staticmethod
     def _get_pull_request_title_and_number(event_path):
@@ -69,33 +68,26 @@ class ChangelogCI:
 
         return title, number
 
-    def _parse_config(self, filepath):
-        """parse the config file if not provided use default config"""
-        if filepath:
-            try:
-                file = open(filepath)
-                # parse config files with the extension .yml and .yaml
-                # using YAML syntax
-                if filepath.endswith('yml') or filepath.endswith('yaml'):
-                    config = yaml.load(file, Loader=yaml.FullLoader)
-                # default to parsing the config file using JSON
-                else:
-                    config = json.load(file)
+    @cached_property
+    def _get_request_headers(self):
+        """Get headers for GitHub API request"""
+        headers = {
+            'Accept': 'application/vnd.github.v3+json'
+        }
+        # if the user adds `GITHUB_TOKEN` add it to API Request
+        # required for `private` repositories
+        if self.token:
+            headers.update({
+                'authorization': 'Bearer {token}'.format(token=self.token)
+            })
 
-                file.close()
-                # parse and validate user provided config file
-                parse_config(config)
-                return config
-            except Exception as e:
-                msg = f'Invalid Configuration file, error: {e}'
-                _print_output('error', msg)
+        return headers
 
-        msg = 'Using Default Config to parse changelog'
-        _print_output('warning', msg)
+    def get_changes_after_last_release(self):
+        return NotImplemented
 
-        # if config file not provided
-        # or invalid fall back to default config
-        return self._default_config()
+    def parse_changelog(self, version, changes):
+        return NotImplemented
 
     def _validate_pull_request(self):
         """Check if changelog should be generated for this pull request"""
@@ -128,21 +120,8 @@ class ChangelogCI:
             # opens it in read-write mode
             # but creates the file first also
             file_mode = 'w+'
+
         return file_mode
-
-    def _get_request_headers(self):
-        """Get headers for GitHub API request"""
-        headers = {
-            'Accept': 'application/vnd.github.v3+json'
-        }
-        # if the user adds `GITHUB_TOKEN` add it to API Request
-        # required for `private` repositories
-        if self.token:
-            headers.update({
-                'authorization': 'Bearer {token}'.format(token=self.token)
-            })
-
-        return headers
 
     def _get_latest_release_date(self):
         """Using GitHub API gets latest release date"""
@@ -153,7 +132,7 @@ class ChangelogCI:
             repo_name=self.repository
         )
 
-        response = requests.get(url, headers=self._get_request_headers())
+        response = requests.get(url, headers=self._get_request_headers)
 
         published_date = ''
 
@@ -167,117 +146,9 @@ class ChangelogCI:
                 f'Could not find any previous release for '
                 f'{self.repository}, status code: {response.status_code}'
             )
-            _print_output('warning', msg)
+            print_message(msg, message_type='warning')
 
         return published_date
-
-    def _get_pull_requests_after_last_release(self):
-        """Get all the merged pull request after latest release"""
-        previous_release_date = self._get_latest_release_date()
-
-        if previous_release_date:
-            merged_date_filter = 'merged:>=' + previous_release_date
-        else:
-            # if there is no release for the repo then
-            # do not filter by merged date
-            merged_date_filter = ''
-
-        url = (
-            '{base_url}/search/issues'
-            '?q=repo:{repo_name}+'
-            'is:pr+'
-            'is:merged+'
-            'sort:author-date-asc+'
-            '{merged_date_filter}'
-            '&sort=merged'
-        ).format(
-            base_url=self.github_api_url,
-            repo_name=self.repository,
-            merged_date_filter=merged_date_filter
-        )
-
-        items = []
-
-        response = requests.get(url, headers=self._get_request_headers())
-
-        if response.status_code == 200:
-            response_data = response.json()
-
-            # `total_count` represents the number of
-            # pull requests returned by the API call
-            if response_data['total_count'] > 0:
-                for item in response_data['items']:
-                    data = {
-                        'title': item['title'],
-                        'number': item['number'],
-                        'url': item['html_url'],
-                        'labels': [label['name'] for label in item['labels']]
-                    }
-                    items.append(data)
-            else:
-                msg = (
-                    f'There was no pull request '
-                    f'made on {self.repository} after last release.'
-                )
-                _print_output('error', msg)
-        else:
-            msg = (
-                f'Could not get pull requests for '
-                f'{self.repository} from GitHub API. '
-                f'response status code: {response.status_code}'
-            )
-            _print_output('error', msg)
-
-        return items
-
-    def _parse_data(self, version, pull_request_data):
-        """Parse the pull requests data and return a writable data structure"""
-        string_data = (
-            '# ' + self.config['header_prefix'] + ' ' + version + '\n\n'
-        )
-
-        group_config = self.config['group_config']
-
-        if group_config:
-            for config in group_config:
-
-                if len(pull_request_data) == 0:
-                    break
-
-                items_string = ''
-
-                for pull_request in pull_request_data:
-                    # check if the pull request label matches with
-                    # any label of the config
-                    if (
-                        any(
-                            label in pull_request['labels']
-                            for label in config['labels']
-                        )
-                    ):
-                        items_string += self._get_changelog_line(pull_request)
-                        # remove the item so that one item
-                        # does not match multiple groups
-                        pull_request_data.remove(pull_request)
-
-                if items_string:
-                    string_data += '\n#### ' + config['title'] + '\n\n'
-                    string_data += '\n' + items_string
-
-            if pull_request_data:
-                # if they do not match any user provided group
-                # Add items in `Other Changes` group
-                string_data += '\n#### Other Changes\n\n'
-                string_data += ''.join(
-                    map(self._get_changelog_line, pull_request_data)
-                )
-        else:
-            # If group config does not exist then append it without and groups
-            string_data += ''.join(
-                map(self._get_changelog_line, pull_request_data)
-            )
-
-        return string_data
 
     def _commit_changelog(self, string_data):
         """Write changelog to the changelog file"""
@@ -314,7 +185,7 @@ class ChangelogCI:
                 "Look at Changelog CI's documentation for more information."
             )
 
-            _print_output('error', msg)
+            print_message(msg, message_type='error')
             return
 
         owner, repo = self.repository.split('/')
@@ -335,8 +206,7 @@ class ChangelogCI:
         )
 
         response = requests.post(
-            url, headers=self._get_request_headers(),
-            json=payload
+            url, headers=self._get_request_headers, json=payload
         )
 
         if response.status_code != 201:
@@ -347,7 +217,7 @@ class ChangelogCI:
                 f'{self.repository}, status code: {response.status_code}'
             )
 
-            _print_output('error', msg)
+            print_message(msg, message_type='error')
 
     def run(self):
         """Entrypoint to the Changelog CI"""
@@ -363,7 +233,7 @@ class ChangelogCI:
                 'If you did not intend to do this please set '
                 'one or both of them to True.'
             )
-            _print_output('error', msg)
+            print_message(msg, message_type='error')
             return
 
         is_valid_pull_request = self._validate_pull_request()
@@ -376,7 +246,7 @@ class ChangelogCI:
                 f'Regex tried: "{self.config["pull_request_title_regex"]}", '
                 f'Aborting Changelog Generation.'
             )
-            _print_output('error', msg)
+            print_message(msg, message_type='error')
             return
 
         version = self._get_version_number()
@@ -390,30 +260,248 @@ class ChangelogCI:
                 f'Regex tried: {self.config["version_regex"]} '
                 f'Aborting Changelog Generation'
             )
-            _print_output('error', msg)
+            print_message(msg, message_type='error')
             return
 
-        pull_request_data = self._get_pull_requests_after_last_release()
+        changes = self.get_changes_after_last_release()
 
-        # exit the function if there is not pull request found
-        if not pull_request_data:
+        # exit the method if there is no changes found
+        if not changes:
             return
 
-        string_data = self._parse_data(version, pull_request_data)
+        string_data = self.parse_changelog(version, changes)
 
         if self.config['commit_changelog']:
-            subprocess.run(['echo', '::group::Commit Changelog'])
+            print_message('Commit Changelog', message_type='group')
             self._commit_changelog(string_data)
-            subprocess.run(['echo', '::endgroup::'])
+            print_message('', message_type='endgroup')
 
         if self.config['comment_changelog']:
-            subprocess.run(['echo', '::group::Comment Changelog'])
+            print_message('Comment Changelog', message_type='group')
             self._comment_changelog(string_data)
-            subprocess.run(['echo', '::endgroup::'])
+            print_message('', message_type='endgroup')
 
 
-def parse_config(config):
+class ChangelogCIPullRequest(ChangelogCIBase):
+    """The class that generates, commits and/or comments changelog using pull requests"""
+
+    github_api_url = 'https://api.github.com'
+
+    @staticmethod
+    def _get_changelog_line(item):
+        """Generate each line of changelog"""
+        return "* [#{number}]({url}): {title}\n".format(
+            number=item['number'],
+            url=item['url'],
+            title=item['title']
+        )
+
+    def get_changes_after_last_release(self):
+        """Get all the merged pull request after latest release"""
+        previous_release_date = self._get_latest_release_date()
+
+        if previous_release_date:
+            merged_date_filter = 'merged:>=' + previous_release_date
+        else:
+            # if there is no release for the repo then
+            # do not filter by merged date
+            merged_date_filter = ''
+
+        url = (
+            '{base_url}/search/issues'
+            '?q=repo:{repo_name}+'
+            'is:pr+'
+            'is:merged+'
+            'sort:author-date-asc+'
+            '{merged_date_filter}'
+            '&sort=merged'
+        ).format(
+            base_url=self.github_api_url,
+            repo_name=self.repository,
+            merged_date_filter=merged_date_filter
+        )
+
+        items = []
+
+        response = requests.get(url, headers=self._get_request_headers)
+
+        if response.status_code == 200:
+            response_data = response.json()
+
+            # `total_count` represents the number of
+            # pull requests returned by the API call
+            if response_data['total_count'] > 0:
+                for item in response_data['items']:
+                    data = {
+                        'title': item['title'],
+                        'number': item['number'],
+                        'url': item['html_url'],
+                        'labels': [label['name'] for label in item['labels']]
+                    }
+                    items.append(data)
+            else:
+                msg = (
+                    f'There was no pull request '
+                    f'made on {self.repository} after last release.'
+                )
+                print_message(msg, message_type='error')
+        else:
+            msg = (
+                f'Could not get pull requests for '
+                f'{self.repository} from GitHub API. '
+                f'response status code: {response.status_code}'
+            )
+            print_message(msg, message_type='error')
+
+        return items
+
+    def parse_changelog(self, version, changes):
+        """Parse the pull requests data and return a string"""
+        string_data = (
+            '# ' + self.config['header_prefix'] + ' ' + version + '\n\n'
+        )
+
+        group_config = self.config['group_config']
+
+        if group_config:
+            for config in group_config:
+
+                if len(changes) == 0:
+                    break
+
+                items_string = ''
+
+                for pull_request in changes:
+                    # check if the pull request label matches with
+                    # any label of the config
+                    if (
+                        any(
+                            label in pull_request['labels']
+                            for label in config['labels']
+                        )
+                    ):
+                        items_string += self._get_changelog_line(pull_request)
+                        # remove the item so that one item
+                        # does not match multiple groups
+                        changes.remove(pull_request)
+
+                if items_string:
+                    string_data += '\n#### ' + config['title'] + '\n\n'
+                    string_data += '\n' + items_string
+
+            if changes:
+                # if they do not match any user provided group
+                # Add items in `Other Changes` group
+                string_data += '\n#### Other Changes\n\n'
+                string_data += ''.join(
+                    map(self._get_changelog_line, changes)
+                )
+        else:
+            # If group config does not exist then append it without and groups
+            string_data += ''.join(
+                map(self._get_changelog_line, changes)
+            )
+
+        return string_data
+
+
+class ChangelogCICommitMessage(ChangelogCIBase):
+    """The class that generates, commits and/or comments changelog using commit messages"""
+
+    @staticmethod
+    def _get_changelog_line(item):
+        """Generate each line of changelog"""
+        return "* [{sha}]({url}): {message}\n".format(
+            sha=item['sha'][:6],
+            url=item['url'],
+            message=item['message']
+        )
+
+    def get_changes_after_last_release(self):
+        """Get all the merged pull request after latest release"""
+        previous_release_date = self._get_latest_release_date()
+
+        url = '{base_url}/repos/{repo_name}/commits?since={date}'.format(
+            base_url=self.github_api_url,
+            repo_name=self.repository,
+            date=previous_release_date or ''
+        )
+
+        items = []
+
+        response = requests.get(url, headers=self._get_request_headers)
+
+        if response.status_code == 200:
+            response_data = response.json()
+
+            if len(response_data) > 0:
+                for item in response_data:
+                    message = item['commit']['message']
+                    # Exclude merge commit
+                    if not message.startswith('Merge pull request #'):
+                        data = {
+                            'sha': item['sha'],
+                            'message': message,
+                            'url': item['html_url']
+                        }
+                        items.append(data)
+                    else:
+                        print_message(f'Skipping Merge Commit "{message}"')
+            else:
+                msg = (
+                    f'There was no commit '
+                    f'made on {self.repository} after last release.'
+                )
+                print_message(msg, message_type='error')
+        else:
+            msg = (
+                f'Could not get commits for '
+                f'{self.repository} from GitHub API. '
+                f'response status code: {response.status_code}'
+            )
+            print_message(msg, message_type='error')
+
+        return items
+
+    def parse_changelog(self, version, changes):
+        """Parse the commit data and return a string"""
+        string_data = (
+            '# ' + self.config['header_prefix'] + ' ' + version + '\n\n'
+        )
+        string_data += ''.join(map(self._get_changelog_line, changes))
+
+        return string_data
+
+
+def parse_config(config_file):
     """Parse and Validates user provided config, raises Error if not valid"""
+    if not config_file:
+        print_message(
+            'No Configuration file found, falling back to default configuration',
+            message_type='warning'
+        )
+        return DEFAULT_CONFIG
+
+    try:
+        file = open(config_file)
+        # parse config files with the extension .yml and .yaml
+        # using YAML syntax
+        if config_file.endswith('yml') or config_file.endswith('yaml'):
+            config = yaml.load(file, Loader=yaml.FullLoader)
+        # default to parsing the config file using JSON
+        else:
+            config = json.load(file)
+
+        file.close()
+    except Exception as e:
+        msg = (
+            f'Invalid Configuration file, error: {e}, '
+            'falling back to default configuration to parse changelog'
+        )
+        print_message(msg, message_type='error')
+        # if invalid fall back to default config
+        return DEFAULT_CONFIG
+
     if not isinstance(config, dict):
         raise TypeError(
             'Configuration does not contain required key, value pairs'
@@ -435,7 +523,7 @@ def parse_config(config):
             '`pull_request_title_regex` was not provided or not valid, '
             'Falling back to default regex.'
         )
-        _print_output('warning', msg)
+        print_message(msg, message_type='warning')
         # if the pull_request_title_regex is not valid or not available
         # fallback to default regex
         config.update({
@@ -455,7 +543,7 @@ def parse_config(config):
             '`version_regex` was not provided or not valid, '
             'Falling back to default regex.'
         )
-        _print_output('warning', msg)
+        print_message(msg, message_type='warning')
         # if the version_regex is not valid or not available
         # fallback to default regex
         config.update({
@@ -472,7 +560,7 @@ def parse_config(config):
             '`commit_changelog` was not provided or not valid, '
             'falling back to `True`.'
         )
-        _print_output('warning', msg)
+        print_message(msg, message_type='warning')
         # if commit_changelog is not provided default to True
         config.update({
             "commit_changelog": True
@@ -488,33 +576,53 @@ def parse_config(config):
             '`comment_changelog` was not provided or not valid, '
             'falling back to `False`.'
         )
-        _print_output('warning', msg)
+        print_message(msg, message_type='warning')
         # if comment_changelog is not provided default to False
         config.update({
             "comment_changelog": False
         })
 
     header_prefix = config.get('header_prefix')
-    group_config = config.get('group_config')
 
     if not header_prefix or not isinstance(header_prefix, str):
         msg = (
             '`header_prefix` was not provided or not valid, '
             'falling back to default prefix.'
         )
-        _print_output('warning', msg)
+        print_message(msg, message_type='warning')
         # if the header_prefix is not not available
         # fallback to default prefix
         config.update({
             "header_prefix": DEFAULT_VERSION_PREFIX
         })
 
+    changelog_type = config.get('changelog_type')
+
+    if not (
+        changelog_type and
+        isinstance(changelog_type, str) and
+        changelog_type in [PULL_REQUEST, COMMIT]
+    ):
+        msg = (
+            '`changelog_type` was not provided or not valid, '
+            f'the options are "{PULL_REQUEST}" or "{COMMIT}", '
+            f'falling back to default value of "{PULL_REQUEST}".'
+        )
+        print_message(msg, message_type='warning')
+        # if changelog_type is not not available
+        # fallback to default PULL_REQUEST
+        config.update({
+            "changelog_type": PULL_REQUEST
+        })
+
+    group_config = config.get('group_config')
+
     if not group_config or not isinstance(group_config, list):
         msg = (
             '`group_config` was not provided or not valid, '
             'falling back to default group config.'
         )
-        _print_output('warning', msg)
+        print_message(msg, message_type='warning')
         # if the group_config is not not available
         # fallback to default group_config
         config.update({
@@ -523,17 +631,17 @@ def parse_config(config):
     else:
         try:
             # Check if all the group configs match the schema
-            for config in group_config:
+            for item in group_config:
                 if not isinstance(config, dict):
                     raise TypeError(
                         'group_config items must have key, '
                         'value pairs of title and labels'
                     )
-                title = config.get('title')
-                labels = config.get('labels')
+                title = item.get('title')
+                labels = item.get('labels')
 
-                if not title:
-                    raise KeyError('group_config item must contain title')
+                if not (title and isinstance(title, str)):
+                    raise KeyError('group_config item must contain string title')
 
                 if not labels:
                     raise KeyError('group_config item must contain labels')
@@ -543,19 +651,33 @@ def parse_config(config):
 
         except Exception as e:
             msg = (
-                f'An error occurred while parsing `group_config`. Error: {e}'
+                f'An error occurred while parsing `group_config`. Error: {e} '
                 f'falling back to default group config.'
             )
-            _print_output('warning', msg)
+            print_message(msg, message_type='warning')
             # Fallback to default group_config
             config.update({
                 "group_config": DEFAULT_GROUP_CONFIG
             })
+    return config
 
 
-def _print_output(type, message):
+def print_message(message, message_type=None):
     """Helper function to print colorful outputs in GitHub Actions shell"""
-    return subprocess.run(['echo', f'::{type}::{message}'])
+    # docs: https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions
+    if not message_type:
+        return subprocess.run(['echo', f'{message}'])
+
+    if message_type == 'endgroup':
+        return subprocess.run(['echo', '::endgroup::'])
+
+    return subprocess.run(['echo', f'::{message_type}::{message}'])
+
+
+CI_CLASSES = {
+    PULL_REQUEST: ChangelogCIPullRequest,
+    COMMIT: ChangelogCICommitMessage
+}
 
 
 if __name__ == '__main__':
@@ -574,29 +696,43 @@ if __name__ == '__main__':
     email = os.environ['INPUT_COMMITTER_EMAIL']
 
     # Group: Checkout git repository
-    subprocess.run(['echo', '::group::Checkout git repository'])
+    print_message('Checkout git repository', message_type='group')
 
     subprocess.run(['git', 'fetch', '--prune', '--unshallow', 'origin', ref])
     subprocess.run(['git', 'checkout', ref])
 
-    subprocess.run(['echo', '::endgroup::'])
+    print_message('', message_type='endgroup')
 
     # Group: Configure Git
-    subprocess.run(['echo', '::group::Configure Git'])
+    print_message('Configure Git', message_type='group')
 
     subprocess.run(['git', 'config', 'user.name', username])
     subprocess.run(['git', 'config', 'user.email', email])
 
-    subprocess.run(['echo', '::endgroup::'])
+    print_message('', message_type='endgroup')
+
+    print_message('Parse Configuration', message_type='group')
+
+    config = parse_config(config_file)
+
+    print_message('', message_type='endgroup')
 
     # Group: Generate Changelog
-    subprocess.run(['echo', '::group::Generate Changelog'])
+    print_message('Generate Changelog', message_type='group')
+    # Get CI class using configuration
+    changelog_ci_class = CI_CLASSES.get(
+        config['changelog_type']
+    )
+
     # Initialize the Changelog CI
-    ci = ChangelogCI(
-        repository, event_path, filename=filename,
-        config_file=config_file, token=token
+    ci = changelog_ci_class(
+        repository,
+        event_path,
+        config,
+        filename=filename,
+        token=token
     )
     # Run Changelog CI
     ci.run()
 
-    subprocess.run(['echo', '::endgroup::'])
+    print_message('', message_type='endgroup')

@@ -13,6 +13,8 @@ automatically generated changelog.
 
 The workflow can be configured to perform **any (or all)** of the following actions
 
+* **Generate** changelog using **Pull Request** or **Commit Messages**.
+
 * **Prepend** the generated changelog to the `CHANGELOG.md` file and then **Commit** modified `CHANGELOG.md` file to the release pull request.
 
 * Add a **Comment** on the release pull request with the generated changelog.
@@ -21,7 +23,7 @@ The workflow can be configured to perform **any (or all)** of the following acti
 
 Changelog CI uses `python` and `GitHub API` to generate changelog for a
 repository. First, it tries to get the `latest release` from the repository (If
-available). Then, it checks all the pull requests merged after the last release
+available). Then, it checks all the **pull requests** / **commits** merged after the last release
 using the GitHub API. After that, it parses the data and generates
 the `changelog`. Finally, It writes the generated changelog at the beginning of
 the `CHANGELOG.md` (or user-provided filename) file. In addition to that, if a
@@ -38,6 +40,10 @@ or the user-provided `regex` from the config file.
 **Default Title Regex:** `^(?i:release)` (title must start with the word "
 release" (case-insensitive))
 
+**Default Changelog Type:** `pull_request` (Changelog will be generated using pull request title),
+You can generate changelog using `commit_message` as well
+[Using an optional configuration file](#using-an-optional-configuration-file).
+
 **Default Version Number Regex:** This Regex will be checked against a Pull
 Request title. This follows [`SemVer`](https://regex101.com/r/Ly7O1x/3/) (
 Semantic Versioning) pattern. e.g. `1.0.0`, `1.0`, `v1.0.1` etc.
@@ -49,7 +55,7 @@ link: https://regex101.com/r/Ly7O1x/3/
 one to the optional configuration file. To learn more, see
 [Using an optional configuration file](#using-an-optional-configuration-file).
 
-To **Enable Commenting, Disable Committing, Group changelog items** and  
+To **Enable Commenting, Disable Committing, Group Changelog Items, Use Commit Messages** and
 some other options, see [Configuration](#configuration) to learn more.
 
 To integrate `Changelog CI` with your repositories Actions, Put this step inside
@@ -94,7 +100,7 @@ your `.github/workflows/workflow.yml` file:
 
 Changelog CI is will run perfectly fine without including a configuration file.
 If a user seeks to modify the default behaviors of Changelog CI, they can do so
-by adding a `JSON` or `YAML` config file to the project. For exmaple:
+by adding a `JSON` or `YAML` config file to the project. For example:
 
 * Including `JSON` file `changelog-ci-config.json`:
 
@@ -103,7 +109,7 @@ by adding a `JSON` or `YAML` config file to the project. For exmaple:
       config_file: changelog-ci-config.json
     ```
 
-* Including `YAML` file `changelog-ci-config.yml`:
+* Including `YAML` file `changelog-ci-config.yaml`:
 
     ```yaml
     with:
@@ -111,6 +117,11 @@ by adding a `JSON` or `YAML` config file to the project. For exmaple:
     ```
 
 ### Valid options
+
+* `changelog_type`
+  You can use `pull_request` (Default) or `commit_message` as the value for this option.
+  `pull_request` option will generate changelog using pull request title.
+  `commit_message` option will generate changelog using commit messages.
 
 * `header_prefix`
   The prefix before the version number. e.g. `version:` in `Version: 1.0.2`
@@ -150,6 +161,7 @@ Written in JSON:
 
 ```json
 {
+  "changelog_type": "commit_message",
   "header_prefix": "Version:",
   "commit_changelog": true,
   "comment_changelog": true,
@@ -179,6 +191,7 @@ Written in JSON:
 Written in YAML:
 
 ```yaml
+changelog_type: 'commit_message' # or 'pull_request'
 header_prefix: 'Version:'
 commit_changelog: true
 comment_changelog: true
@@ -203,16 +216,17 @@ group_config:
       - doc
 ```
 
-In this Example **`version_regex`** matches any version number including date (
+* In this Example **`version_regex`** matches any version number including date (
 e.g: **`v1.1.0 (01-23-2018)`**) in the pull request title. If you don't provide
 any `regex` Changelog CI will use default
 [`SemVer`](https://regex101.com/r/Ly7O1x/3/) pattern. e.g. **`1.0.1`**
 , **`v1.0.2`**.
 
-Here **`pull_request_title_regex`** will match any pull request title that
+* Here the changelog will be generated using commit messages because of `changelog_type: 'commit_message'`.
+
+* Here **`pull_request_title_regex`** will match any pull request title that
 starts with **`Release`**
-you can match **Any Pull Request Title** by adding
-this **`pull_request_title_regex": ".*"`**,
+you can match **Any Pull Request Title** by adding  this **`pull_request_title_regex": ".*"`**,
 
 **[Click here to see the example output using this config](#example-changelog-output-using-config-file)**
 
@@ -250,7 +264,7 @@ jobs:
 ![Changelog CI](https://user-images.githubusercontent.com/24854406/93024522-1844d180-f619-11ea-9c25-57b4e95b822b.gif)
 
 
-# Example Changelog Output using config file:
+# Example Changelog Output using config file (Pull Request):
 
 ## Version: v2.1.0 (02-25-2020)
 
@@ -279,6 +293,21 @@ jobs:
 
 * [#66](https://github.com/test/test/pull/66): Docs update
 
+# Example Changelog Output using config file (Commit Messages):
+
+## Version: v2.1.0 (02-25-2020)
+
+* [123456](https://github.com/test/test/commit/9bec2dbdsgfsdf8b4de11edb): Keep updating the readme
+* [123456](https://github.com/test/test/commit/9bec2dbdsgfsdf8b4de11edb): Again updating the Same Readme file
+* [123456](https://github.com/test/test/commit/9bec2dbdsgfsdf8b4de11edb): Update README.md
+* [123456](https://github.com/test/test/commit/9bec2dbdsgfsdf8b4de11edb): Docs update
+
+
+## Version: v1.1.0 (01-01-2020)
+
+* [123456](https://github.com/test/test/commit/9bec2dbdsgfsdf8b4de11edb): Keep updating the readme
+* [123456](https://github.com/test/test/commit/9bec2dbdsgfsdf8b4de11edb): Again updating the Same Readme file
+* [123456](https://github.com/test/test/commit/9bec2dbdsgfsdf8b4de11edb): Docs update
 
 # Example Changelog Output without using config file:
 
