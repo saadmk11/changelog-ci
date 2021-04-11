@@ -599,13 +599,13 @@ def parse_config(config_file):
     changelog_type = config.get('changelog_type')
 
     if not (
-        changelog_type or
-        isinstance(changelog_type, str) or
+        changelog_type and
+        isinstance(changelog_type, str) and
         changelog_type in [PULL_REQUEST, COMMIT]
     ):
         msg = (
             '`changelog_type` was not provided or not valid, '
-            f'the options are {PULL_REQUEST} or {COMMIT}, '
+            f'the options are "{PULL_REQUEST}" or "{COMMIT}", '
             f'falling back to default value of "{PULL_REQUEST}".'
         )
         print_message(msg, message_type='warning')
@@ -640,8 +640,8 @@ def parse_config(config_file):
                 title = item.get('title')
                 labels = item.get('labels')
 
-                if not title:
-                    raise KeyError('group_config item must contain title')
+                if not (title and isinstance(title, str)):
+                    raise KeyError('group_config item must contain string title')
 
                 if not labels:
                     raise KeyError('group_config item must contain labels')
@@ -651,7 +651,7 @@ def parse_config(config_file):
 
         except Exception as e:
             msg = (
-                f'An error occurred while parsing `group_config`. Error: {e}'
+                f'An error occurred while parsing `group_config`. Error: {e} '
                 f'falling back to default group config.'
             )
             print_message(msg, message_type='warning')
