@@ -2,7 +2,7 @@ name: Changelog CI
 
 on:
   pull_request:
-    types: [opened, reopened]
+    types: [opened]
 
 jobs:
   build:
@@ -13,6 +13,3 @@ jobs:
 
       - name: Run Changelog CI
         uses: saadmk11/changelog-ci@master
-        env:
-          USERNAME:  ${{secrets.USERNAME}}
-          EMAIL:  ${{secrets.EMAIL}}
