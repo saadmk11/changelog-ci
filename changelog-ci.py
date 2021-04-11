@@ -702,6 +702,7 @@ if __name__ == '__main__':
     print_message('Parse Configuration', message_type='group')
 
     config = parse_config(config_file)
+    print(config)
     
     print_message('', message_type='endgroup')
 
