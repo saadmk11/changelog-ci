@@ -445,6 +445,8 @@ class ChangelogCICommitMessage(ChangelogCIBase):
                             'url': item['html_url']
                         }
                         items.append(data)
+                    else:
+                        print_message(f'Skipping Merge Commit "{message}"')
             else:
                 msg = (
                     f'There was no commit '
