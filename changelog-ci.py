@@ -698,7 +698,6 @@ if __name__ == '__main__':
     # Group: Checkout git repository
     print_message('Checkout git repository', message_type='group')
 
-
     subprocess.run(['git', 'fetch', '--prune', '--unshallow', 'origin', ref])
     subprocess.run(['git', 'checkout', ref])
 
@@ -715,7 +714,6 @@ if __name__ == '__main__':
     print_message('Parse Configuration', message_type='group')
 
     config = parse_config(config_file)
-    print(config)
 
     print_message('', message_type='endgroup')
 
@@ -723,9 +721,9 @@ if __name__ == '__main__':
     print_message('Generate Changelog', message_type='group')
     # Get CI class using configuration
     changelog_ci_class = CI_CLASSES.get(
-        config['generate_changelog_using']
+        config['changelog_type']
     )
-    print(changelog_ci_class)
+
     # Initialize the Changelog CI
     ci = changelog_ci_class(
         repository,
