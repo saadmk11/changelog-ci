@@ -18,7 +18,7 @@ DEFAULT_VERSION_PREFIX = "Version:"
 DEFAULT_GROUP_CONFIG = []
 
 PULL_REQUEST = 'pull_request'
-COMMIT = 'commit'
+COMMIT = 'commit_message'
 
 DEFAULT_CONFIG = {
     "header_prefix": DEFAULT_VERSION_PREFIX,
@@ -656,7 +656,7 @@ def print_message(message, message_type=None):
         return subprocess.run(['echo', f'{message}'])
 
     if message_type == 'endgroup':
-        return print_message('', message_type='endgroup')
+        return subprocess.run(['echo', '::endgroup::'])
 
     return subprocess.run(['echo', f'::{message_type}::{message}'])
 
