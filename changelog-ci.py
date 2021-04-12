@@ -473,12 +473,14 @@ class ChangelogCIConfiguration:
     DEFAULT_PULL_REQUEST_TITLE_REGEX = r"^(?i:release)"
     DEFAULT_VERSION_PREFIX = "Version:"
     DEFAULT_GROUP_CONFIG = []
+    COMMIT_CHANGELOG = True
+    COMMENT_CHANGELOG = False
 
     def __init__(self, config_file):
         # Initialize with default configuration
         self.header_prefix = self.DEFAULT_VERSION_PREFIX
-        self.commit_changelog = True
-        self.comment_changelog = False
+        self.commit_changelog = self.COMMIT_CHANGELOG
+        self.comment_changelog = self.COMMENT_CHANGELOG
         self.pull_request_title_regex = self.DEFAULT_PULL_REQUEST_TITLE_REGEX
         self.version_regex = self.DEFAULT_SEMVER_REGEX
         self.changelog_type = PULL_REQUEST
