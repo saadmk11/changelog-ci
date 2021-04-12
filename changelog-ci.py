@@ -670,16 +670,11 @@ class ChangelogCIConfiguration:
             return
 
         for item in group_config:
-            self.validate_group_config_item(item, group_config)
+            self.validate_group_config_item(item)
 
-        if group_config:
-            self.group_config = group_config
-
-    @staticmethod
-    def validate_group_config_item(item, group_config):
+    def validate_group_config_item(self, item):
         """Validate and set group_config item configuration option"""
         if not isinstance(item, dict):
-            group_config.remove(item)
             msg = (
                 '`group_config` items must have key, '
                 'value pairs of `title` and `labels`'
@@ -690,8 +685,7 @@ class ChangelogCIConfiguration:
         title = item.get('title')
         labels = item.get('labels')
 
-        if not (title and isinstance(title, str)):
-            group_config.remove(item)
+        if not title or not isinstance(title, str):
             msg = (
                 '`group_config` item must contain string title, '
                 f'but got `{title}`'
@@ -699,8 +693,7 @@ class ChangelogCIConfiguration:
             print_message(msg, message_type='error')
             return
 
-        if not (labels and isinstance(labels, list)):
-            group_config.remove(item)
+        if not labels or not isinstance(labels, list):
             msg = (
                 '`group_config` item must contain array of labels, '
                 f'but got `{labels}`'
@@ -709,13 +702,14 @@ class ChangelogCIConfiguration:
             return
 
         if not all(isinstance(label, str) for label in labels):
-            group_config.remove(item)
             msg = (
                 '`group_config` labels array must be string type, '
                 f'but got `{labels}`'
             )
             print_message(msg, message_type='error')
             return
+
+        self.group_config.append(item)
 
 
 def print_message(message, message_type=None):
