@@ -1,3 +1,13 @@
+# Version: 0.8.0
+
+* [#50](https://github.com/saadmk11/changelog-ci/pull/50): Update LICENSE Copyright year
+* [#52](https://github.com/saadmk11/changelog-ci/pull/52): Add GitHub Actions Version Updater
+* [#51](https://github.com/saadmk11/changelog-ci/pull/51): Update changelog-ci.yaml
+* [#53](https://github.com/saadmk11/changelog-ci/pull/53): Update GitHub Action Versions
+* [#54](https://github.com/saadmk11/changelog-ci/pull/54): Add Option to Generate Changelog Using Commit Message
+* [#55](https://github.com/saadmk11/changelog-ci/pull/55): Refactor User Configuration Parsing and Validation
+
+
 # Version: 0.7.5
 
 * [#37](https://github.com/saadmk11/changelog-ci/pull/37): Separate GitHub API Base URL
