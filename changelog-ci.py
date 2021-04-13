@@ -8,11 +8,6 @@ import requests
 import yaml
 
 
-# Changelog types
-PULL_REQUEST = 'pull_request'
-COMMIT = 'commit_message'
-
-
 class ChangelogCIBase:
     """Base Class for Changelog CI"""
 
@@ -265,9 +260,7 @@ class ChangelogCIBase:
 
 
 class ChangelogCIPullRequest(ChangelogCIBase):
-    """The class that generates, commits and/or comments changelog using pull requests"""
-
-    github_api_url = 'https://api.github.com'
+    """Generates, commits and/or comments changelog using pull requests"""
 
     @staticmethod
     def _get_changelog_line(item):
@@ -388,7 +381,7 @@ class ChangelogCIPullRequest(ChangelogCIBase):
 
 
 class ChangelogCICommitMessage(ChangelogCIBase):
-    """The class that generates, commits and/or comments changelog using commit messages"""
+    """Generates, commits and/or comments changelog using commit messages"""
 
     @staticmethod
     def _get_changelog_line(item):
@@ -462,7 +455,8 @@ class ChangelogCIConfiguration:
     """Configuration class for Changelog CI"""
 
     # The regular expression used to extract semantic versioning is a
-    # slightly less restrictive modification of the following regular expression
+    # slightly less restrictive modification of
+    # the following regular expression
     # https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
     DEFAULT_SEMVER_REGEX = (
         r"v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.?(0|[1-9]\d*)?(?:-(("
@@ -475,6 +469,9 @@ class ChangelogCIConfiguration:
     DEFAULT_GROUP_CONFIG = []
     COMMIT_CHANGELOG = True
     COMMENT_CHANGELOG = False
+    # Changelog types
+    PULL_REQUEST = 'pull_request'
+    COMMIT = 'commit_message'
 
     def __init__(self, config_file):
         # Initialize with default configuration
@@ -483,7 +480,7 @@ class ChangelogCIConfiguration:
         self.comment_changelog = self.COMMENT_CHANGELOG
         self.pull_request_title_regex = self.DEFAULT_PULL_REQUEST_TITLE_REGEX
         self.version_regex = self.DEFAULT_SEMVER_REGEX
-        self.changelog_type = PULL_REQUEST
+        self.changelog_type = self.PULL_REQUEST
         self.group_config = self.DEFAULT_GROUP_CONFIG
 
         self.user_raw_config = self.get_user_config(config_file)
@@ -492,7 +489,10 @@ class ChangelogCIConfiguration:
 
     @staticmethod
     def get_user_config(config_file):
-        """Read user provided configuration file and return user configuration"""
+        """
+        Read user provided configuration file and
+        return user configuration
+        """
         if not config_file:
             print_message(
                 'No Configuration file found, '
@@ -532,7 +532,10 @@ class ChangelogCIConfiguration:
             return
 
     def validate_configuration(self):
-        """Validate all the configuration options and update configuration attributes"""
+        """
+        Validate all the configuration options and
+        update configuration attributes
+        """
         if not self.user_raw_config:
             return
 
@@ -593,7 +596,9 @@ class ChangelogCIConfiguration:
 
     def validate_pull_request_title_regex(self):
         """Validate and set pull_request_title_regex configuration option"""
-        pull_request_title_regex = self.user_raw_config.get('pull_request_title_regex')
+        pull_request_title_regex = self.user_raw_config.get(
+            'pull_request_title_regex'
+        )
 
         if not pull_request_title_regex:
             msg = (
@@ -644,11 +649,11 @@ class ChangelogCIConfiguration:
         if not (
             changelog_type and
             isinstance(changelog_type, str) and
-            changelog_type in [PULL_REQUEST, COMMIT]
+            changelog_type in [self.PULL_REQUEST, self.COMMIT]
         ):
             msg = (
                 '`changelog_type` was not provided or not valid, '
-                f'the options are "{PULL_REQUEST}" or "{COMMIT}", '
+                f'the options are "{self.PULL_REQUEST}" or "{self.COMMIT}", '
                 f'falling back to default value of "{self.changelog_type}".'
             )
             print_message(msg, message_type='warning')
@@ -714,7 +719,7 @@ class ChangelogCIConfiguration:
 
 def print_message(message, message_type=None):
     """Helper function to print colorful outputs in GitHub Actions shell"""
-    # docs: https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions
+    # https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions
     if not message_type:
         return subprocess.run(['echo', f'{message}'])
 
@@ -724,9 +729,9 @@ def print_message(message, message_type=None):
     return subprocess.run(['echo', f'::{message_type}::{message}'])
 
 
-CI_CLASSES = {
-    PULL_REQUEST: ChangelogCIPullRequest,
-    COMMIT: ChangelogCICommitMessage
+CHANGELOG_CI_CLASSES = {
+    ChangelogCIConfiguration.PULL_REQUEST: ChangelogCIPullRequest,
+    ChangelogCIConfiguration.COMMIT: ChangelogCICommitMessage
 }
 
 
@@ -748,7 +753,12 @@ if __name__ == '__main__':
     # Group: Checkout git repository
     print_message('Checkout git repository', message_type='group')
 
-    subprocess.run(['git', 'fetch', '--prune', '--unshallow', 'origin', pull_request_branch])
+    subprocess.run(
+        [
+            'git', 'fetch', '--prune', '--unshallow', 'origin',
+            pull_request_branch
+        ]
+    )
     subprocess.run(['git', 'checkout', pull_request_branch])
 
     print_message('', message_type='endgroup')
@@ -770,7 +780,7 @@ if __name__ == '__main__':
     # Group: Generate Changelog
     print_message('Generate Changelog', message_type='group')
     # Get CI class using configuration
-    changelog_ci_class = CI_CLASSES.get(
+    changelog_ci_class = CHANGELOG_CI_CLASSES.get(
         config.changelog_type
     )
 
