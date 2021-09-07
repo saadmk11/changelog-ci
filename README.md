@@ -6,7 +6,7 @@
 [![GitHub Marketplace](https://img.shields.io/badge/Get%20It-on%20Marketplace-orange?style=flat-square)](https://github.com/marketplace/actions/changelog-ci)
 [![GitHub stars](https://img.shields.io/github/stars/JonathanAquino/changelog-ci?color=success&style=flat-square)](https://github.com/JonathanAquino/changelog-ci/stargazers)
 
-## What is Changelog CI?
+## What is Changelog CI??
 
 Changelog CI is a GitHub Action that enables a project to utilize an
 automatically generated changelog.
