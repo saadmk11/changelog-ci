@@ -1,14 +1,14 @@
-![Changelog CI Banner](https://i.imgur.com/72lxPjs.png)
+![Changelog PR Banner](https://i.imgur.com/72lxPjs.png)
 
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/JonathanAquino/changelog-ci?style=flat-square)](https://github.com/JonathanAquino/changelog-ci/releases/latest)
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/JonathanAquino/changelog-ci/Changelog%20CI?label=Changelog%20CI&style=flat-square)
-[![GitHub](https://img.shields.io/github/license/JonathanAquino/changelog-ci?style=flat-square)](https://github.com/JonathanAquino/changelog-ci/blob/master/LICENSE)
-[![GitHub Marketplace](https://img.shields.io/badge/Get%20It-on%20Marketplace-orange?style=flat-square)](https://github.com/marketplace/actions/changelog-ci)
-[![GitHub stars](https://img.shields.io/github/stars/JonathanAquino/changelog-ci?color=success&style=flat-square)](https://github.com/JonathanAquino/changelog-ci/stargazers)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/JonathanAquino/changelog-pr?style=flat-square)](https://github.com/JonathanAquino/changelog-pr/releases/latest)
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/JonathanAquino/changelog-pr/Changelog%20CI?label=Changelog%20CI&style=flat-square)
+[![GitHub](https://img.shields.io/github/license/JonathanAquino/changelog-pr?style=flat-square)](https://github.com/JonathanAquino/changelog-pr/blob/master/LICENSE)
+[![GitHub Marketplace](https://img.shields.io/badge/Get%20It-on%20Marketplace-orange?style=flat-square)](https://github.com/marketplace/actions/changelog-pr)
+[![GitHub stars](https://img.shields.io/github/stars/JonathanAquino/changelog-pr?color=success&style=flat-square)](https://github.com/JonathanAquino/changelog-pr/stargazers)
 
-## What is Changelog CI?
+## What is Changelog PR?
 
-Changelog CI is a GitHub Action that enables a project to utilize an
+Changelog PR is a GitHub Action that enables a project to utilize an
 automatically generated changelog.
 
 The workflow can be configured to perform **any (or all)** of the following actions
@@ -21,13 +21,13 @@ The workflow can be configured to perform **any (or all)** of the following acti
 
 ## How Does It Work:
 
-Changelog CI uses `python` and `GitHub API` to generate changelog for a
+Changelog PR uses `python` and `GitHub API` to generate changelog for a
 repository. First, it tries to get the `latest release` from the repository (If
 available). Then, it checks all the **pull requests** / **commits** merged after the last release
 using the GitHub API. After that, it parses the data and generates
 the `changelog`. Finally, It writes the generated changelog at the beginning of
 the `CHANGELOG.md` (or user-provided filename) file. In addition to that, if a
-user provides a config (JSON/YAML file), Changelog CI parses the user-provided config
+user provides a config (JSON/YAML file), Changelog PR parses the user-provided config
 file and renders the changelog according to users config. Then the changes
 are **committed** and/or **commented** to the release Pull request.
 
@@ -58,12 +58,12 @@ one to the optional configuration file. To learn more, see
 To **Enable Commenting, Disable Committing, Group Changelog Items, Use Commit Messages** and
 some other options, see [Configuration](#configuration) to learn more.
 
-To integrate `Changelog CI` with your repositories Actions, Put this step inside
+To integrate `Changelog PR` with your repositories Actions, Put this step inside
 your `.github/workflows/workflow.yml` file:
 
 ```yaml
-- name: Run Changelog CI
-    uses: JonathanAquino/changelog-ci@v0.8.0
+- name: Run Changelog PR
+    uses: JonathanAquino/changelog-pr@v0.8.0
     with:
       # Optional, you can provide any name for your changelog file,
       # defaults to `CHANGELOG.md` if not provided.
@@ -72,7 +72,7 @@ your `.github/workflows/workflow.yml` file:
       # e.g: group your changelog by labels with custom titles,
       # different version prefix, pull request title and version number regex etc.
       # config file can be in JSON or YAML format.
-      config_file: changelog-ci-config.json
+      config_file: changelog-pr-config.json
       # Optional, This will be used to configure git
       # defaults to `github-actions[bot]` if not provided.
       committer_username: 'test'
@@ -84,36 +84,36 @@ your `.github/workflows/workflow.yml` file:
       GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 ```
 
-**Changelog CI Badge:**
+**Changelog PR Badge:**
 
 ```markdown
-![Changelog CI Status](https://github.com/<username>/<repository>/workflows/Changelog%20CI/badge.svg)
+![Changelog PR Status](https://github.com/<username>/<repository>/workflows/Changelog%20CI/badge.svg)
 ```
 
 **Output:**
 
-![Changelog CI Status](https://github.com/JonathanAquino/changelog-ci/workflows/Changelog%20CI/badge.svg)
+![Changelog PR Status](https://github.com/JonathanAquino/changelog-pr/workflows/Changelog%20CI/badge.svg)
 
 ## Configuration
 
 ### Using an optional configuration file
 
-Changelog CI is will run perfectly fine without including a configuration file.
-If a user seeks to modify the default behaviors of Changelog CI, they can do so
+Changelog PR is will run perfectly fine without including a configuration file.
+If a user seeks to modify the default behaviors of Changelog PR, they can do so
 by adding a `JSON` or `YAML` config file to the project. For example:
 
-* Including `JSON` file `changelog-ci-config.json`:
+* Including `JSON` file `changelog-pr-config.json`:
 
     ```yaml
     with:
-      config_file: changelog-ci-config.json
+      config_file: changelog-pr-config.json
     ```
 
-* Including `YAML` file `changelog-ci-config.yaml`:
+* Including `YAML` file `changelog-pr-config.yaml`:
 
     ```yaml
     with:
-      config_file: changelog-ci-config.yml
+      config_file: changelog-pr-config.yml
     ```
 
 ### Valid options
@@ -128,15 +128,15 @@ by adding a `JSON` or `YAML` config file to the project. For example:
 
 * `commit_changelog`
   Value can be `true` or `false`. if not provided defaults to `true`. If it is
-  set to `true` then Changelog CI will commit to the release pull request.
+  set to `true` then Changelog PR will commit to the release pull request.
 
 * `comment_changelog`
   Value can be `true` or `false`. if not provided defaults to `false`. If it is
-  set to `true` then Changelog CI will comment on the release pull request. This
+  set to `true` then Changelog PR will comment on the release pull request. This
   requires `GITHUB_TOKEN` to be added to the workflow.
 
 * `pull_request_title_regex`
-  If the pull request title matches with this `regex` Changelog CI will generate
+  If the pull request title matches with this `regex` Changelog PR will generate
   changelog for it. Otherwise, it will skip the changelog generation.
   If `pull_request_title_regex` is not provided defaults to `^(?i:release)`,
   then the title must begin with the word "release" (case-insensitive).
@@ -218,7 +218,7 @@ group_config:
 
 * In this Example **`version_regex`** matches any version number including date (
 e.g: **`v1.1.0 (01-23-2018)`**) in the pull request title. If you don't provide
-any `regex` Changelog CI will use default
+any `regex` Changelog PR will use default
 [`SemVer`](https://regex101.com/r/Ly7O1x/3/) pattern. e.g. **`1.0.1`**
 , **`v1.0.2`**.
 
@@ -234,7 +234,7 @@ you can match **Any Pull Request Title** by adding  this **`pull_request_title_r
 ## Example Workflow
 
 ```yaml
-name: Changelog CI
+name: Changelog PR
 
 # Controls when the action will run. Triggers the workflow on a pull request
 on:
@@ -249,19 +249,19 @@ jobs:
       # Checks-out your repository
       - uses: actions/checkout@v2
 
-      - name: Run Changelog CI
-        uses: JonathanAquino/changelog-ci@v0.8.0
+      - name: Run Changelog PR
+        uses: JonathanAquino/changelog-pr@v0.8.0
         with:
           changelog_filename: CHANGELOG.md
-          config_file: changelog-ci-config.json
+          config_file: changelog-pr-config.json
         # Add this if you are using it on a private repository
         # Or if you have turned on commenting through the config file.
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 ```
 
-## Changelog CI in Action (Comment & Commit)
-![Changelog CI](https://user-images.githubusercontent.com/24854406/93024522-1844d180-f619-11ea-9c25-57b4e95b822b.gif)
+## Changelog PR in Action (Comment & Commit)
+![Changelog PR](https://user-images.githubusercontent.com/24854406/93024522-1844d180-f619-11ea-9c25-57b4e95b822b.gif)
 
 
 # Example Changelog Output using config file (Pull Request):

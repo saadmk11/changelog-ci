@@ -9,7 +9,7 @@ import yaml
 
 
 class ChangelogCIBase:
-    """Base Class for Changelog CI"""
+    """Base Class for Changelog PR"""
 
     github_api_url = 'https://api.github.com'
 
@@ -143,7 +143,7 @@ class ChangelogCIBase:
 
         subprocess.run(['git', 'add', self.filename])
         subprocess.run(
-            ['git', 'commit', '-m', '(Changelog CI) Added Changelog']
+            ['git', 'commit', '-m', '(Changelog PR) Added Changelog']
         )
         subprocess.run(
             ['git', 'push', '-u', 'origin', self.pull_request_branch]
@@ -159,7 +159,7 @@ class ChangelogCIBase:
                 "`GITHUB_TOKEN` is required for this operation. "
                 "If you want to enable Changelog comment, please add "
                 "`GITHUB_TOKEN` to your workflow yaml file. "
-                "Look at Changelog CI's documentation for more information."
+                "Look at Changelog PR's documentation for more information."
             )
 
             print_message(msg, message_type='error')
@@ -197,7 +197,7 @@ class ChangelogCIBase:
             print_message(msg, message_type='error')
 
     def run(self):
-        """Entrypoint to the Changelog CI"""
+        """Entrypoint to the Changelog PR"""
         if (
             not self.config.commit_changelog and
             not self.config.comment_changelog
@@ -452,7 +452,7 @@ class ChangelogCICommitMessage(ChangelogCIBase):
 
 
 class ChangelogCIConfiguration:
-    """Configuration class for Changelog CI"""
+    """Configuration class for Changelog PR"""
 
     # The regular expression used to extract semantic versioning is a
     # slightly less restrictive modification of
@@ -729,7 +729,7 @@ def print_message(message, message_type=None):
     return subprocess.run(['echo', f'::{message_type}::{message}'])
 
 
-CHANGELOG_CI_CLASSES = {
+CHANGELOG_PR_CLASSES = {
     ChangelogCIConfiguration.PULL_REQUEST: ChangelogCIPullRequest,
     ChangelogCIConfiguration.COMMIT: ChangelogCICommitMessage
 }
@@ -780,12 +780,12 @@ if __name__ == '__main__':
     # Group: Generate Changelog
     print_message('Generate Changelog', message_type='group')
     # Get CI class using configuration
-    changelog_ci_class = CHANGELOG_CI_CLASSES.get(
+    changelog_pr_class = CHANGELOG_PR_CLASSES.get(
         config.changelog_type
     )
 
-    # Initialize the Changelog CI
-    ci = changelog_ci_class(
+    # Initialize the Changelog PR
+    ci = changelog_pr_class(
         repository,
         event_path,
         config,
@@ -793,7 +793,7 @@ if __name__ == '__main__':
         filename=filename,
         token=token
     )
-    # Run Changelog CI
+    # Run Changelog PR
     ci.run()
 
     print_message('', message_type='endgroup')
