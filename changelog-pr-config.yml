@@ -4,17 +4,35 @@ commit_changelog: true
 comment_changelog: false
 pull_request_title_regex: '^Release'
 group_config:
-  - title: Breaking Changes
+  # Labels are based on https://keepachangelog.com/en/1.0.0/#types
+  # Update them to match your own labels.
+
+  # Added for new features.
+  - title: Added
     labels:
-      - breaking-changes
-  - title: New Features/Enhancements
+      - added
+
+  # Changed for changes in existing functionality.
+  - title: Changed
     labels:
-      - new-feature
-      - enhancement
-  - title: Bug Fixes
+      - changed
+
+  # Deprecated for soon-to-be removed features.
+  - title: Deprecated
     labels:
-      - bug
-  # Changes to algorithms or methodologies
-  - title: Implementation Changes
+      - deprecated
+
+  # Removed for now removed features.
+  - title: Removed
     labels:
-      - implementation-changes
+      - removed
+
+  # Fixed for any bug fixes.
+  - title: Fixed
+    labels:
+      - fixed
+
+  # Security in case of vulnerabilities.
+  - title: Security
+    labels:
+      - security
