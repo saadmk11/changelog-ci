@@ -3,7 +3,7 @@ name: Changelog PR
 on:
   push:
     branches:
-      # Trigger the action when a PR is merged to master. Change this to "main" if you are using main.
+      - main
       - master
 
 jobs:
