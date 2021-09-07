@@ -1,8 +1,10 @@
 name: Changelog PR
 
+# Trigger the action when a PR is merged to master.
 on:
-  pull_request:
-    types: [opened]
+  push:
+    branches:
+      - master
 
 jobs:
   build:
