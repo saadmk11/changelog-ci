@@ -1,0 +1,20 @@
+changelog_type: 'pull_request'
+header_prefix: 'Version:'
+commit_changelog: true
+comment_changelog: false
+pull_request_title_regex: '^Release'
+group_config:
+  - title: Breaking Changes
+    labels:
+      - breaking-changes
+  - title: New Features/Enhancements
+    labels:
+      - new-feature
+      - enhancement
+  - title: Bug Fixes
+    labels:
+      - bug
+  # Changes to algorithms or methodologies
+  - title: Implementation Changes
+    labels:
+      - implementation-changes
