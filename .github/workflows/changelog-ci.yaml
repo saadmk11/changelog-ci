@@ -9,7 +9,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Checks-out your repository
       - uses: actions/checkout@v2
 
       - name: Run Changelog CI
         uses: JonathanAquino/changelog-pr@v0.0.1
+        with:
+          changelog_filename: CHANGELOG.md
+          config_file: changelog-ci-config.yml
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
