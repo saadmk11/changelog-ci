@@ -1,10 +1,10 @@
 ![Changelog CI Banner](https://i.imgur.com/72lxPjs.png)
 
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/saadmk11/changelog-ci?style=flat-square)](https://github.com/saadmk11/changelog-ci/releases/latest)
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/saadmk11/changelog-ci/Changelog%20CI?label=Changelog%20CI&style=flat-square)
-[![GitHub](https://img.shields.io/github/license/saadmk11/changelog-ci?style=flat-square)](https://github.com/saadmk11/changelog-ci/blob/master/LICENSE)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/JonathanAquino/changelog-ci?style=flat-square)](https://github.com/JonathanAquino/changelog-ci/releases/latest)
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/JonathanAquino/changelog-ci/Changelog%20CI?label=Changelog%20CI&style=flat-square)
+[![GitHub](https://img.shields.io/github/license/JonathanAquino/changelog-ci?style=flat-square)](https://github.com/JonathanAquino/changelog-ci/blob/master/LICENSE)
 [![GitHub Marketplace](https://img.shields.io/badge/Get%20It-on%20Marketplace-orange?style=flat-square)](https://github.com/marketplace/actions/changelog-ci)
-[![GitHub stars](https://img.shields.io/github/stars/saadmk11/changelog-ci?color=success&style=flat-square)](https://github.com/saadmk11/changelog-ci/stargazers)
+[![GitHub stars](https://img.shields.io/github/stars/JonathanAquino/changelog-ci?color=success&style=flat-square)](https://github.com/JonathanAquino/changelog-ci/stargazers)
 
 ## What is Changelog CI?
 
@@ -63,7 +63,7 @@ your `.github/workflows/workflow.yml` file:
 
 ```yaml
 - name: Run Changelog CI
-    uses: saadmk11/changelog-ci@v0.8.0
+    uses: JonathanAquino/changelog-ci@v0.8.0
     with:
       # Optional, you can provide any name for your changelog file,
       # defaults to `CHANGELOG.md` if not provided.
@@ -92,7 +92,7 @@ your `.github/workflows/workflow.yml` file:
 
 **Output:**
 
-![Changelog CI Status](https://github.com/saadmk11/changelog-ci/workflows/Changelog%20CI/badge.svg)
+![Changelog CI Status](https://github.com/JonathanAquino/changelog-ci/workflows/Changelog%20CI/badge.svg)
 
 ## Configuration
 
@@ -250,7 +250,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Run Changelog CI
-        uses: saadmk11/changelog-ci@v0.8.0
+        uses: JonathanAquino/changelog-ci@v0.8.0
         with:
           changelog_filename: CHANGELOG.md
           config_file: changelog-ci-config.json
