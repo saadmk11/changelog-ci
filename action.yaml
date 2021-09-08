@@ -1,5 +1,5 @@
 name: Changelog PR
-description: Changelog PR is a GitHub Action that generates changelog, then it is committed and/or commented to the release pull request.
+description: Changelog PR is a GitHub Action that generates changelog, then it is committed to the release pull request.
 author: Maksudul Haque
 branding:
   icon: 'clock'

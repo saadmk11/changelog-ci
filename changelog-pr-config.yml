@@ -1,7 +1,6 @@
 changelog_type: 'pull_request'
 header_prefix: 'Version:'
 commit_changelog: true
-comment_changelog: false
 pull_request_title_regex: '^Release'
 group_config:
   # Labels are based on https://keepachangelog.com/en/1.0.0/#types

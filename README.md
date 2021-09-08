@@ -17,8 +17,6 @@ The workflow can be configured to perform **any (or all)** of the following acti
 
 * **Prepend** the generated changelog to the `CHANGELOG.md` file and then **Commit** modified `CHANGELOG.md` file to the release pull request.
 
-* Add a **Comment** on the release pull request with the generated changelog.
-
 ## How Does It Work:
 
 Changelog PR uses `python` and `GitHub API` to generate changelog for a
@@ -29,7 +27,7 @@ the `changelog`. Finally, It writes the generated changelog at the beginning of
 the `CHANGELOG.md` (or user-provided filename) file. In addition to that, if a
 user provides a config (JSON/YAML file), Changelog PR parses the user-provided config
 file and renders the changelog according to users config. Then the changes
-are **committed** and/or **commented** to the release Pull request.
+are **committed** to the release Pull request.
 
 ## Usage:
 
@@ -55,9 +53,6 @@ link: https://regex101.com/r/Ly7O1x/3/
 one to the optional configuration file. To learn more, see
 [Using an optional configuration file](#using-an-optional-configuration-file).
 
-To **Enable Commenting, Disable Committing, Group Changelog Items, Use Commit Messages** and
-some other options, see [Configuration](#configuration) to learn more.
-
 To integrate `Changelog PR` with your repositories Actions, Put this step inside
 your `.github/workflows/workflow.yml` file:
 
@@ -79,8 +74,6 @@ your `.github/workflows/workflow.yml` file:
       committer_email: 'test@test.com'
     env:
       # optional, only required for `private` repositories
-      # and required if the changelog comment
-      # option is turned on through the config file
       GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 ```
 
@@ -130,11 +123,6 @@ by adding a `JSON` or `YAML` config file to the project. For example:
   Value can be `true` or `false`. if not provided defaults to `true`. If it is
   set to `true` then Changelog PR will commit to the release pull request.
 
-* `comment_changelog`
-  Value can be `true` or `false`. if not provided defaults to `false`. If it is
-  set to `true` then Changelog PR will comment on the release pull request. This
-  requires `GITHUB_TOKEN` to be added to the workflow.
-
 * `pull_request_title_regex`
   If the pull request title matches with this `regex` Changelog PR will generate
   changelog for it. Otherwise, it will skip the changelog generation.
@@ -164,7 +152,6 @@ Written in JSON:
   "changelog_type": "commit_message",
   "header_prefix": "Version:",
   "commit_changelog": true,
-  "comment_changelog": true,
   "pull_request_title_regex": "^Release",
   "version_regex": "v?([0-9]{1,2})+[.]+([0-9]{1,2})+[.]+([0-9]{1,2})\\s\\(\\d{1,2}-\\d{1,2}-\\d{4}\\)",
   "group_config": [
@@ -194,7 +181,6 @@ Written in YAML:
 changelog_type: 'commit_message' # or 'pull_request'
 header_prefix: 'Version:'
 commit_changelog: true
-comment_changelog: true
 pull_request_title_regex: '^Release'
 version_regex: 'v?([0-9]{1,2})+[.]+([0-9]{1,2})+[.]+([0-9]{1,2})\s\(\d{1,2}-\d{1,2}-\d{4}\)'
 group_config:
@@ -255,12 +241,11 @@ jobs:
           changelog_filename: CHANGELOG.md
           config_file: changelog-pr-config.json
         # Add this if you are using it on a private repository
-        # Or if you have turned on commenting through the config file.
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 ```
 
-## Changelog PR in Action (Comment & Commit)
+## Changelog PR in Action (Commit)
 ![Changelog PR](https://user-images.githubusercontent.com/24854406/93024522-1844d180-f619-11ea-9c25-57b4e95b822b.gif)
 
 

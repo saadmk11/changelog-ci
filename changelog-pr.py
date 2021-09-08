@@ -149,22 +149,6 @@ class ChangelogCIBase:
             ['git', 'push', '-u', 'origin', self.pull_request_branch]
         )
 
-    def _comment_changelog(self, string_data):
-        """Comments Changelog to the pull request"""
-        if not self.token:
-            # Token is required by the GitHub API to create a Comment
-            # if not provided exit with error message
-            msg = (
-                "Could not add a comment. "
-                "`GITHUB_TOKEN` is required for this operation. "
-                "If you want to enable Changelog comment, please add "
-                "`GITHUB_TOKEN` to your workflow yaml file. "
-                "Look at Changelog PR's documentation for more information."
-            )
-
-            print_message(msg, message_type='error')
-            return
-
         owner, repo = self.repository.split('/')
 
         payload = {
@@ -199,14 +183,11 @@ class ChangelogCIBase:
     def run(self):
         """Entrypoint to the Changelog PR"""
         if (
-            not self.config.commit_changelog and
-            not self.config.comment_changelog
+            not self.config.commit_changelog
         ):
-            # if both commit_changelog and comment_changelog is set to false
-            # then exit with warning and don't generate Changelog
             msg = (
-                'Skipping Changelog generation as both `commit_changelog` '
-                'and `comment_changelog` is set to False. '
+                'Skipping Changelog generation as `commit_changelog` '
+                'is set to False. '
                 'If you did not intend to do this please set '
                 'one or both of them to True.'
             )
@@ -253,14 +234,8 @@ class ChangelogCIBase:
             self._commit_changelog(string_data)
             print_message('', message_type='endgroup')
 
-        if self.config.comment_changelog:
-            print_message('Comment Changelog', message_type='group')
-            self._comment_changelog(string_data)
-            print_message('', message_type='endgroup')
-
-
 class ChangelogCIPullRequest(ChangelogCIBase):
-    """Generates, commits and/or comments changelog using pull requests"""
+    """Generates and commits changelog using pull requests"""
 
     @staticmethod
     def _get_changelog_line(item):
@@ -381,7 +356,7 @@ class ChangelogCIPullRequest(ChangelogCIBase):
 
 
 class ChangelogCICommitMessage(ChangelogCIBase):
-    """Generates, commits and/or comments changelog using commit messages"""
+    """Generates and commits changelog using commit messages"""
 
     @staticmethod
     def _get_changelog_line(item):
@@ -468,7 +443,6 @@ class ChangelogCIConfiguration:
     DEFAULT_VERSION_PREFIX = "Version:"
     DEFAULT_GROUP_CONFIG = []
     COMMIT_CHANGELOG = True
-    COMMENT_CHANGELOG = False
     # Changelog types
     PULL_REQUEST = 'pull_request'
     COMMIT = 'commit_message'
@@ -477,7 +451,6 @@ class ChangelogCIConfiguration:
         # Initialize with default configuration
         self.header_prefix = self.DEFAULT_VERSION_PREFIX
         self.commit_changelog = self.COMMIT_CHANGELOG
-        self.comment_changelog = self.COMMENT_CHANGELOG
         self.pull_request_title_regex = self.DEFAULT_PULL_REQUEST_TITLE_REGEX
         self.version_regex = self.DEFAULT_SEMVER_REGEX
         self.changelog_type = self.PULL_REQUEST
@@ -549,7 +522,6 @@ class ChangelogCIConfiguration:
 
         self.validate_header_prefix()
         self.validate_commit_changelog()
-        self.validate_comment_changelog()
         self.validate_pull_request_title_regex()
         self.validate_version_regex()
         self.validate_changelog_type()
@@ -580,19 +552,6 @@ class ChangelogCIConfiguration:
             print_message(msg, message_type='warning')
         else:
             self.commit_changelog = bool(commit_changelog)
-
-    def validate_comment_changelog(self):
-        """Validate and set comment_changelog configuration option"""
-        comment_changelog = self.user_raw_config.get('comment_changelog')
-
-        if comment_changelog not in [0, 1, False, True]:
-            msg = (
-                '`comment_changelog` was not provided or not valid, '
-                f'falling back to `{self.comment_changelog}`.'
-            )
-            print_message(msg, message_type='warning')
-        else:
-            self.comment_changelog = bool(comment_changelog)
 
     def validate_pull_request_title_regex(self):
         """Validate and set pull_request_title_regex configuration option"""

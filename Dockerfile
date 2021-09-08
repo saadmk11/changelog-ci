@@ -1,7 +1,7 @@
 FROM python:3.8
 
 LABEL "com.github.actions.name"="Changelog PR"
-LABEL "com.github.actions.description"="Changelog PR is a GitHub Action that generates changelog, Then the changelog is committed and/or commented to the release Pull request."
+LABEL "com.github.actions.description"="Changelog PR is a GitHub Action that generates changelog, Then the changelog is committed to the release Pull request."
 LABEL "com.github.actions.icon"="clock"
 LABEL "com.github.actions.color"="blue"
 
