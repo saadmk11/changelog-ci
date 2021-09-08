@@ -1,6 +1,7 @@
 group_config:
-  # Labels are based on https://keepachangelog.com/en/1.0.0/#types
-  # Update them to match your own labels.
+  # Use PR labels to add an annotation to the changelog.
+  # This list of labels is from https://keepachangelog.com/en/1.0.0/#types
+  # They are sensible defaults, but you may change them if your repo uses different labels.
 
   # Added for new features.
   - title: Added
