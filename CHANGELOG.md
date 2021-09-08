@@ -1,3 +1,11 @@
+# 9.9.9
+
+
+#### Other Changes
+
+* [#5](https://github.com/JonathanAquino/changelog-pr/pull/5): Rename config from changelog-pr-config.yml to changelog-pr-config.yaml
+
+
 # Version: 0.8.0
 
 * [#50](https://github.com/saadmk11/changelog-ci/pull/50): Update LICENSE Copyright year
