@@ -166,7 +166,6 @@ class ChangelogCIPullRequest(ChangelogCIBase):
             repo_name=self.repository,
             merged_date_filter=merged_date_filter
         )
-        print_message('URL: ' + url, message_type='group')
 
         items = []
 
