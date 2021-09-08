@@ -403,7 +403,7 @@ if __name__ == '__main__':
     # https://docs.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables
     event_path = os.environ['GITHUB_EVENT_PATH']
     repository = os.environ['GITHUB_REPOSITORY']
-    current_branch = os.environ['GITHUB_BASE_REF']
+    current_branch = os.environ['GITHUB_REF']
     # User inputs from workflow
     filename = os.environ['INPUT_CHANGELOG_FILENAME']
     config_file = os.environ['INPUT_CONFIG_FILE']
