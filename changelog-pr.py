@@ -18,14 +18,14 @@ class ChangelogCIBase:
         repository,
         event_path,
         config,
-        pull_request_branch,
+        current_branch,
         filename='CHANGELOG.md',
         token=None
     ):
         self.repository = repository
         self.filename = filename
         self.config = config
-        self.pull_request_branch = pull_request_branch
+        self.current_branch = current_branch
         self.token = token
 
     @cached_property
@@ -111,7 +111,7 @@ class ChangelogCIBase:
             ['git', 'commit', '-m', '(Changelog PR) Added Changelog']
         )
         subprocess.run(
-            ['git', 'push', '-u', 'origin', self.pull_request_branch]
+            ['git', 'push', '-u', 'origin', self.current_branch]
         )
 
     def run(self):
@@ -399,7 +399,7 @@ if __name__ == '__main__':
     # https://docs.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables
     event_path = os.environ['GITHUB_EVENT_PATH']
     repository = os.environ['GITHUB_REPOSITORY']
-    pull_request_branch = os.environ['GITHUB_HEAD_REF']
+    current_branch = os.environ['GITHUB_HEAD_REF']
     # User inputs from workflow
     filename = os.environ['INPUT_CHANGELOG_FILENAME']
     config_file = os.environ['INPUT_CONFIG_FILE']
@@ -415,10 +415,10 @@ if __name__ == '__main__':
     subprocess.run(
         [
             'git', 'fetch', '--prune', '--unshallow', 'origin',
-            pull_request_branch
+            current_branch
         ]
     )
-    subprocess.run(['git', 'checkout', pull_request_branch])
+    subprocess.run(['git', 'checkout', current_branch])
 
     print_message('', message_type='endgroup')
 
@@ -444,7 +444,7 @@ if __name__ == '__main__':
         repository,
         event_path,
         config,
-        pull_request_branch,
+        current_branch,
         filename=filename,
         token=token
     )
