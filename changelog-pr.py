@@ -92,6 +92,7 @@ class ChangelogCIBase:
 
     def _commit_changelog(self, string_data):
         """Write changelog to the changelog file"""
+        print_message('current branch: ' + self.current_branch, message_type='group')
         file_mode = self._get_file_mode()
 
         with open(self.filename, file_mode) as f:
@@ -106,13 +107,17 @@ class ChangelogCIBase:
                 f.write('\n\n')
                 f.write(body)
 
+        print_message('git add', message_type='group')
         subprocess.run(['git', 'add', self.filename])
+        print_message('git commit', message_type='group')
         subprocess.run(
             ['git', 'commit', '-m', '(Changelog PR) Added Changelog']
         )
+        print_message('git push', message_type='group')
         subprocess.run(
             ['git', 'push', '-u', 'origin', self.current_branch]
         )
+        print_message('done', message_type='group')
 
     def run(self):
         """Entrypoint to the Changelog PR"""
