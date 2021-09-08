@@ -28,21 +28,6 @@ class ChangelogCIBase:
         self.pull_request_branch = pull_request_branch
         self.token = token
 
-        title, number = self._get_pull_request_title_and_number(event_path)
-        self.pull_request_title = title
-        self.pull_request_number = number
-
-    @staticmethod
-    def _get_pull_request_title_and_number(event_path):
-        """Gets pull request title from `GITHUB_EVENT_PATH`"""
-        with open(event_path, 'r') as json_file:
-            # This is just a webhook payload available to the Action
-            data = json.load(json_file)
-            title = data["pull_request"]['title']
-            number = data['number']
-
-        return title, number
-
     @cached_property
     def _get_request_headers(self):
         """Get headers for GitHub API request"""
@@ -63,26 +48,6 @@ class ChangelogCIBase:
 
     def parse_changelog(self, version, changes):
         return NotImplemented
-
-    def _validate_pull_request(self):
-        """Check if changelog should be generated for this pull request"""
-        pattern = re.compile(self.config.pull_request_title_regex)
-        match = pattern.search(self.pull_request_title)
-
-        if match:
-            return True
-
-        return
-
-    def _get_version_number(self):
-        """Get version number from the pull request title"""
-        pattern = re.compile(self.config.version_regex)
-        match = pattern.search(self.pull_request_title)
-
-        if match:
-            return match.group()
-
-        return
 
     def _get_file_mode(self):
         """Gets the mode that the changelog file should be opened in"""
@@ -149,53 +114,9 @@ class ChangelogCIBase:
             ['git', 'push', '-u', 'origin', self.pull_request_branch]
         )
 
-        owner, repo = self.repository.split('/')
-
-        payload = {
-            'owner': owner,
-            'repo': repo,
-            'issue_number': self.pull_request_number,
-            'body': string_data
-        }
-
-        url = (
-            '{base_url}/repos/{repo}/issues/{number}/comments'
-        ).format(
-            base_url=self.github_api_url,
-            repo=self.repository,
-            number=self.pull_request_number
-        )
-
-        response = requests.post(
-            url, headers=self._get_request_headers, json=payload
-        )
-
-        if response.status_code != 201:
-            # API should return 201, otherwise show error message
-            msg = (
-                f'Error while trying to create a comment. '
-                f'GitHub API returned error response for '
-                f'{self.repository}, status code: {response.status_code}'
-            )
-
-            print_message(msg, message_type='error')
-
     def run(self):
         """Entrypoint to the Changelog PR"""
-        is_valid_pull_request = self._validate_pull_request()
-
-        if not is_valid_pull_request:
-            # if pull request regex doesn't match then exit
-            # and don't generate changelog
-            msg = (
-                f'The title of the pull request did not match. '
-                f'Regex tried: "{self.config.pull_request_title_regex}", '
-                f'Aborting Changelog Generation.'
-            )
-            print_message(msg, message_type='error')
-            return
-
-        version = self._get_version_number()
+        version = '9.9.9'
 
         if not version:
             # if the pull request title is not valid, exit the method
@@ -426,7 +347,6 @@ class ChangelogCIConfiguration:
         r"1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(["
         r"0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?"
     )
-    DEFAULT_PULL_REQUEST_TITLE_REGEX = r"^(?i:release)"
     DEFAULT_VERSION_PREFIX = "Version:"
     DEFAULT_GROUP_CONFIG = []
     # Changelog types
@@ -436,7 +356,6 @@ class ChangelogCIConfiguration:
     def __init__(self, config_file):
         # Initialize with default configuration
         self.header_prefix = self.DEFAULT_VERSION_PREFIX
-        self.pull_request_title_regex = self.DEFAULT_PULL_REQUEST_TITLE_REGEX
         self.version_regex = self.DEFAULT_SEMVER_REGEX
         self.changelog_type = self.PULL_REQUEST
         self.group_config = self.DEFAULT_GROUP_CONFIG
@@ -507,7 +426,6 @@ class ChangelogCIConfiguration:
 
         self.validate_header_prefix()
         self.validate_commit_changelog()
-        self.validate_pull_request_title_regex()
         self.validate_version_regex()
         self.validate_changelog_type()
         self.validate_group_config()
@@ -524,31 +442,6 @@ class ChangelogCIConfiguration:
             print_message(msg, message_type='warning')
         else:
             self.header_prefix = header_prefix
-
-    def validate_pull_request_title_regex(self):
-        """Validate and set pull_request_title_regex configuration option"""
-        pull_request_title_regex = self.user_raw_config.get(
-            'pull_request_title_regex'
-        )
-
-        if not pull_request_title_regex:
-            msg = (
-                '`pull_request_title_regex` is not provided, '
-                f'Falling back to {self.pull_request_title_regex}.'
-            )
-            print_message(msg, message_type='warning')
-            return
-
-        try:
-            # This will raise an error if the provided regex is not valid
-            re.compile(pull_request_title_regex)
-            self.pull_request_title_regex = pull_request_title_regex
-        except Exception:
-            msg = (
-                '`pull_request_title_regex` is not valid, '
-                f'Falling back to {self.pull_request_title_regex}.'
-            )
-            print_message(msg, message_type='error')
 
     def validate_version_regex(self):
         """Validate and set validate_version_regex configuration option"""

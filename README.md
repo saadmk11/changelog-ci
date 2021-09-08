@@ -119,12 +119,6 @@ by adding a `JSON` or `YAML` config file to the project. For example:
 * `header_prefix`
   The prefix before the version number. e.g. `version:` in `Version: 1.0.2`
 
-* `pull_request_title_regex`
-  If the pull request title matches with this `regex` Changelog PR will generate
-  changelog for it. Otherwise, it will skip the changelog generation.
-  If `pull_request_title_regex` is not provided defaults to `^(?i:release)`,
-  then the title must begin with the word "release" (case-insensitive).
-
 * `version_regex`
   This `regex` tries to find the version number from the pull request title. in
   case of no match, changelog generation will be skipped. if `version_regex` is
@@ -147,7 +141,6 @@ Written in JSON:
 {
   "changelog_type": "commit_message",
   "header_prefix": "Version:",
-  "pull_request_title_regex": "^Release",
   "version_regex": "v?([0-9]{1,2})+[.]+([0-9]{1,2})+[.]+([0-9]{1,2})\\s\\(\\d{1,2}-\\d{1,2}-\\d{4}\\)",
   "group_config": [
     {
@@ -175,7 +168,6 @@ Written in YAML:
 ```yaml
 changelog_type: 'commit_message' # or 'pull_request'
 header_prefix: 'Version:'
-pull_request_title_regex: '^Release'
 version_regex: 'v?([0-9]{1,2})+[.]+([0-9]{1,2})+[.]+([0-9]{1,2})\s\(\d{1,2}-\d{1,2}-\d{4}\)'
 group_config:
   - title: Bug Fixes
@@ -203,10 +195,6 @@ any `regex` Changelog PR will use default
 , **`v1.0.2`**.
 
 * Here the changelog will be generated using commit messages because of `changelog_type: 'commit_message'`.
-
-* Here **`pull_request_title_regex`** will match any pull request title that
-starts with **`Release`**
-you can match **Any Pull Request Title** by adding  this **`pull_request_title_regex": ".*"`**,
 
 **[Click here to see the example output using this config](#example-changelog-output-using-config-file)**
 
