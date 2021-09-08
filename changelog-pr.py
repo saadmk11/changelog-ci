@@ -323,7 +323,6 @@ class ChangelogCIConfiguration:
             )
             return
 
-        self.validate_commit_changelog()
         self.validate_group_config()
 
     def validate_group_config(self):
