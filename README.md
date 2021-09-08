@@ -107,12 +107,6 @@ by adding a `JSON` or `YAML` config file to the project. For example:
 
 ### Valid options
 
-* `version_regex`
-  This `regex` tries to find the version number from the pull request title. in
-  case of no match, changelog generation will be skipped. if `version_regex` is
-  not provided, it defaults to
-  [`SemVer`](https://regex101.com/r/Ly7O1x/3/) pattern.
-
 * `group_config`
   By adding this you can group changelog items by your repository labels with
   custom titles.
@@ -127,7 +121,6 @@ Written in JSON:
 
 ```json
 {
-  "version_regex": "v?([0-9]{1,2})+[.]+([0-9]{1,2})+[.]+([0-9]{1,2})\\s\\(\\d{1,2}-\\d{1,2}-\\d{4}\\)",
   "group_config": [
     {
       "title": "Bug Fixes",
@@ -152,7 +145,6 @@ Written in JSON:
 Written in YAML:
 
 ```yaml
-version_regex: 'v?([0-9]{1,2})+[.]+([0-9]{1,2})+[.]+([0-9]{1,2})\s\(\d{1,2}-\d{1,2}-\d{4}\)'
 group_config:
   - title: Bug Fixes
     labels:
@@ -171,12 +163,6 @@ group_config:
       - documentation
       - doc
 ```
-
-* In this Example **`version_regex`** matches any version number including date (
-e.g: **`v1.1.0 (01-23-2018)`**) in the pull request title. If you don't provide
-any `regex` Changelog PR will use default
-[`SemVer`](https://regex101.com/r/Ly7O1x/3/) pattern. e.g. **`1.0.1`**
-, **`v1.0.2`**.
 
 **[Click here to see the example output using this config](#example-changelog-output-using-config-file)**
 

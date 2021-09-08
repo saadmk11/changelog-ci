@@ -118,18 +118,6 @@ class ChangelogCIBase:
         """Entrypoint to the Changelog PR"""
         version = '9.9.9'
 
-        if not version:
-            # if the pull request title is not valid, exit the method
-            # It might happen if the pull request is not meant to be release
-            # or the title was not accurate.
-            msg = (
-                f'Could not find matching version number. '
-                f'Regex tried: {self.config.version_regex} '
-                f'Aborting Changelog Generation'
-            )
-            print_message(msg, message_type='error')
-            return
-
         changes = self.get_changes_after_last_release()
 
         # exit the method if there is no changes found
@@ -265,21 +253,10 @@ class ChangelogCIPullRequest(ChangelogCIBase):
 class ChangelogCIConfiguration:
     """Configuration class for Changelog PR"""
 
-    # The regular expression used to extract semantic versioning is a
-    # slightly less restrictive modification of
-    # the following regular expression
-    # https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
-    DEFAULT_SEMVER_REGEX = (
-        r"v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.?(0|[1-9]\d*)?(?:-(("
-        r"?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|["
-        r"1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(["
-        r"0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?"
-    )
     DEFAULT_GROUP_CONFIG = []
 
     def __init__(self, config_file):
         # Initialize with default configuration
-        self.version_regex = self.DEFAULT_SEMVER_REGEX
         self.group_config = self.DEFAULT_GROUP_CONFIG
 
         self.user_raw_config = self.get_user_config(config_file)
@@ -347,31 +324,7 @@ class ChangelogCIConfiguration:
             return
 
         self.validate_commit_changelog()
-        self.validate_version_regex()
         self.validate_group_config()
-
-    def validate_version_regex(self):
-        """Validate and set validate_version_regex configuration option"""
-        version_regex = self.user_raw_config.get('version_regex')
-
-        if not version_regex:
-            msg = (
-                '`version_regex` is not provided, '
-                f'Falling back to {self.version_regex}.'
-            )
-            print_message(msg, message_type='warning')
-            return
-
-        try:
-            # This will raise an error if the provided regex is not valid
-            re.compile(version_regex)
-            self.version_regex = version_regex
-        except Exception:
-            msg = (
-                '`version_regex` is not valid, '
-                f'Falling back to {self.version_regex}.'
-            )
-            print_message(msg, message_type='warning')
 
     def validate_group_config(self):
         """Validate and set group_config configuration option"""
