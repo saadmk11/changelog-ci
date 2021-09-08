@@ -216,7 +216,7 @@ class ChangelogCIPullRequest(ChangelogCIBase):
     def parse_changelog(self, version, changes):
         """Parse the pull requests data and return a string"""
         string_data = (
-            '# ' + self.config.header_prefix + ' ' + version + '\n\n'
+            '# ' + version + '\n\n'
         )
 
         group_config = self.config.group_config
@@ -275,12 +275,10 @@ class ChangelogCIConfiguration:
         r"1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(["
         r"0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?"
     )
-    DEFAULT_VERSION_PREFIX = "Version:"
     DEFAULT_GROUP_CONFIG = []
 
     def __init__(self, config_file):
         # Initialize with default configuration
-        self.header_prefix = self.DEFAULT_VERSION_PREFIX
         self.version_regex = self.DEFAULT_SEMVER_REGEX
         self.group_config = self.DEFAULT_GROUP_CONFIG
 
@@ -348,23 +346,9 @@ class ChangelogCIConfiguration:
             )
             return
 
-        self.validate_header_prefix()
         self.validate_commit_changelog()
         self.validate_version_regex()
         self.validate_group_config()
-
-    def validate_header_prefix(self):
-        """Validate and set header_prefix configuration option"""
-        header_prefix = self.user_raw_config.get('header_prefix')
-
-        if not header_prefix or not isinstance(header_prefix, str):
-            msg = (
-                '`header_prefix` was not provided or not valid, '
-                f'falling back to `{self.header_prefix}`.'
-            )
-            print_message(msg, message_type='warning')
-        else:
-            self.header_prefix = header_prefix
 
     def validate_version_regex(self):
         """Validate and set validate_version_regex configuration option"""

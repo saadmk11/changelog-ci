@@ -107,9 +107,6 @@ by adding a `JSON` or `YAML` config file to the project. For example:
 
 ### Valid options
 
-* `header_prefix`
-  The prefix before the version number. e.g. `version:` in `Version: 1.0.2`
-
 * `version_regex`
   This `regex` tries to find the version number from the pull request title. in
   case of no match, changelog generation will be skipped. if `version_regex` is
@@ -130,7 +127,6 @@ Written in JSON:
 
 ```json
 {
-  "header_prefix": "Version:",
   "version_regex": "v?([0-9]{1,2})+[.]+([0-9]{1,2})+[.]+([0-9]{1,2})\\s\\(\\d{1,2}-\\d{1,2}-\\d{4}\\)",
   "group_config": [
     {
@@ -156,7 +152,6 @@ Written in JSON:
 Written in YAML:
 
 ```yaml
-header_prefix: 'Version:'
 version_regex: 'v?([0-9]{1,2})+[.]+([0-9]{1,2})+[.]+([0-9]{1,2})\s\(\d{1,2}-\d{1,2}-\d{4}\)'
 group_config:
   - title: Bug Fixes
