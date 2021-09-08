@@ -102,7 +102,7 @@ by adding a `JSON` or `YAML` config file to the project. For example:
 
     ```yaml
     with:
-      config_file: changelog-pr-config.yml
+      config_file: changelog-pr-config.yaml
     ```
 
 ### Valid options

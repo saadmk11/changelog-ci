@@ -18,6 +18,6 @@ jobs:
         uses: JonathanAquino/changelog-pr@HEAD   # Normally please put a version here like @v0.9.0
         with:
           changelog_filename: CHANGELOG.md
-          config_file: changelog-pr-config.yml
+          config_file: changelog-pr-config.yaml
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
