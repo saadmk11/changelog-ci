@@ -415,7 +415,8 @@ if __name__ == '__main__':
 
     # Group: Checkout git repository
     print_message('Checkout git repository', message_type='group')
-
+    print_message('Current branch:', message_type='group')
+    print_message(current_branch, message_type='group')
     subprocess.run(
         [
             'git', 'fetch', '--prune', '--unshallow', 'origin',
