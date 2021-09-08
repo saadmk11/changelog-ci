@@ -417,6 +417,10 @@ if __name__ == '__main__':
     print_message('Checkout git repository', message_type='group')
     print_message('Current branch:', message_type='group')
     print_message(current_branch, message_type='group')
+    print_message('GITHUB_REF:' + os.environ['GITHUB_REF'], message_type='group')
+    print_message('GITHUB_HEAD_REF:' + os.environ['GITHUB_HEAD_REF'], message_type='group')
+    print_message('GITHUB_BASE_REF:' + os.environ['GITHUB_BASE_REF'], message_type='group')
+    print_message('GITHUB_ACTION_REF:' + os.environ['GITHUB_ACTION_REF'], message_type='group')
     subprocess.run(
         [
             'git', 'fetch', '--prune', '--unshallow', 'origin',
