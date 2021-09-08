@@ -1,4 +1,3 @@
-changelog_type: 'pull_request'
 header_prefix: 'Version:'
 group_config:
   # Labels are based on https://keepachangelog.com/en/1.0.0/#types

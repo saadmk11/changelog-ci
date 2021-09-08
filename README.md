@@ -38,10 +38,6 @@ or the user-provided `regex` from the config file.
 **Default Title Regex:** `^(?i:release)` (title must start with the word "
 release" (case-insensitive))
 
-**Default Changelog Type:** `pull_request` (Changelog will be generated using pull request title),
-You can generate changelog using `commit_message` as well
-[Using an optional configuration file](#using-an-optional-configuration-file).
-
 **Default Version Number Regex:** This Regex will be checked against a Pull
 Request title. This follows [`SemVer`](https://regex101.com/r/Ly7O1x/3/) (
 Semantic Versioning) pattern. e.g. `1.0.0`, `1.0`, `v1.0.1` etc.
@@ -111,11 +107,6 @@ by adding a `JSON` or `YAML` config file to the project. For example:
 
 ### Valid options
 
-* `changelog_type`
-  You can use `pull_request` (Default) or `commit_message` as the value for this option.
-  `pull_request` option will generate changelog using pull request title.
-  `commit_message` option will generate changelog using commit messages.
-
 * `header_prefix`
   The prefix before the version number. e.g. `version:` in `Version: 1.0.2`
 
@@ -139,7 +130,6 @@ Written in JSON:
 
 ```json
 {
-  "changelog_type": "commit_message",
   "header_prefix": "Version:",
   "version_regex": "v?([0-9]{1,2})+[.]+([0-9]{1,2})+[.]+([0-9]{1,2})\\s\\(\\d{1,2}-\\d{1,2}-\\d{4}\\)",
   "group_config": [
@@ -166,7 +156,6 @@ Written in JSON:
 Written in YAML:
 
 ```yaml
-changelog_type: 'commit_message' # or 'pull_request'
 header_prefix: 'Version:'
 version_regex: 'v?([0-9]{1,2})+[.]+([0-9]{1,2})+[.]+([0-9]{1,2})\s\(\d{1,2}-\d{1,2}-\d{4}\)'
 group_config:
@@ -193,8 +182,6 @@ e.g: **`v1.1.0 (01-23-2018)`**) in the pull request title. If you don't provide
 any `regex` Changelog PR will use default
 [`SemVer`](https://regex101.com/r/Ly7O1x/3/) pattern. e.g. **`1.0.1`**
 , **`v1.0.2`**.
-
-* Here the changelog will be generated using commit messages because of `changelog_type: 'commit_message'`.
 
 **[Click here to see the example output using this config](#example-changelog-output-using-config-file)**
 

@@ -262,78 +262,6 @@ class ChangelogCIPullRequest(ChangelogCIBase):
 
         return string_data
 
-
-class ChangelogCICommitMessage(ChangelogCIBase):
-    """Generates and commits changelog using commit messages"""
-
-    @staticmethod
-    def _get_changelog_line(item):
-        """Generate each line of changelog"""
-        return "* [{sha}]({url}): {message}\n".format(
-            sha=item['sha'][:6],
-            url=item['url'],
-            message=item['message']
-        )
-
-    def get_changes_after_last_release(self):
-        """Get all the merged pull request after latest release"""
-        previous_release_date = self._get_latest_release_date()
-
-        url = '{base_url}/repos/{repo_name}/commits?since={date}'.format(
-            base_url=self.github_api_url,
-            repo_name=self.repository,
-            date=previous_release_date or ''
-        )
-
-        items = []
-
-        response = requests.get(url, headers=self._get_request_headers)
-
-        if response.status_code == 200:
-            response_data = response.json()
-
-            if len(response_data) > 0:
-                for item in response_data:
-                    message = item['commit']['message']
-                    # Exclude merge commit
-                    if not (
-                        message.startswith('Merge pull request #') or
-                        message.startswith('Merge branch')
-                    ):
-                        data = {
-                            'sha': item['sha'],
-                            'message': message,
-                            'url': item['html_url']
-                        }
-                        items.append(data)
-                    else:
-                        print_message(f'Skipping Merge Commit "{message}"')
-            else:
-                msg = (
-                    f'There was no commit '
-                    f'made on {self.repository} after last release.'
-                )
-                print_message(msg, message_type='error')
-        else:
-            msg = (
-                f'Could not get commits for '
-                f'{self.repository} from GitHub API. '
-                f'response status code: {response.status_code}'
-            )
-            print_message(msg, message_type='error')
-
-        return items
-
-    def parse_changelog(self, version, changes):
-        """Parse the commit data and return a string"""
-        string_data = (
-            '# ' + self.config.header_prefix + ' ' + version + '\n\n'
-        )
-        string_data += ''.join(map(self._get_changelog_line, changes))
-
-        return string_data
-
-
 class ChangelogCIConfiguration:
     """Configuration class for Changelog PR"""
 
@@ -349,15 +277,11 @@ class ChangelogCIConfiguration:
     )
     DEFAULT_VERSION_PREFIX = "Version:"
     DEFAULT_GROUP_CONFIG = []
-    # Changelog types
-    PULL_REQUEST = 'pull_request'
-    COMMIT = 'commit_message'
 
     def __init__(self, config_file):
         # Initialize with default configuration
         self.header_prefix = self.DEFAULT_VERSION_PREFIX
         self.version_regex = self.DEFAULT_SEMVER_REGEX
-        self.changelog_type = self.PULL_REQUEST
         self.group_config = self.DEFAULT_GROUP_CONFIG
 
         self.user_raw_config = self.get_user_config(config_file)
@@ -427,7 +351,6 @@ class ChangelogCIConfiguration:
         self.validate_header_prefix()
         self.validate_commit_changelog()
         self.validate_version_regex()
-        self.validate_changelog_type()
         self.validate_group_config()
 
     def validate_header_prefix(self):
@@ -465,24 +388,6 @@ class ChangelogCIConfiguration:
                 f'Falling back to {self.version_regex}.'
             )
             print_message(msg, message_type='warning')
-
-    def validate_changelog_type(self):
-        """Validate and set changelog_type configuration option"""
-        changelog_type = self.user_raw_config.get('changelog_type')
-
-        if not (
-            changelog_type and
-            isinstance(changelog_type, str) and
-            changelog_type in [self.PULL_REQUEST, self.COMMIT]
-        ):
-            msg = (
-                '`changelog_type` was not provided or not valid, '
-                f'the options are "{self.PULL_REQUEST}" or "{self.COMMIT}", '
-                f'falling back to default value of "{self.changelog_type}".'
-            )
-            print_message(msg, message_type='warning')
-        else:
-            self.changelog_type = changelog_type
 
     def validate_group_config(self):
         """Validate and set group_config configuration option"""
@@ -552,13 +457,6 @@ def print_message(message, message_type=None):
 
     return subprocess.run(['echo', f'::{message_type}::{message}'])
 
-
-CHANGELOG_PR_CLASSES = {
-    ChangelogCIConfiguration.PULL_REQUEST: ChangelogCIPullRequest,
-    ChangelogCIConfiguration.COMMIT: ChangelogCICommitMessage
-}
-
-
 if __name__ == '__main__':
     # Default environment variable from GitHub
     # https://docs.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables
@@ -603,13 +501,9 @@ if __name__ == '__main__':
 
     # Group: Generate Changelog
     print_message('Generate Changelog', message_type='group')
-    # Get CI class using configuration
-    changelog_pr_class = CHANGELOG_PR_CLASSES.get(
-        config.changelog_type
-    )
 
     # Initialize the Changelog PR
-    ci = changelog_pr_class(
+    ci = ChangelogCIPullRequest(
         repository,
         event_path,
         config,
