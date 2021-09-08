@@ -3,7 +3,8 @@ name: Changelog PR
 on:
   push:
     branches:
-      - main
+      # Run this action when the following branch is pushed to.
+      # Keep this in sync with with.branch below.
       - master
 
 jobs:
@@ -19,5 +20,8 @@ jobs:
         with:
           changelog_filename: CHANGELOG.md
           config_file: changelog-pr-config.yaml
+          # Commit the changelog to this branch.
+          # Keep this in sync with on.push.branches above.
+          branch: master
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
