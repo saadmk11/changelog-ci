@@ -182,18 +182,6 @@ class ChangelogCIBase:
 
     def run(self):
         """Entrypoint to the Changelog PR"""
-        if (
-            not self.config.commit_changelog
-        ):
-            msg = (
-                'Skipping Changelog generation as `commit_changelog` '
-                'is set to False. '
-                'If you did not intend to do this please set '
-                'one or both of them to True.'
-            )
-            print_message(msg, message_type='error')
-            return
-
         is_valid_pull_request = self._validate_pull_request()
 
         if not is_valid_pull_request:
@@ -229,10 +217,9 @@ class ChangelogCIBase:
 
         string_data = self.parse_changelog(version, changes)
 
-        if self.config.commit_changelog:
-            print_message('Commit Changelog', message_type='group')
-            self._commit_changelog(string_data)
-            print_message('', message_type='endgroup')
+        print_message('Commit Changelog', message_type='group')
+        self._commit_changelog(string_data)
+        print_message('', message_type='endgroup')
 
 class ChangelogCIPullRequest(ChangelogCIBase):
     """Generates and commits changelog using pull requests"""
@@ -442,7 +429,6 @@ class ChangelogCIConfiguration:
     DEFAULT_PULL_REQUEST_TITLE_REGEX = r"^(?i:release)"
     DEFAULT_VERSION_PREFIX = "Version:"
     DEFAULT_GROUP_CONFIG = []
-    COMMIT_CHANGELOG = True
     # Changelog types
     PULL_REQUEST = 'pull_request'
     COMMIT = 'commit_message'
@@ -450,7 +436,6 @@ class ChangelogCIConfiguration:
     def __init__(self, config_file):
         # Initialize with default configuration
         self.header_prefix = self.DEFAULT_VERSION_PREFIX
-        self.commit_changelog = self.COMMIT_CHANGELOG
         self.pull_request_title_regex = self.DEFAULT_PULL_REQUEST_TITLE_REGEX
         self.version_regex = self.DEFAULT_SEMVER_REGEX
         self.changelog_type = self.PULL_REQUEST
@@ -539,19 +524,6 @@ class ChangelogCIConfiguration:
             print_message(msg, message_type='warning')
         else:
             self.header_prefix = header_prefix
-
-    def validate_commit_changelog(self):
-        """Validate and set commit_changelog configuration option"""
-        commit_changelog = self.user_raw_config.get('commit_changelog')
-
-        if commit_changelog not in [0, 1, False, True]:
-            msg = (
-                '`commit_changelog` was not provided or not valid, '
-                f'falling back to `{self.commit_changelog}`.'
-            )
-            print_message(msg, message_type='warning')
-        else:
-            self.commit_changelog = bool(commit_changelog)
 
     def validate_pull_request_title_regex(self):
         """Validate and set pull_request_title_regex configuration option"""

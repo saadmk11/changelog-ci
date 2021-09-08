@@ -119,10 +119,6 @@ by adding a `JSON` or `YAML` config file to the project. For example:
 * `header_prefix`
   The prefix before the version number. e.g. `version:` in `Version: 1.0.2`
 
-* `commit_changelog`
-  Value can be `true` or `false`. if not provided defaults to `true`. If it is
-  set to `true` then Changelog PR will commit to the release pull request.
-
 * `pull_request_title_regex`
   If the pull request title matches with this `regex` Changelog PR will generate
   changelog for it. Otherwise, it will skip the changelog generation.
@@ -151,7 +147,6 @@ Written in JSON:
 {
   "changelog_type": "commit_message",
   "header_prefix": "Version:",
-  "commit_changelog": true,
   "pull_request_title_regex": "^Release",
   "version_regex": "v?([0-9]{1,2})+[.]+([0-9]{1,2})+[.]+([0-9]{1,2})\\s\\(\\d{1,2}-\\d{1,2}-\\d{4}\\)",
   "group_config": [
@@ -180,7 +175,6 @@ Written in YAML:
 ```yaml
 changelog_type: 'commit_message' # or 'pull_request'
 header_prefix: 'Version:'
-commit_changelog: true
 pull_request_title_regex: '^Release'
 version_regex: 'v?([0-9]{1,2})+[.]+([0-9]{1,2})+[.]+([0-9]{1,2})\s\(\d{1,2}-\d{1,2}-\d{4}\)'
 group_config:
