@@ -151,6 +151,19 @@ by adding a `JSON` or `YAML` config file to the project. For example:
   By adding this you can group changelog items by your repository labels with
   custom titles.
 
+* `include_unlabeled_changes`
+  if set to `false` the generated changelog will not contain the Pull Requests that are unlabeled or
+  the labels are not on the `group_config` option. It defaults to `True`.
+
+  **Note:** This option will only be used if the `group_config` option is added and
+  the `changelog_type` option is `pull_request`.
+
+* `unlabeled_group_title`
+  This option will set the title of the unlabeled changes. It defaults to `Other Changes`.
+
+  **Note:** This option will only be used if the `include_unlabeled_changes` option is set to `true`,
+  `group_config` option is added and the `changelog_type` option is `pull_request`.
+
 [See this example output with group_config](#example-changelog-output-using-config-file)
 
 [See this example output without group_config](#example-changelog-output-without-using-config-file)
@@ -165,6 +178,8 @@ Written in JSON:
   "header_prefix": "Version:",
   "commit_changelog": true,
   "comment_changelog": true,
+  "include_unlabeled_changes": true,
+  "unlabeled_group_title": "Unlabeled Changes",
   "pull_request_title_regex": "^Release",
   "version_regex": "v?([0-9]{1,2})+[.]+([0-9]{1,2})+[.]+([0-9]{1,2})\\s\\(\\d{1,2}-\\d{1,2}-\\d{4}\\)",
   "group_config": [
@@ -195,6 +210,8 @@ changelog_type: 'commit_message' # or 'pull_request'
 header_prefix: 'Version:'
 commit_changelog: true
 comment_changelog: true
+include_unlabeled_changes: true
+unlabeled_group_title: 'Unlabeled Changes'
 pull_request_title_regex: '^Release'
 version_regex: 'v?([0-9]{1,2})+[.]+([0-9]{1,2})+[.]+([0-9]{1,2})\s\(\d{1,2}-\d{1,2}-\d{4}\)'
 group_config:

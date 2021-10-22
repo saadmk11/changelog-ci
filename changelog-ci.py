@@ -364,10 +364,10 @@ class ChangelogCIPullRequest(ChangelogCIBase):
                     string_data += '\n#### ' + config['title'] + '\n\n'
                     string_data += '\n' + items_string
 
-            if changes:
+            if changes and self.config.include_unlabeled_changes:
                 # if they do not match any user provided group
-                # Add items in `Other Changes` group
-                string_data += '\n#### Other Changes\n\n'
+                # Add items in `unlabeled group` group
+                string_data += f'\n#### {self.config.unlabeled_group_title}\n\n'
                 string_data += ''.join(
                     map(self._get_changelog_line, changes)
                 )
@@ -469,6 +469,8 @@ class ChangelogCIConfiguration:
     DEFAULT_GROUP_CONFIG = []
     COMMIT_CHANGELOG = True
     COMMENT_CHANGELOG = False
+    INCLUDE_UNLABELED_CHANGES = True
+    UNLABELED_GROUP_TITLE = 'Other Changes'
     # Changelog types
     PULL_REQUEST = 'pull_request'
     COMMIT = 'commit_message'
@@ -482,6 +484,8 @@ class ChangelogCIConfiguration:
         self.version_regex = self.DEFAULT_SEMVER_REGEX
         self.changelog_type = self.PULL_REQUEST
         self.group_config = self.DEFAULT_GROUP_CONFIG
+        self.include_unlabeled_changes = self.INCLUDE_UNLABELED_CHANGES
+        self.unlabeled_group_title = self.UNLABELED_GROUP_TITLE
 
         self.user_raw_config = self.get_user_config(config_file)
 
@@ -554,6 +558,8 @@ class ChangelogCIConfiguration:
         self.validate_version_regex()
         self.validate_changelog_type()
         self.validate_group_config()
+        self.validate_include_unlabeled_changes()
+        self.validate_unlabeled_group_title()
 
     def validate_header_prefix(self):
         """Validate and set header_prefix configuration option"""
@@ -567,6 +573,34 @@ class ChangelogCIConfiguration:
             print_message(msg, message_type='warning')
         else:
             self.header_prefix = header_prefix
+
+    def validate_unlabeled_group_title(self):
+        """Validate and set unlabeled_group_title configuration option"""
+        unlabeled_group_title = self.user_raw_config.get('unlabeled_group_title')
+
+        if not unlabeled_group_title or not isinstance(unlabeled_group_title, str):
+            msg = (
+                '`unlabeled_group_title` was not provided or not valid, '
+                f'falling back to `{self.unlabeled_group_title}`.'
+            )
+            print_message(msg, message_type='warning')
+        else:
+            self.unlabeled_group_title = unlabeled_group_title
+
+    def validate_include_unlabeled_changes(self):
+        """Validate and set include_unlabeled_changes configuration option"""
+        include_unlabeled_changes = self.user_raw_config.get(
+            'include_unlabeled_changes'
+        )
+
+        if include_unlabeled_changes not in [0, 1, False, True]:
+            msg = (
+                '`include_unlabeled_changes` was not provided or not valid, '
+                f'falling back to `{self.include_unlabeled_changes}`.'
+            )
+            print_message(msg, message_type='warning')
+        else:
+            self.include_unlabeled_changes = bool(include_unlabeled_changes)
 
     def validate_commit_changelog(self):
         """Validate and set commit_changelog configuration option"""
