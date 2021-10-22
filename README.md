@@ -155,12 +155,12 @@ by adding a `JSON` or `YAML` config file to the project. For example:
   if set to `false` the generated changelog will not contain the Pull Requests that are unlabeled or
   the labels are not on the `group_config` option. It defaults to `True`.
 
-  **Note: ** This option will only be used if the `group_config` option is added and the `changelog_type` option is `pull_request`.
+  **Note:** This option will only be used if the `group_config` option is added and the `changelog_type` option is `pull_request`.
 
 * `unlabeled_group_title`
   This option will set the title of the unlabeled changes. It defaults to `Other Changes`.
 
-  **Note: ** This option will only be used if the `include_unlabeled_changes` option is set to `true`, `group_config` option is added and the `changelog_type` is `pull_request`.
+  **Note:** This option will only be used if the `include_unlabeled_changes` option is set to `true`, `group_config` option is added and the `changelog_type` is `pull_request`.
 
 [See this example output with group_config](#example-changelog-output-using-config-file)
 
