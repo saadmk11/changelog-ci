@@ -464,7 +464,7 @@ class ChangelogCIPullRequest(ChangelogCIBase):
                     if self.config.changelog_file_type == self.config.MARKDOWN_FILE:
                         string_data += f"\n#### {config['title']}\n"
                     else:
-                        string_data = (
+                        string_data += (
                             f"\n{config['title']}\n"
                             f"{'-' * len(config['title'])}\n"
                         )
