@@ -77,11 +77,8 @@ your `.github/workflows/workflow.yml` file:
       # defaults to `github-actions[bot]` if not provided.
       committer_username: 'test'
       committer_email: 'test@test.com'
-    env:
-      # optional, only required for `private` repositories
-      # and required if the changelog comment
-      # option is turned on through the config file
-      GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      # Optional
+      github_token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 **Changelog CI Badge:**
@@ -269,12 +266,12 @@ jobs:
       - name: Run Changelog CI
         uses: saadmk11/changelog-ci@v0.8.0
         with:
+          # Optional
           changelog_filename: CHANGELOG.md
+          # Optional
           config_file: changelog-ci-config.json
-        # Add this if you are using it on a private repository
-        # Or if you have turned on commenting through the config file.
-        env:
-          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          # Optional
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ## Changelog CI in Action (Comment & Commit)

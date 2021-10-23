@@ -19,7 +19,14 @@ inputs:
   committer_email:
     description: 'Email Address of that user who will commit'
     required: false
-    default: '41898282+github-actions[bot]@users.noreply.github.com'
+    default: 'github-actions[bot]@users.noreply.github.com'
+  release_version:
+    description: 'The release version that will be used on the generated Changelog'
+    required: false
+  github_token:
+    description: 'GITHUB_TOKEN or Personal Access Token (PAT)'
+    required: true
+    default: ${{ github.token }}
 runs:
   using: 'docker'
   image: 'Dockerfile'
