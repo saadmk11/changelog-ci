@@ -602,11 +602,7 @@ class ChangelogCIConfiguration:
 
     MARKDOWN_FILE = 'md'
     RESTRUCTUREDTEXT_FILE = 'rst'
-    CHANGELOG_FILENAME_WITHOUT_EXTENSION = 'CHANGELOG'
-    DEFAULT_CHANGELOG_FILENAMES = {
-        MARKDOWN_FILE: f'{CHANGELOG_FILENAME_WITHOUT_EXTENSION}.{MARKDOWN_FILE}',
-        RESTRUCTUREDTEXT_FILE: f'{CHANGELOG_FILENAME_WITHOUT_EXTENSION}.{RESTRUCTUREDTEXT_FILE}'
-    }
+    DEFAULT_CHANGELOG_FILENAME = f'CHANGELOG.{MARKDOWN_FILE}'
 
     def __init__(self, config_file, **other_options):
         # Initialize with default configuration
@@ -620,7 +616,7 @@ class ChangelogCIConfiguration:
         self.include_unlabeled_changes = self.INCLUDE_UNLABELED_CHANGES
         self.unlabeled_group_title = self.UNLABELED_GROUP_TITLE
         self.changelog_file_type = self.MARKDOWN_FILE
-        self.changelog_filename = self.DEFAULT_CHANGELOG_FILENAMES[self.MARKDOWN_FILE]
+        self.changelog_filename = self.DEFAULT_CHANGELOG_FILENAME
         self.git_commit_author = self.DEFAULT_COMMIT_AUTHOR
 
         self.user_raw_config = self.get_user_config(config_file, other_options)
@@ -699,8 +695,8 @@ class ChangelogCIConfiguration:
         self.validate_group_config()
         self.validate_include_unlabeled_changes()
         self.validate_unlabeled_group_title()
-        self.validate_changelog_file_type()
         self.validate_changelog_filename()
+        self.validate_changelog_file_type()
         self.validate_git_commit_author()
 
         print(self.changelog_file_type)
@@ -898,41 +894,14 @@ class ChangelogCIConfiguration:
 
     def validate_changelog_file_type(self):
         """Validate and set changelog_file_type item configuration option"""
-        changelog_file_type = self.user_raw_config.get('changelog_file_type', '')
-        changelog_filename = self.user_raw_config.get('changelog_filename', '')
-
-        if (
-            changelog_file_type.lower() in [self.MARKDOWN_FILE, 'markdown'] or
-            changelog_filename.endswith('.md')
-        ):
+        if self.changelog_filename.endswith('.md'):
             self.changelog_file_type = self.MARKDOWN_FILE
-        elif (
-            changelog_file_type.lower() in [
-                self.RESTRUCTUREDTEXT_FILE,
-                'restructuredtext',
-                'restructured text'
-            ] or
-            changelog_filename.endswith('.rst')
-        ):
+        elif self.changelog_filename.endswith('.rst'):
             self.changelog_file_type = self.RESTRUCTUREDTEXT_FILE
-        else:
-            msg = (
-                '`changelog_file_type` was not provided or not valid, '
-                f'Falling back to `{self.changelog_file_type}`.'
-            )
-            print_message(msg, message_type='warning')
 
     def validate_changelog_filename(self):
         """Validate and set changelog_filename item configuration option"""
         changelog_filename = self.user_raw_config.get('changelog_filename', '')
-        print('At Validate File Name: ', self.changelog_file_type)
-
-        if not changelog_filename:
-            self.changelog_filename = self.DEFAULT_CHANGELOG_FILENAMES.get(
-                self.changelog_file_type,
-                self.changelog_filename
-            )
-            return
 
         if (
             changelog_filename.endswith('.md') or
@@ -992,7 +961,6 @@ if __name__ == '__main__':
 
     # User inputs from workflow
     changelog_filename = os.environ['INPUT_CHANGELOG_FILENAME']
-    changelog_file_type = os.environ['INPUT_CHANGELOG_FILE_TYPE']
     config_file = os.environ['INPUT_CONFIG_FILE']
     release_version = os.environ['INPUT_RELEASE_VERSION']
 
@@ -1029,13 +997,11 @@ if __name__ == '__main__':
     print_message('Parse Configuration', message_type='group')
 
     print(f'{changelog_filename=}')
-    print(f'{changelog_file_type=}')
     print(f'{git_commit_author=}')
 
     config = ChangelogCIConfiguration(
         config_file,
         changelog_filename=changelog_filename,
-        changelog_file_type=changelog_file_type,
         git_commit_author=git_commit_author
     )
 
