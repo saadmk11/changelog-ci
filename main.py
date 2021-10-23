@@ -875,6 +875,7 @@ if __name__ == '__main__':
     base_branch = os.environ['GITHUB_REF']
     event_name = os.environ['GITHUB_EVENT_NAME']
     github_actor = os.environ['GITHUB_ACTOR']
+    print(f'{event_name=}')
 
     # User inputs from workflow
     filename = os.environ['INPUT_CHANGELOG_FILENAME']
