@@ -895,7 +895,7 @@ if __name__ == '__main__':
     username = os.environ['INPUT_COMMITTER_USERNAME']
     email = os.environ['INPUT_COMMITTER_EMAIL']
 
-    if event_name not in ChangelogCIBase.SUPPORTED_GITHUB_EVENTS:
+    if event_name in ChangelogCIBase.SUPPORTED_GITHUB_EVENTS:
         # Group: Checkout git repository
         print_message('Checkout git repository', message_type='group')
 
