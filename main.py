@@ -19,26 +19,23 @@ class ChangelogCIBase:
 
     def __init__(
         self,
-        repository,
-        event_path,
         config,
+        repository,
+        event_name,
+        event_path,
         pull_request_branch,
         base_branch,
-        git_commit_author,
-        filename='CHANGELOG.md',
         release_version=None,
-        event_name=None,
         token=None
     ):
-        self.repository = repository
-        self.event_path = event_path
         self.config = config
+        self.repository = repository
+        self.event_name = event_name
+        self.event_path = event_path
         self.pull_request_branch = pull_request_branch
         self.base_branch = base_branch
-        self.git_commit_author = git_commit_author
-        self.filename = filename
         self.release_version = release_version
-        self.event_name = event_name
+
         self.token = token
 
     @staticmethod
@@ -122,7 +119,7 @@ class ChangelogCIBase:
 
     def _get_file_mode(self):
         """Gets the mode that the changelog file should be opened in"""
-        if os.path.exists(self.filename):
+        if os.path.exists(self.config.changelog_filename):
             # if the changelog file exists
             # opens it in read-write mode
             file_mode = 'r+'
@@ -165,7 +162,7 @@ class ChangelogCIBase:
         """Write changelog to the changelog file"""
         file_mode = self._get_file_mode()
 
-        with open(self.filename, file_mode) as f:
+        with open(self.config.changelog_filename, file_mode) as f:
             # read the existing data and store it in a variable
             body = f.read()
             # write at the top of the file
@@ -179,11 +176,11 @@ class ChangelogCIBase:
 
     def _commit_changelog(self, branch):
         """Commit Changelog"""
-        subprocess.run(['git', 'add', self.filename])
+        subprocess.run(['git', 'add', self.config.changelog_filename])
         subprocess.run(
             [
                 'git', 'commit',
-                f'--author={self.git_commit_author}',
+                f'--author={self.config.git_commit_author}',
                 '-m', f'[Changelog CI] Add Changelog for Version {self.release_version}'
             ]
         )
@@ -356,10 +353,14 @@ class ChangelogCIBase:
 class ChangelogCIPullRequest(ChangelogCIBase):
     """Generates, commits and/or comments changelog using pull requests"""
 
-    @staticmethod
-    def _get_changelog_line(item):
+    def _get_changelog_line(self, item):
         """Generate each line of changelog"""
-        return "* [#{number}]({url}): {title}\n".format(
+        if self.config.changelog_file_type == self.config.MARKDOWN_FILE:
+            changelog_line_template = "* [#{number}]({url}): {title}\n"
+        else:
+            changelog_line_template = "* `#{number} <{url}>`__: {title}\n"
+
+        return changelog_line_template.format(
             number=item['number'],
             url=item['url'],
             title=item['title']
@@ -426,9 +427,14 @@ class ChangelogCIPullRequest(ChangelogCIBase):
 
     def parse_changelog(self, version, changes):
         """Parse the pull requests data and return a string"""
-        string_data = (
-            '# ' + self.config.header_prefix + ' ' + version + '\n\n'
-        )
+        header = f'{self.config.header_prefix} {version}'
+
+        if self.config.changelog_file_type == self.config.MARKDOWN_FILE:
+            string_data = f'# {header}\n\n'
+        else:
+            string_data = (
+                f"{header}\n{'=' * len(header)}\n\n"
+            )
 
         group_config = self.config.group_config
 
@@ -455,13 +461,25 @@ class ChangelogCIPullRequest(ChangelogCIBase):
                         changes.remove(pull_request)
 
                 if items_string:
-                    string_data += '\n#### ' + config['title'] + '\n'
+                    if self.config.changelog_file_type == self.config.MARKDOWN_FILE:
+                        string_data += f"\n#### {config['title']}\n"
+                    else:
+                        string_data = (
+                            f"\n{config['title']}\n"
+                            f"{'-' * len(config['title'])}\n"
+                        )
                     string_data += '\n' + items_string
 
             if changes and self.config.include_unlabeled_changes:
                 # if they do not match any user provided group
                 # Add items in `unlabeled group` group
-                string_data += f'\n#### {self.config.unlabeled_group_title}\n\n'
+                if self.config.changelog_file_type == self.config.MARKDOWN_FILE:
+                    string_data += f'\n#### {self.config.unlabeled_group_title}\n'
+                else:
+                    string_data = (
+                        f"\n{self.config.unlabeled_group_title}\n"
+                        f"{'-' * len(self.config.unlabeled_group_title)}\n"
+                    )
                 string_data += ''.join(
                     map(self._get_changelog_line, changes)
                 )
@@ -477,10 +495,14 @@ class ChangelogCIPullRequest(ChangelogCIBase):
 class ChangelogCICommitMessage(ChangelogCIBase):
     """Generates, commits and/or comments changelog using commit messages"""
 
-    @staticmethod
-    def _get_changelog_line(item):
+    def _get_changelog_line(self, item):
         """Generate each line of changelog"""
-        return "* [{sha}]({url}): {message}\n".format(
+        if self.config.changelog_file_type == self.config.MARKDOWN_FILE:
+            changelog_line_template = "* [{sha}]({url}): {message}\n"
+        else:
+            changelog_line_template = "* `{sha} <{url}>`__: {message}\n"
+
+        return changelog_line_template.format(
             sha=item['sha'][:7],
             url=item['url'],
             message=item['message']
@@ -538,9 +560,14 @@ class ChangelogCICommitMessage(ChangelogCIBase):
 
     def parse_changelog(self, version, changes):
         """Parse the commit data and return a string"""
-        string_data = (
-            '# ' + self.config.header_prefix + ' ' + version + '\n\n'
-        )
+        header = f'{self.config.header_prefix} {version}'
+
+        if self.config.changelog_file_type == self.config.MARKDOWN_FILE:
+            string_data = f'# {header}\n\n'
+        else:
+            string_data = (
+                f"{header}\n{'=' * len(header)}\n\n"
+            )
         string_data += ''.join(map(self._get_changelog_line, changes))
 
         return string_data
@@ -566,11 +593,18 @@ class ChangelogCIConfiguration:
     COMMENT_CHANGELOG = False
     INCLUDE_UNLABELED_CHANGES = True
     UNLABELED_GROUP_TITLE = 'Other Changes'
+    DEFAULT_COMMIT_AUTHOR = (
+        'github-actions[bot] <github-actions[bot]@users.noreply.github.com>'
+    )
     # Changelog types
     PULL_REQUEST = 'pull_request'
     COMMIT = 'commit_message'
 
-    def __init__(self, config_file):
+    MARKDOWN_FILE = 'md'
+    RESTRUCTUREDTEXT_FILE = 'rst'
+    DEFAULT_CHANGELOG_FILENAME = 'CHANGELOG.md'
+
+    def __init__(self, config_file, **other_options):
         # Initialize with default configuration
         self.header_prefix = self.DEFAULT_VERSION_PREFIX
         self.commit_changelog = self.COMMIT_CHANGELOG
@@ -581,24 +615,29 @@ class ChangelogCIConfiguration:
         self.group_config = self.DEFAULT_GROUP_CONFIG
         self.include_unlabeled_changes = self.INCLUDE_UNLABELED_CHANGES
         self.unlabeled_group_title = self.UNLABELED_GROUP_TITLE
+        self.changelog_file_type = self.MARKDOWN_FILE
+        self.changelog_filename = self.DEFAULT_CHANGELOG_FILENAME
+        self.git_commit_author = self.DEFAULT_COMMIT_AUTHOR
 
-        self.user_raw_config = self.get_user_config(config_file)
+        self.user_raw_config = self.get_user_config(config_file, other_options)
 
         self.validate_configuration()
 
     @staticmethod
-    def get_user_config(config_file):
+    def get_user_config(config_file, other_options):
         """
         Read user provided configuration file and
         return user configuration
         """
+        user_config = other_options
+
         if not config_file:
             print_message(
                 'No Configuration file found, '
                 'falling back to default configuration to parse changelog',
                 message_type='warning'
             )
-            return
+            return user_config
 
         try:
             # parse config files with the extension .yml and .yaml
@@ -615,12 +654,12 @@ class ChangelogCIConfiguration:
                     'falling back to default configuration to parse changelog',
                     message_type='error'
                 )
-                return
+                return user_config
 
             with open(config_file, 'r') as file:
-                config = loader(file)
+                user_config.update(loader(file))
 
-            return config
+            return user_config
 
         except Exception as e:
             msg = (
@@ -628,7 +667,7 @@ class ChangelogCIConfiguration:
                 'falling back to default configuration to parse changelog'
             )
             print_message(msg, message_type='error')
-            return
+            return user_config
 
     def validate_configuration(self):
         """
@@ -655,6 +694,9 @@ class ChangelogCIConfiguration:
         self.validate_group_config()
         self.validate_include_unlabeled_changes()
         self.validate_unlabeled_group_title()
+        self.validate_changelog_filename()
+        self.validate_changelog_file_type()
+        self.validate_git_commit_author()
 
     def validate_header_prefix(self):
         """Validate and set header_prefix configuration option"""
@@ -845,6 +887,63 @@ class ChangelogCIConfiguration:
 
         self.group_config.append(item)
 
+    def validate_changelog_file_type(self):
+        """Validate and set changelog_file_type item configuration option"""
+        changelog_file_type = self.user_raw_config.get('changelog_file_type', '')
+        changelog_filename = self.user_raw_config.get('changelog_filename', '')
+
+        if (
+            changelog_file_type.lower() in [self.MARKDOWN_FILE, 'markdown'] or
+            changelog_filename.endswith('.md')
+        ):
+            self.changelog_file_type = self.MARKDOWN_FILE
+        elif (
+            changelog_file_type.lower() in [
+                self.RESTRUCTUREDTEXT_FILE,
+                'restructuredtext',
+                'restructured text'
+            ]
+            or changelog_filename.endswith('.rst')
+        ):
+            self.changelog_file_type = self.RESTRUCTUREDTEXT_FILE
+        else:
+            msg = (
+                '`changelog_file_type` was not provided or not valid, '
+                f'Falling back to `{self.changelog_file_type}`.'
+            )
+            print_message(msg, message_type='warning')
+
+    def validate_changelog_filename(self):
+        """Validate and set changelog_filename item configuration option"""
+        changelog_filename = self.user_raw_config.get('changelog_filename', '')
+
+        if (
+            changelog_filename.endswith('.md') or
+            changelog_filename.endswith('.rst')
+        ):
+            self.changelog_filename = changelog_filename
+        else:
+            msg = (
+                'Changelog filename was not provided or not valid, '
+                f'Changelog filename must end with '
+                f'{self.MARKDOWN_FILE} or {self.RESTRUCTUREDTEXT_FILE}.'
+                f'Falling back to `{self.changelog_filename}`.'
+            )
+            print_message(msg, message_type='warning')
+
+    def validate_git_commit_author(self):
+        """Validate and set changelog_filename item configuration option"""
+        git_commit_author = self.user_raw_config.get('git_commit_author', '')
+
+        if git_commit_author:
+            self.git_commit_author = git_commit_author
+        else:
+            msg = (
+                'Git Commit Author not found, '
+                f'Falling back to `{self.git_commit_author}`.'
+            )
+            print_message(msg, message_type='warning')
+
 
 def print_message(message, message_type=None):
     """Helper function to print colorful outputs in GitHub Actions shell"""
@@ -875,7 +974,8 @@ if __name__ == '__main__':
     github_actor = os.environ['GITHUB_ACTOR']
 
     # User inputs from workflow
-    filename = os.environ['INPUT_CHANGELOG_FILENAME']
+    changelog_filename = os.environ['INPUT_CHANGELOG_FILENAME']
+    changelog_file_type = os.environ['INPUT_CHANGELOG_FILE_TYPE']
     config_file = os.environ['INPUT_CONFIG_FILE']
     release_version = os.environ['INPUT_RELEASE_VERSION']
 
@@ -911,7 +1011,12 @@ if __name__ == '__main__':
 
     print_message('Parse Configuration', message_type='group')
 
-    config = ChangelogCIConfiguration(config_file)
+    config = ChangelogCIConfiguration(
+        config_file,
+        changelog_filename=changelog_filename,
+        changelog_file_type=changelog_file_type,
+        git_commit_author=git_commit_author
+    )
 
     print_message('', message_type='endgroup')
 
@@ -924,15 +1029,13 @@ if __name__ == '__main__':
 
     # Initialize the Changelog CI
     ci = changelog_ci_class(
-        repository,
-        event_path,
         config,
+        repository,
+        event_name,
+        event_path,
         pull_request_branch,
         base_branch,
-        git_commit_author,
-        filename=filename,
         release_version=release_version,
-        event_name=event_name,
         token=token
     )
     # Run Changelog CI

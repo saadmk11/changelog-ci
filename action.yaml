@@ -27,6 +27,10 @@ inputs:
     description: 'GITHUB_TOKEN or Personal Access Token (PAT)'
     required: true
     default: ${{ github.token }}
+  changelog_file_type:
+    description: 'Markdown or reStructuredText file type'
+    required: true
+    default: 'md'
 runs:
   using: 'docker'
   image: 'Dockerfile'
