@@ -261,7 +261,10 @@ class ChangelogCIBase:
             print_message(msg, message_type='error')
             return
 
-        if not self.event_name == self.PULL_REQUEST_EVENT and not self.release_version:
+        if (
+            not self.event_name == self.PULL_REQUEST_EVENT and
+            not self.release_version
+        ):
             msg = (
                 'Skipping Changelog generation. '
                 'Changelog CI could not find the Release Version. '

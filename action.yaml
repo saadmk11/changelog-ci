@@ -21,7 +21,7 @@ inputs:
     required: false
     default: 'github-actions[bot]@users.noreply.github.com'
   release_version:
-    description: 'The release version which will be used on the generated Changelog'
+    description: 'The release version that will be used on the generated Changelog'
     required: false
   github_token:
     description: 'GITHUB_TOKEN or Personal Access Token (PAT)'
