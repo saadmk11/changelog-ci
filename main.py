@@ -452,7 +452,7 @@ class ChangelogCIPullRequest(ChangelogCIBase):
                         changes.remove(pull_request)
 
                 if items_string:
-                    string_data += '\n#### ' + config['title'] + '\n\n'
+                    string_data += '\n#### ' + config['title'] + '\n'
                     string_data += '\n' + items_string
 
             if changes and self.config.include_unlabeled_changes:
@@ -487,10 +487,10 @@ class ChangelogCICommitMessage(ChangelogCIBase):
         """Get all the merged pull request after latest release"""
         previous_release_date = self._get_latest_release_date()
 
-        url = '{base_url}/repos/{repo_name}/commits?since={date}'.format(
+        url = '{base_url}/repos/{repo_name}/commits{since}'.format(
             base_url=self.GITHUB_API_URL,
             repo_name=self.repository,
-            date=previous_release_date or ''
+            since=f'?since={previous_release_date}' or ''
         )
 
         items = []
