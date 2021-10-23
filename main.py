@@ -602,7 +602,11 @@ class ChangelogCIConfiguration:
 
     MARKDOWN_FILE = 'md'
     RESTRUCTUREDTEXT_FILE = 'rst'
-    DEFAULT_CHANGELOG_FILENAME = 'CHANGELOG.md'
+    CHANGELOG_FILENAME_WITHOUT_EXTENSION = 'CHANGELOG'
+    DEFAULT_CHANGELOG_FILENAMES = {
+        MARKDOWN_FILE: f'{CHANGELOG_FILENAME_WITHOUT_EXTENSION}.{MARKDOWN_FILE}',
+        RESTRUCTUREDTEXT_FILE: f'{CHANGELOG_FILENAME_WITHOUT_EXTENSION}.{RESTRUCTUREDTEXT_FILE}'
+    }
 
     def __init__(self, config_file, **other_options):
         # Initialize with default configuration
@@ -616,7 +620,7 @@ class ChangelogCIConfiguration:
         self.include_unlabeled_changes = self.INCLUDE_UNLABELED_CHANGES
         self.unlabeled_group_title = self.UNLABELED_GROUP_TITLE
         self.changelog_file_type = self.MARKDOWN_FILE
-        self.changelog_filename = self.DEFAULT_CHANGELOG_FILENAME
+        self.changelog_filename = self.DEFAULT_CHANGELOG_FILENAMES[self.MARKDOWN_FILE]
         self.git_commit_author = self.DEFAULT_COMMIT_AUTHOR
 
         self.user_raw_config = self.get_user_config(config_file, other_options)
@@ -695,8 +699,8 @@ class ChangelogCIConfiguration:
         self.validate_group_config()
         self.validate_include_unlabeled_changes()
         self.validate_unlabeled_group_title()
-        self.validate_changelog_filename()
         self.validate_changelog_file_type()
+        self.validate_changelog_filename()
         self.validate_git_commit_author()
 
         print(self.changelog_file_type)
@@ -898,7 +902,7 @@ class ChangelogCIConfiguration:
         changelog_filename = self.user_raw_config.get('changelog_filename', '')
 
         if (
-            changelog_file_type.lower() in [self.MARKDOWN_FILE, 'markdown'] and
+            changelog_file_type.lower() in [self.MARKDOWN_FILE, 'markdown'] or
             changelog_filename.endswith('.md')
         ):
             self.changelog_file_type = self.MARKDOWN_FILE
@@ -907,7 +911,7 @@ class ChangelogCIConfiguration:
                 self.RESTRUCTUREDTEXT_FILE,
                 'restructuredtext',
                 'restructured text'
-            ] and
+            ] or
             changelog_filename.endswith('.rst')
         ):
             self.changelog_file_type = self.RESTRUCTUREDTEXT_FILE
@@ -921,6 +925,13 @@ class ChangelogCIConfiguration:
     def validate_changelog_filename(self):
         """Validate and set changelog_filename item configuration option"""
         changelog_filename = self.user_raw_config.get('changelog_filename', '')
+
+        if not changelog_filename:
+            self.changelog_filename = self.DEFAULT_CHANGELOG_FILENAMES.get(
+                self.changelog_file_type,
+                self.changelog_filename
+            )
+            return
 
         if (
             changelog_filename.endswith('.md') or
