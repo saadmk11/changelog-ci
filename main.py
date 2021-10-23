@@ -476,7 +476,7 @@ class ChangelogCIPullRequest(ChangelogCIBase):
                 if self.config.changelog_file_type == self.config.MARKDOWN_FILE:
                     string_data += f'\n#### {self.config.unlabeled_group_title}\n'
                 else:
-                    string_data = (
+                    string_data += (
                         f"\n{self.config.unlabeled_group_title}\n"
                         f"{'-' * len(self.config.unlabeled_group_title)}\n"
                     )
@@ -620,7 +620,6 @@ class ChangelogCIConfiguration:
         self.git_commit_author = self.DEFAULT_COMMIT_AUTHOR
 
         self.user_raw_config = self.get_user_config(config_file, other_options)
-        print('Initial: ', self.user_raw_config)
 
         self.validate_configuration()
 
@@ -698,10 +697,6 @@ class ChangelogCIConfiguration:
         self.validate_changelog_filename()
         self.validate_changelog_file_type()
         self.validate_git_commit_author()
-
-        print(self.changelog_file_type)
-        print(self.changelog_filename)
-        print(self.git_commit_author)
 
     def validate_header_prefix(self):
         """Validate and set header_prefix configuration option"""
@@ -995,9 +990,6 @@ if __name__ == '__main__':
     print_message('', message_type='endgroup')
 
     print_message('Parse Configuration', message_type='group')
-
-    print(f'{changelog_filename=}')
-    print(f'{git_commit_author=}')
 
     config = ChangelogCIConfiguration(
         config_file,
