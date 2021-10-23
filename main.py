@@ -925,6 +925,7 @@ class ChangelogCIConfiguration:
     def validate_changelog_filename(self):
         """Validate and set changelog_filename item configuration option"""
         changelog_filename = self.user_raw_config.get('changelog_filename', '')
+        print('At Validate File Name: ', self.changelog_file_type)
 
         if not changelog_filename:
             self.changelog_filename = self.DEFAULT_CHANGELOG_FILENAMES.get(
