@@ -12,7 +12,15 @@ import yaml
 class ChangelogCIBase:
     """Base Class for Changelog CI"""
 
-    github_api_url = 'https://api.github.com'
+    GITHUB_API_URL = 'https://api.github.com'
+
+    WORKFLOW_DISPATCH_EVENT = 'workflow_dispatch'
+    PULL_REQUEST_EVENT = 'pull_request'
+
+    SUPPORTED_GITHUB_EVENTS = [
+        WORKFLOW_DISPATCH_EVENT,
+        PULL_REQUEST_EVENT
+    ]
 
     def __init__(
         self,
@@ -81,7 +89,7 @@ class ChangelogCIBase:
 
     def _create_pull_request(self, branch_name, body):
         """Create pull request on GitHub"""
-        url = f'{self.github_api_url}/repos/{self.repository}/pulls'
+        url = f'{self.GITHUB_API_URL}/repos/{self.repository}/pulls'
         payload = {
             'title': f'[Changelog CI] Add Changelog for Version {self.release_version}',
             'head': branch_name,
@@ -147,7 +155,7 @@ class ChangelogCIBase:
         url = (
             '{base_url}/repos/{repo_name}/releases/latest'
         ).format(
-            base_url=self.github_api_url,
+            base_url=self.GITHUB_API_URL,
             repo_name=self.repository
         )
 
@@ -227,7 +235,7 @@ class ChangelogCIBase:
         url = (
             '{base_url}/repos/{repo}/issues/{number}/comments'
         ).format(
-            base_url=self.github_api_url,
+            base_url=self.GITHUB_API_URL,
             repo=self.repository,
             number=pull_request_number
         )
@@ -388,7 +396,7 @@ class ChangelogCIPullRequest(ChangelogCIBase):
             '{merged_date_filter}'
             '&sort=merged'
         ).format(
-            base_url=self.github_api_url,
+            base_url=self.GITHUB_API_URL,
             repo_name=self.repository,
             merged_date_filter=merged_date_filter
         )
@@ -494,7 +502,7 @@ class ChangelogCICommitMessage(ChangelogCIBase):
         previous_release_date = self._get_latest_release_date()
 
         url = '{base_url}/repos/{repo_name}/commits?since={date}'.format(
-            base_url=self.github_api_url,
+            base_url=self.GITHUB_API_URL,
             repo_name=self.repository,
             date=previous_release_date or ''
         )
@@ -875,7 +883,6 @@ if __name__ == '__main__':
     base_branch = os.environ['GITHUB_REF']
     event_name = os.environ['GITHUB_EVENT_NAME']
     github_actor = os.environ['GITHUB_ACTOR']
-    print(f'{event_name=}')
 
     # User inputs from workflow
     filename = os.environ['INPUT_CHANGELOG_FILENAME']
@@ -888,56 +895,63 @@ if __name__ == '__main__':
     username = os.environ['INPUT_COMMITTER_USERNAME']
     email = os.environ['INPUT_COMMITTER_EMAIL']
 
-    # Group: Checkout git repository
-    print_message('Checkout git repository', message_type='group')
+    if event_name not in ChangelogCIBase.SUPPORTED_GITHUB_EVENTS:
+        # Group: Checkout git repository
+        print_message('Checkout git repository', message_type='group')
 
-    subprocess.run(
-        [
-            'git', 'fetch', '--prune', '--unshallow', 'origin',
-            pull_request_branch
-        ]
-    )
-    subprocess.run(['git', 'checkout', pull_request_branch])
+        subprocess.run(
+            [
+                'git', 'fetch', '--prune', '--unshallow', 'origin',
+                pull_request_branch
+            ]
+        )
+        subprocess.run(['git', 'checkout', pull_request_branch])
 
-    print_message('', message_type='endgroup')
+        print_message('', message_type='endgroup')
 
-    # Group: Configure Git
-    print_message('Configure Git', message_type='group')
+        # Group: Configure Git
+        print_message('Configure Git', message_type='group')
 
-    subprocess.run(['git', 'config', 'user.name', username])
-    subprocess.run(['git', 'config', 'user.email', email])
-    git_commit_author = f'{username} <{email}>'
-    print_message(f'Setting Git Commit Author to {git_commit_author}.')
+        subprocess.run(['git', 'config', 'user.name', username])
+        subprocess.run(['git', 'config', 'user.email', email])
+        git_commit_author = f'{username} <{email}>'
+        print_message(f'Setting Git Commit Author to {git_commit_author}.')
 
-    print_message('', message_type='endgroup')
+        print_message('', message_type='endgroup')
 
-    print_message('Parse Configuration', message_type='group')
+        print_message('Parse Configuration', message_type='group')
 
-    config = ChangelogCIConfiguration(config_file)
+        config = ChangelogCIConfiguration(config_file)
 
-    print_message('', message_type='endgroup')
+        print_message('', message_type='endgroup')
 
-    # Group: Generate Changelog
-    print_message('Generate Changelog', message_type='group')
-    # Get CI class using configuration
-    changelog_ci_class = CHANGELOG_CI_CLASSES.get(
-        config.changelog_type
-    )
+        # Group: Generate Changelog
+        print_message('Generate Changelog', message_type='group')
+        # Get CI class using configuration
+        changelog_ci_class = CHANGELOG_CI_CLASSES.get(
+            config.changelog_type
+        )
 
-    # Initialize the Changelog CI
-    ci = changelog_ci_class(
-        repository,
-        event_path,
-        config,
-        pull_request_branch,
-        base_branch,
-        git_commit_author,
-        filename=filename,
-        release_version=release_version,
-        event_name=event_name,
-        token=token
-    )
-    # Run Changelog CI
-    ci.run()
+        # Initialize the Changelog CI
+        ci = changelog_ci_class(
+            repository,
+            event_path,
+            config,
+            pull_request_branch,
+            base_branch,
+            git_commit_author,
+            filename=filename,
+            release_version=release_version,
+            event_name=event_name,
+            token=token
+        )
+        # Run Changelog CI
+        ci.run()
 
-    print_message('', message_type='endgroup')
+        print_message('', message_type='endgroup')
+    else:
+        print_message(
+            f'Changelog CI was triggered on "{event_name}" event. '
+            f'Changelog CI currently supports only "{ChangelogCIBase.SUPPORTED_GITHUB_EVENTS}" events',
+            message_type='error'
+        )
