@@ -238,7 +238,7 @@ class ChangelogCIBase:
     def get_changes_after_last_release(self):
         return NotImplemented
 
-    def parse_changelog(self, version, changes):
+    def parse_changelog(self, file_type, version, changes):
         return NotImplemented
 
     def run(self):
@@ -319,7 +319,24 @@ class ChangelogCIBase:
         if not changes:
             return
 
-        string_data = self.parse_changelog(self.release_version, changes)
+        string_data = self.parse_changelog(
+            self.config.changelog_file_type,
+            self.release_version,
+            changes
+        )
+        markdown_string_data = string_data
+
+        if all(
+            [
+                self.config.comment_changelog or self.event_name != self.PULL_REQUEST_EVENT,
+                self.config.changelog_file_type == self.config.RESTRUCTUREDTEXT_FILE
+            ]
+        ):
+            markdown_string_data = self.parse_changelog(
+                self.config.MARKDOWN_FILE,
+                self.release_version,
+                changes
+            )
 
         if self.config.commit_changelog:
             self._update_changelog_file(string_data)
@@ -333,7 +350,7 @@ class ChangelogCIBase:
                 print_message('', message_type='endgroup')
 
                 print_message('Create Pull Request', message_type='group')
-                self._create_pull_request(new_branch, string_data)
+                self._create_pull_request(new_branch, markdown_string_data)
                 print_message('', message_type='endgroup')
 
         if self.config.comment_changelog:
@@ -346,16 +363,16 @@ class ChangelogCIBase:
                 )
                 print_message(msg, message_type='error')
             else:
-                self._comment_changelog(string_data, pull_request_number)
+                self._comment_changelog(markdown_string_data, pull_request_number)
             print_message('', message_type='endgroup')
 
 
 class ChangelogCIPullRequest(ChangelogCIBase):
     """Generates, commits and/or comments changelog using pull requests"""
 
-    def _get_changelog_line(self, item):
+    def _get_changelog_line(self, file_type, item):
         """Generate each line of changelog"""
-        if self.config.changelog_file_type == self.config.MARKDOWN_FILE:
+        if file_type == self.config.MARKDOWN_FILE:
             changelog_line_template = "* [#{number}]({url}): {title}\n"
         else:
             changelog_line_template = "* `#{number} <{url}>`__: {title}\n"
@@ -425,11 +442,11 @@ class ChangelogCIPullRequest(ChangelogCIBase):
 
         return items
 
-    def parse_changelog(self, version, changes):
+    def parse_changelog(self, file_type, version, changes):
         """Parse the pull requests data and return a string"""
         header = f'{self.config.header_prefix} {version}'
 
-        if self.config.changelog_file_type == self.config.MARKDOWN_FILE:
+        if file_type == self.config.MARKDOWN_FILE:
             string_data = f'# {header}\n\n'
         else:
             string_data = (
@@ -455,13 +472,13 @@ class ChangelogCIPullRequest(ChangelogCIBase):
                             for label in config['labels']
                         )
                     ):
-                        items_string += self._get_changelog_line(pull_request)
+                        items_string += self._get_changelog_line(file_type, pull_request)
                         # remove the item so that one item
                         # does not match multiple groups
                         changes.remove(pull_request)
 
                 if items_string:
-                    if self.config.changelog_file_type == self.config.MARKDOWN_FILE:
+                    if file_type == self.config.MARKDOWN_FILE:
                         string_data += f"\n#### {config['title']}\n\n"
                     else:
                         string_data += (
@@ -473,7 +490,7 @@ class ChangelogCIPullRequest(ChangelogCIBase):
             if changes and self.config.include_unlabeled_changes:
                 # if they do not match any user provided group
                 # Add items in `unlabeled group` group
-                if self.config.changelog_file_type == self.config.MARKDOWN_FILE:
+                if file_type == self.config.MARKDOWN_FILE:
                     string_data += f'\n#### {self.config.unlabeled_group_title}\n\n'
                 else:
                     string_data += (
@@ -481,12 +498,13 @@ class ChangelogCIPullRequest(ChangelogCIBase):
                         f"{'-' * len(self.config.unlabeled_group_title)}\n\n"
                     )
                 string_data += ''.join(
-                    map(self._get_changelog_line, changes)
+                    [self._get_changelog_line(file_type, item) for item in changes]
                 )
+
         else:
             # If group config does not exist then append it without and groups
             string_data += ''.join(
-                map(self._get_changelog_line, changes)
+                [self._get_changelog_line(file_type, item) for item in changes]
             )
 
         return string_data
@@ -495,9 +513,9 @@ class ChangelogCIPullRequest(ChangelogCIBase):
 class ChangelogCICommitMessage(ChangelogCIBase):
     """Generates, commits and/or comments changelog using commit messages"""
 
-    def _get_changelog_line(self, item):
+    def _get_changelog_line(self, file_type, item):
         """Generate each line of changelog"""
-        if self.config.changelog_file_type == self.config.MARKDOWN_FILE:
+        if file_type == self.config.MARKDOWN_FILE:
             changelog_line_template = "* [{sha}]({url}): {message}\n"
         else:
             changelog_line_template = "* `{sha} <{url}>`__: {message}\n"
@@ -558,17 +576,19 @@ class ChangelogCICommitMessage(ChangelogCIBase):
 
         return items
 
-    def parse_changelog(self, version, changes):
+    def parse_changelog(self, file_type, version, changes):
         """Parse the commit data and return a string"""
         header = f'{self.config.header_prefix} {version}'
 
-        if self.config.changelog_file_type == self.config.MARKDOWN_FILE:
+        if file_type == self.config.MARKDOWN_FILE:
             string_data = f'# {header}\n\n'
         else:
             string_data = (
                 f"{header}\n{'=' * len(header)}\n\n"
             )
-        string_data += ''.join(map(self._get_changelog_line, changes))
+        string_data += ''.join(
+            [self._get_changelog_line(file_type, item) for item in changes]
+        )
 
         return string_data
 
