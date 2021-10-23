@@ -112,8 +112,6 @@ class ChangelogCIBase:
         if match:
             return True
 
-        return
-
     def _set_release_version_from_pull_request_title(self, pull_request_title):
         """Get version number from the pull request title"""
         pattern = re.compile(self.config.version_regex)
@@ -268,7 +266,7 @@ class ChangelogCIBase:
                 'Skipping Changelog generation. '
                 'Changelog CI could not find the Release Version. '
                 'Changelog CI should be triggered on a pull request or '
-                '`release_version` input must be provided on workflow. '
+                '`release_version` input must be provided on the workflow. '
                 'Please Check the Documentation for more details.'
             )
             print_message(msg, message_type='error')
@@ -480,7 +478,7 @@ class ChangelogCICommitMessage(ChangelogCIBase):
     def _get_changelog_line(item):
         """Generate each line of changelog"""
         return "* [{sha}]({url}): {message}\n".format(
-            sha=item['sha'][:6],
+            sha=item['sha'][:7],
             url=item['url'],
             message=item['message']
         )
