@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 import re
@@ -444,6 +445,7 @@ class ChangelogCIPullRequest(ChangelogCIBase):
 
     def parse_changelog(self, file_type, version, changes):
         """Parse the pull requests data and return a string"""
+        new_changes = copy.deepcopy(changes)
         header = f'{self.config.header_prefix} {version}'
 
         if file_type == self.config.MARKDOWN_FILE:
@@ -458,12 +460,12 @@ class ChangelogCIPullRequest(ChangelogCIBase):
         if group_config:
             for config in group_config:
 
-                if len(changes) == 0:
+                if len(new_changes) == 0:
                     break
 
                 items_string = ''
 
-                for pull_request in changes:
+                for pull_request in new_changes:
                     # check if the pull request label matches with
                     # any label of the config
                     if (
@@ -475,7 +477,7 @@ class ChangelogCIPullRequest(ChangelogCIBase):
                         items_string += self._get_changelog_line(file_type, pull_request)
                         # remove the item so that one item
                         # does not match multiple groups
-                        changes.remove(pull_request)
+                        new_changes.remove(pull_request)
 
                 if items_string:
                     if file_type == self.config.MARKDOWN_FILE:
@@ -487,7 +489,7 @@ class ChangelogCIPullRequest(ChangelogCIBase):
                         )
                     string_data += items_string
 
-            if changes and self.config.include_unlabeled_changes:
+            if new_changes and self.config.include_unlabeled_changes:
                 # if they do not match any user provided group
                 # Add items in `unlabeled group` group
                 if file_type == self.config.MARKDOWN_FILE:
@@ -498,13 +500,12 @@ class ChangelogCIPullRequest(ChangelogCIBase):
                         f"{'-' * len(self.config.unlabeled_group_title)}\n\n"
                     )
                 string_data += ''.join(
-                    [self._get_changelog_line(file_type, item) for item in changes]
+                    [self._get_changelog_line(file_type, item) for item in new_changes]
                 )
-
         else:
             # If group config does not exist then append it without and groups
             string_data += ''.join(
-                [self._get_changelog_line(file_type, item) for item in changes]
+                [self._get_changelog_line(file_type, item) for item in new_changes]
             )
 
         return string_data
@@ -578,6 +579,7 @@ class ChangelogCICommitMessage(ChangelogCIBase):
 
     def parse_changelog(self, file_type, version, changes):
         """Parse the commit data and return a string"""
+        new_changes = copy.deepcopy(changes)
         header = f'{self.config.header_prefix} {version}'
 
         if file_type == self.config.MARKDOWN_FILE:
@@ -587,7 +589,7 @@ class ChangelogCICommitMessage(ChangelogCIBase):
                 f"{header}\n{'=' * len(header)}\n\n"
             )
         string_data += ''.join(
-            [self._get_changelog_line(file_type, item) for item in changes]
+            [self._get_changelog_line(file_type, item) for item in new_changes]
         )
 
         return string_data
