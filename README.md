@@ -77,11 +77,8 @@ your `.github/workflows/workflow.yml` file:
       # defaults to `github-actions[bot]` if not provided.
       committer_username: 'test'
       committer_email: 'test@test.com'
-    env:
       # optional, only required for `private` repositories
-      # and required if the changelog comment
-      # option is turned on through the config file
-      GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      github_token: ${{secrets.GITHUB_TOKEN}}
 ```
 
 **Changelog CI Badge:**

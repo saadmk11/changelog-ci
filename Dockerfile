@@ -13,7 +13,7 @@ COPY requirements.txt /requirements.txt
 
 RUN pip install -r requirements.txt
 
-COPY changelog-ci.py /changelog-ci.py
+COPY main.py /main.py
 
-RUN ["chmod", "+x", "/changelog-ci.py"]
-ENTRYPOINT ["python", "/changelog-ci.py"]
+RUN ["chmod", "+x", "/main.py"]
+ENTRYPOINT ["python", "/main.py"]

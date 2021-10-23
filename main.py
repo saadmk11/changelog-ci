@@ -2,6 +2,7 @@ import json
 import os
 import re
 import subprocess
+import time
 from functools import cached_property
 
 import requests
@@ -19,18 +20,23 @@ class ChangelogCIBase:
         event_path,
         config,
         pull_request_branch,
+        base_branch,
+        git_commit_author,
         filename='CHANGELOG.md',
+        release_version=None,
+        event_name=None,
         token=None
     ):
         self.repository = repository
         self.filename = filename
         self.config = config
         self.pull_request_branch = pull_request_branch
+        self.base_branch = base_branch
+        self.git_commit_author = git_commit_author
         self.token = token
-
-        title, number = self._get_pull_request_title_and_number(event_path)
-        self.pull_request_title = title
-        self.pull_request_number = number
+        self.release_version = release_version
+        self.event_name = event_name
+        self.event_path = event_path
 
     @staticmethod
     def _get_pull_request_title_and_number(event_path):
@@ -58,31 +64,69 @@ class ChangelogCIBase:
 
         return headers
 
+    def _create_new_branch(self):
+        """Create and push a new branch with the changes"""
+        # Use timestamp to ensure uniqueness of the new branch
+        new_branch = f'changelog-ci-{self.release_version}-{int(time.time())}'
+
+        subprocess.run(
+            ['git', 'checkout', self.base_branch]
+        )
+        subprocess.run(
+            ['git', 'checkout', '-b', new_branch]
+        )
+        self._commit_changelog(new_branch)
+
+        return new_branch
+
+    def _create_pull_request(self, branch_name, body):
+        """Create pull request on GitHub"""
+        url = f'{self.github_api_url}/repos/{self.repository}/pulls'
+        payload = {
+            'title': f'[Changelog CI] Add Changelog for Version {self.release_version}',
+            'head': branch_name,
+            'base': self.base_branch,
+            'body': body,
+        }
+
+        response = requests.post(
+            url, json=payload, headers=self._get_request_headers
+        )
+
+        if response.status_code == 201:
+            html_url = response.json()['html_url']
+            print_message(f'Pull request opened at {html_url} \U0001F389')
+        else:
+            msg = (
+                f'Could not create a pull request on '
+                f'{self.repository}, status code: {response.status_code}'
+            )
+            print_message(msg, message_type='error')
+
     def get_changes_after_last_release(self):
         return NotImplemented
 
     def parse_changelog(self, version, changes):
         return NotImplemented
 
-    def _validate_pull_request(self):
+    def _validate_pull_request(self, pull_request_title):
         """Check if changelog should be generated for this pull request"""
         pattern = re.compile(self.config.pull_request_title_regex)
-        match = pattern.search(self.pull_request_title)
+        match = pattern.search(pull_request_title)
 
         if match:
             return True
 
         return
 
-    def _get_version_number(self):
-        """Get version number from the pull request title"""
-        pattern = re.compile(self.config.version_regex)
-        match = pattern.search(self.pull_request_title)
+    def _set_release_version(self, pull_request_title=None):
+        """Get version number from the pull request title or release_version"""
+        if not self.release_version and pull_request_title:
+            pattern = re.compile(self.config.version_regex)
+            match = pattern.search(pull_request_title)
 
-        if match:
-            return match.group()
-
-        return
+            if match:
+                self.release_version = match.group()
 
     def _get_file_mode(self):
         """Gets the mode that the changelog file should be opened in"""
@@ -125,7 +169,7 @@ class ChangelogCIBase:
 
         return published_date
 
-    def _commit_changelog(self, string_data):
+    def _update_changelog_file(self, string_data):
         """Write changelog to the changelog file"""
         file_mode = self._get_file_mode()
 
@@ -141,15 +185,21 @@ class ChangelogCIBase:
                 f.write('\n\n')
                 f.write(body)
 
+    def _commit_changelog(self, branch):
+        """Commit Changelog"""
         subprocess.run(['git', 'add', self.filename])
         subprocess.run(
-            ['git', 'commit', '-m', '(Changelog CI) Added Changelog']
+            [
+                'git', 'commit',
+                f'--author={self.git_commit_author}',
+                '-m', f'[Changelog CI] Add Changelog for Version {self.release_version}'
+            ]
         )
         subprocess.run(
-            ['git', 'push', '-u', 'origin', self.pull_request_branch]
+            ['git', 'push', '-u', 'origin', branch]
         )
 
-    def _comment_changelog(self, string_data):
+    def _comment_changelog(self, string_data, pull_request_number):
         """Comments Changelog to the pull request"""
         if not self.token:
             # Token is required by the GitHub API to create a Comment
@@ -170,7 +220,7 @@ class ChangelogCIBase:
         payload = {
             'owner': owner,
             'repo': repo,
-            'issue_number': self.pull_request_number,
+            'issue_number': pull_request_number,
             'body': string_data
         }
 
@@ -179,7 +229,7 @@ class ChangelogCIBase:
         ).format(
             base_url=self.github_api_url,
             repo=self.repository,
-            number=self.pull_request_number
+            number=pull_request_number
         )
 
         response = requests.post(
@@ -213,30 +263,60 @@ class ChangelogCIBase:
             print_message(msg, message_type='error')
             return
 
-        is_valid_pull_request = self._validate_pull_request()
-
-        if not is_valid_pull_request:
-            # if pull request regex doesn't match then exit
-            # and don't generate changelog
+        if not self.event_name == 'pull_request' and not self.release_version:
             msg = (
-                f'The title of the pull request did not match. '
-                f'Regex tried: "{self.config.pull_request_title_regex}", '
-                f'Aborting Changelog Generation.'
+                'Skipping Changelog generation. '
+                'Changelog CI could not find the Release Version. '
+                'Changelog CI should be triggered on a pull request or '
+                '`release_version` input must be provided. '
+                'Please Check the Documentation for more details.'
             )
             print_message(msg, message_type='error')
             return
 
-        version = self._get_version_number()
+        pull_request_title = None
+        pull_request_number = None
 
-        if not version:
+        if self.event_name == 'pull_request':
+            title, number = self._get_pull_request_title_and_number(event_path)
+            pull_request_title = title
+            pull_request_number = number
+
+            is_valid_pull_request = self._validate_pull_request(
+                pull_request_title
+            )
+
+            if not is_valid_pull_request:
+                # if pull request regex doesn't match then exit
+                # and don't generate changelog
+                msg = (
+                    f'The title of the pull request did not match. '
+                    f'Regex tried: "{self.config.pull_request_title_regex}", '
+                    f'Aborting Changelog Generation.'
+                )
+                print_message(msg, message_type='error')
+                return
+
+        self._set_release_version(
+            pull_request_title=pull_request_title
+        )
+
+        if not self.release_version:
             # if the pull request title is not valid, exit the method
             # It might happen if the pull request is not meant to be release
             # or the title was not accurate.
-            msg = (
-                f'Could not find matching version number. '
-                f'Regex tried: {self.config.version_regex} '
-                f'Aborting Changelog Generation'
-            )
+            if self.event_name == 'pull_request':
+                msg = (
+                    f'Could not find matching version number from pull request title. '
+                    f'Regex tried: {self.config.version_regex} '
+                    f'Aborting Changelog Generation'
+                )
+            else:
+                msg = (
+                    '`release_version` input must be provided to generate Changelog. '
+                    'Please Check the Documentation for more details. '
+                    'Aborting Changelog Generation'
+                )
             print_message(msg, message_type='error')
             return
 
@@ -246,16 +326,33 @@ class ChangelogCIBase:
         if not changes:
             return
 
-        string_data = self.parse_changelog(version, changes)
+        string_data = self.parse_changelog(self.release_version, changes)
 
         if self.config.commit_changelog:
-            print_message('Commit Changelog', message_type='group')
-            self._commit_changelog(string_data)
-            print_message('', message_type='endgroup')
+            self._update_changelog_file(string_data)
+            if self.event_name == 'pull_request':
+                print_message('Commit Changelog', message_type='group')
+                self._commit_changelog(self.pull_request_branch)
+                print_message('', message_type='endgroup')
+            else:
+                print_message('Create New Branch', message_type='group')
+                new_branch = self._create_new_branch()
+                print_message('', message_type='endgroup')
+                print_message('Create Pull Request', message_type='group')
+                self._create_pull_request(new_branch, string_data)
+                print_message('', message_type='endgroup')
 
         if self.config.comment_changelog:
             print_message('Comment Changelog', message_type='group')
-            self._comment_changelog(string_data)
+
+            if not self.event_name == 'pull_request':
+                msg = (
+                    '`comment_changelog` can only be used if Changelog CI is triggered on a pull request. '
+                    'Please Check the Documentation for more details.'
+                )
+                print_message(msg, message_type='error')
+            else:
+                self._comment_changelog(string_data, pull_request_number)
             print_message('', message_type='endgroup')
 
 
@@ -775,11 +872,17 @@ if __name__ == '__main__':
     event_path = os.environ['GITHUB_EVENT_PATH']
     repository = os.environ['GITHUB_REPOSITORY']
     pull_request_branch = os.environ['GITHUB_HEAD_REF']
+    base_branch = os.environ['GITHUB_REF']
+    event_name = os.environ['GITHUB_EVENT_NAME']
+    github_actor = os.environ['GITHUB_ACTOR']
+
     # User inputs from workflow
     filename = os.environ['INPUT_CHANGELOG_FILENAME']
     config_file = os.environ['INPUT_CONFIG_FILE']
+    release_version = os.environ['INPUT_RELEASE_VERSION']
+
     # Token provided from the workflow
-    token = os.environ.get('GITHUB_TOKEN')
+    token = os.environ.get('GITHUB_TOKEN') or os.environ.get('INPUT_GITHUB_TOKEN')
     # Committer username and email address
     username = os.environ['INPUT_COMMITTER_USERNAME']
     email = os.environ['INPUT_COMMITTER_EMAIL']
@@ -802,6 +905,8 @@ if __name__ == '__main__':
 
     subprocess.run(['git', 'config', 'user.name', username])
     subprocess.run(['git', 'config', 'user.email', email])
+    git_commit_author = f'{username} <{email}>'
+    print_message(f'Setting Git Commit Author to {git_commit_author}.')
 
     print_message('', message_type='endgroup')
 
@@ -824,7 +929,11 @@ if __name__ == '__main__':
         event_path,
         config,
         pull_request_branch,
+        base_branch,
+        git_commit_author,
         filename=filename,
+        release_version=release_version,
+        event_name=event_name,
         token=token
     )
     # Run Changelog CI
