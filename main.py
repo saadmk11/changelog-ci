@@ -462,23 +462,23 @@ class ChangelogCIPullRequest(ChangelogCIBase):
 
                 if items_string:
                     if self.config.changelog_file_type == self.config.MARKDOWN_FILE:
-                        string_data += f"\n#### {config['title']}\n"
+                        string_data += f"\n#### {config['title']}\n\n"
                     else:
                         string_data += (
                             f"\n{config['title']}\n"
-                            f"{'-' * len(config['title'])}\n"
+                            f"{'-' * len(config['title'])}\n\n"
                         )
-                    string_data += '\n' + items_string
+                    string_data += items_string
 
             if changes and self.config.include_unlabeled_changes:
                 # if they do not match any user provided group
                 # Add items in `unlabeled group` group
                 if self.config.changelog_file_type == self.config.MARKDOWN_FILE:
-                    string_data += f'\n#### {self.config.unlabeled_group_title}\n'
+                    string_data += f'\n#### {self.config.unlabeled_group_title}\n\n'
                 else:
                     string_data += (
                         f"\n{self.config.unlabeled_group_title}\n"
-                        f"{'-' * len(self.config.unlabeled_group_title)}\n"
+                        f"{'-' * len(self.config.unlabeled_group_title)}\n\n"
                     )
                 string_data += ''.join(
                     map(self._get_changelog_line, changes)
