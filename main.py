@@ -485,13 +485,14 @@ class ChangelogCICommitMessage(ChangelogCIBase):
 
     def get_changes_after_last_release(self):
         """Get all the merged pull request after latest release"""
+        url = '{base_url}/repos/{repo_name}/commits'.format(
+            base_url=self.GITHUB_API_URL,
+            repo_name=self.repository
+        )
         previous_release_date = self._get_latest_release_date()
 
-        url = '{base_url}/repos/{repo_name}/commits{since}'.format(
-            base_url=self.GITHUB_API_URL,
-            repo_name=self.repository,
-            since=f'?since={previous_release_date}' or ''
-        )
+        if previous_release_date:
+            url = f'{url}?since={previous_release_date}'
 
         items = []
 
