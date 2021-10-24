@@ -25,7 +25,7 @@ inputs:
     required: false
   github_token:
     description: 'GITHUB_TOKEN or Personal Access Token (PAT)'
-    required: true
+    required: false
     default: ${{ github.token }}
 
 runs:
