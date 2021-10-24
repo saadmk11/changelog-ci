@@ -960,7 +960,7 @@ def print_message(message, message_type=None):
     return subprocess.run(['echo', f'::{message_type}::{message}'])
 
 
-def get_whats_new():
+def display_whats_new():
     """function that prints whats new in Changelog CI Latest Version"""
 
     url = 'https://api.github.com/repos/saadmk11/changelog-ci/releases/latest'
@@ -973,10 +973,14 @@ def get_whats_new():
         latest_release_body = response_data['body']
 
         print_message(
-            f"What's New In Changelog CI {latest_release_tag}",
+            f"\U0001F389 What's New In Changelog CI {latest_release_tag} \U0001F389",
             message_type='group'
         )
-        print_message(latest_release_body)
+        print_message(f'\n\n{latest_release_body}')
+        print_message(
+            f"To use these features please upgrade to {latest_release_tag} "
+            "if you haven't already"
+        )
         print_message(f'Get More Information Here: {latest_release_html_url}')
 
         print_message('', message_type='endgroup')
@@ -1066,4 +1070,4 @@ if __name__ == '__main__':
 
     print_message('', message_type='endgroup')
 
-    get_whats_new()
+    display_whats_new()
