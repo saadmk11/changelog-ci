@@ -11,18 +11,19 @@
 Changelog CI is a GitHub Action that enables a project to automatically generated changelogs.
 
 Changelog CI cam be triggered on `pull_request`, `workflow_dispatch` and any other events that can provide the required inputs.
+Learn more about [events that trigger workflows](https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows)
 
 The workflow can be configured to perform **any (or all)** of the following actions:
 
 * For `pull_request` event:
-  * **Generates** changelog using **Pull Request Title** or **Commit Messages**.
-  * **Prepends** the generated changelog to the `CHANGELOG.md`/`CHANGELOG.rst` file
-  * Then **Commits** the modified `CHANGELOG.md`/`CHANGELOG.rst` file to the release pull request.
+  * **Generates** changelog using **Pull Request Titles** or **Commit Messages** made after the last release.
+  * **Prepends** the generated changelog to the `CHANGELOG.md`/`CHANGELOG.rst` file.
+  * Then **Commits** the modified `CHANGELOG.md`/`CHANGELOG.rst` file to the release pull request branch.
   * Adds a **Comment** on the release pull request with the generated changelog.
 
 
 * For other events:
-  * **Generate** changelog using **Pull Request Title** or **Commit Messages**.
+  * **Generate** changelog using **Pull Request Title** or **Commit Messages** made after the last release.
   * **Prepends** the generated changelog to the `CHANGELOG.md`/`CHANGELOG.rst` file.
   * Then Creates a **Pull Request** with the `CHANGELOG.md`/`CHANGELOG.rst` file changes.
 
@@ -35,9 +36,9 @@ using the GitHub API. After that, it parses the data and generates
 the `changelog`. It is able to use `Markdown` or `reStructuredText` to generate Changelog.
 Finally, It writes the generated changelog at the beginning of
 the `CHANGELOG.md`/`CHANGELOG.rst` (or user-provided filename) file. In addition to that,
-if a user provides a config (JSON/YAML file), Changelog CI parses the user-provided config
-file and renders the changelog according to users configuration. Then the changes
-are **committed** and/or **commented** to the release Pull request if the workflow was triggred on a `pull_request` event, 
+if a user provides a configuration file (JSON/YAML), Changelog CI parses the user-provided configuration
+file and renders the changelog according to users configuration. Then, if the workflow run was triggered
+by a `pull_request` event, the changes are **committed** and/or **commented** to the release Pull request,
 otherwise a new **Pull Request** is created with the changes.
 
 ## Usage:
@@ -45,11 +46,11 @@ otherwise a new **Pull Request** is created with the changes.
 * To use this Action on a `pull_request` event, The pull **request title** must match with the
 default `pull_request_title_regex` or the user-provided `pull_request_title_regex` from the config file.
 
-* To use this Action on a any other events, You must provide `release_version` as an input to the workflow.
-It can be provided using `workflow_dispatch` events `input` option or release_version` input can be provided from other sources.
+* To use this Action on any other events, You must provide `release_version` as an input to the workflow.
+It can be provided using `workflow_dispatch` events `input` option or from any other sources.
 
-**Basic Integration (for `pull_request` event):** To integrate `Changelog CI` with your repositories Actions, Put this step inside
-your `.github/workflows/workflow.yml` file:
+**Basic Integration (for `pull_request` event):** To integrate `Changelog CI` on your repositories, Put
+`.github/workflows/changelog-ci.yml` file in your repository with the following content:
 
 ```yaml
 name: Changelog CI
@@ -63,7 +64,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checks-out your repository
       - uses: actions/checkout@v2
 
       - name: Run Changelog CI
@@ -77,9 +77,9 @@ These are the inputs that can be provided on the workflow.
 | Name | Required | Description | Default |
 |------|----------|-------------|---------|
 | `changelog_filename` | No | Name of the changelog file (Any file name with `.md` or `.rst` extension) | `CHANGELOG.md` |
-| `config_file` | No | User configuration file path | `null` |
-| `committer_username` | No | Name of that user who will commit the changes to GitHub | github-actions[bot] |
-| `committer_email` | No | Email Address of that user who will commit the changes to GitHub | github-actions[bot]@users.noreply.github.com |
+| `config_file` | No | User configuration file path (configuration file can be in `JSON` or `YAML` format) | `null` |
+| `committer_username` | No | Name of the user who will commit the changes to GitHub | github-actions[bot] |
+| `committer_email` | No | Email Address of the user who will commit the changes to GitHub | github-actions[bot]@users.noreply.github.com |
 | `release_version` | No (Required if workflow run is not triggered by a `pull_request` event) | The release version that will be used on the generated Changelog | `null` |
 | `github_token` | No | `GITHUB_TOKEN` provided by the workflow run or Personal Access Token (PAT) | `github.token` |
 
@@ -126,6 +126,8 @@ jobs:
           # Optional, only required when you want to run Changelog CI 
           # on an event other than `pull_request` event.
           # In this example `release_version` is fetched from `workflow_dispatch` events input.
+          # You can use any other method to fetch the release version
+          # such as environment variable or from output of another action
           release_version: ${{ github.event.inputs.release_version }}
           # Optional
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -172,15 +174,15 @@ These are the options that can be provided on the `config_file`.
 
 | Name | Required | Description | Default | Options |
 |------|----------|-------------|---------|---------|
-| `changelog_type` | No | `pull_request` option will generate changelog using pull request title. `commit_message` option will generate changelog using commit messages. | `pull_request` | `pull_request`or `commit_message` |
+| `changelog_type` | No | `pull_request` option will generate changelog using pull request title. `commit_message` option will generate changelog using commit messages. | `pull_request` | `pull_request` or `commit_message` |
 | `header_prefix` | No | The prefix before the version number. e.g. `version:` in `Version: 1.0.2` | `Version:` |  |
-| `commit_changelog` | No | If it's set to `true` then Changelog CI will be committed to the release pull request. (A pull Request will be created with the changes if the workflow run is not triggered by a `pull_request` event) | `true` | `true` or `false` |
+| `commit_changelog` | No | If it's set to `true` then Changelog CI will commit the changes to the release pull request. (A pull Request will be created with the changes if the workflow run is not triggered by a `pull_request` event) | `true` | `true` or `false` |
 | `comment_changelog` | No | If it's set to `true` then Changelog CI will comment the generated changelog on the release pull request. (Only applicable for workflow runs triggered by a `pull_request` event) | `false` | `true` or `false` |
 | `pull_request_title_regex` | No | If the pull request title matches with this `regex` Changelog CI will generate changelog for it. Otherwise, it will skip the changelog generation. (Only applicable for workflow runs triggered by a `pull_request` event) | `^(?i:release)` |  |
-| `version_regex` | No | This `regex` tries to find the version name/number from the pull request title. in case of no match, changelog generation will be skipped. (Only applicable for workflow runs triggered by a `pull_request` event) | [`SemVer`](https://regex101.com/r/Qayx0q/1/) |  |
+| `version_regex` | No | This `regex` is used to find the version name/number (e.g. `1.0.2`, `v2.0.2`) from the pull request title. in case of no match, changelog generation will be skipped. (Only applicable for workflow runs triggered by a `pull_request` event) | [`SemVer`](https://regex101.com/r/Qayx0q/1/) |  |
 | `group_config` | No | By adding this you can group changelog items by your repository labels with custom titles. | `null` |  |
-| `include_unlabeled_changes` | No | if set to `false` the generated changelog will not contain the Pull Requests that are unlabeled or the labels are not on the `group_config` option. This option will only be used if the `group_config` option is added and the `changelog_type` option is `pull_request`. | `true` | `true` or `false` |
-| `unlabeled_group_title` | No | This option will set the title of the unlabeled changes. This option will only be used if the `include_unlabeled_changes` option is set to `true`, `group_config` option is added and the `changelog_type` option is `pull_request`. | `Other Changes` |  |
+| `include_unlabeled_changes` | No | if set to `false` the generated changelog will not contain the Pull Requests that are unlabeled or the labels are not on the `group_config` option. This option will only be used if the `group_config` option is added and the `changelog_type` option is set to `pull_request`. | `true` | `true` or `false` |
+| `unlabeled_group_title` | No | This option will set the title of the unlabeled changes. This option will only be used if the `include_unlabeled_changes` option is set to `true`, `group_config` option is added and the `changelog_type` option is set to `pull_request`. | `Other Changes` |  |
 
 #### Example Configuration File
 

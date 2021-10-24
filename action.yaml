@@ -13,11 +13,11 @@ inputs:
     description: 'Location of the config JSON file'
     required: false
   committer_username:
-    description: 'Username of that user who will commit'
+    description: 'Name of the user who will commit the changes to GitHub'
     required: false
     default: 'github-actions[bot]'
   committer_email:
-    description: 'Email Address of that user who will commit'
+    description: 'Email Address of the user who will commit the changes to GitHub'
     required: false
     default: 'github-actions[bot]@users.noreply.github.com'
   release_version:

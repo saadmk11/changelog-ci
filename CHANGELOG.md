@@ -32,7 +32,7 @@
 * [#29](https://github.com/saadmk11/changelog-ci/pull/29): Improve git commands in entrypoint.sh
 
 
-# Version: v0.6.0
+# Version: 0.6.0
 
 * [#24](https://github.com/saadmk11/changelog-ci/pull/24): Added Changelog CI Banner
 * [#23](https://github.com/saadmk11/changelog-ci/pull/23): Document adding Changelog CI badge
