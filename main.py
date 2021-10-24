@@ -978,9 +978,13 @@ def display_whats_new():
         print_message(f'\n{latest_release_body}')
         print_message(
             "To use these features please upgrade to "
-            f"version '{latest_release_tag}' if you haven't already.\n"
+            f"version '{latest_release_tag}' if you haven't already."
         )
-        print_message(f'Get More Information Here: {latest_release_html_url}')
+        print_message(f'\nGet More Information Here: {latest_release_html_url}')
+        print_message(
+            '\nReport Bugs or Add Feature Requests Here: '
+            'https://github.com/saadmk11/changelog-ci/issues'
+        )
 
         print_message('', message_type='endgroup')
 
