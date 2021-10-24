@@ -1,3 +1,16 @@
+# Version: 1.0.0
+
+* [#57](https://github.com/saadmk11/changelog-ci/pull/57): Cleanup code
+* [#58](https://github.com/saadmk11/changelog-ci/pull/58): Update GitHub Action Versions
+* [#67](https://github.com/saadmk11/changelog-ci/pull/67): Added Feature request Issue Template
+* [#66](https://github.com/saadmk11/changelog-ci/pull/66): Added Bug Report Issue Template
+* [#68](https://github.com/saadmk11/changelog-ci/pull/68): Add Configuration options for `Unlabeled Changes`
+* [#73](https://github.com/saadmk11/changelog-ci/pull/73): Add What's new in Latest Version of Changelog CI Section in the Output
+* [#69](https://github.com/saadmk11/changelog-ci/pull/69): Trigger Changelog CI on Different Events
+* [#72](https://github.com/saadmk11/changelog-ci/pull/72): Add Support for reStructuredText Changelog
+* [#74](https://github.com/saadmk11/changelog-ci/pull/74): Restructure the Documentation
+
+
 # Version: 0.8.0
 
 * [#50](https://github.com/saadmk11/changelog-ci/pull/50): Update LICENSE Copyright year
