@@ -260,7 +260,7 @@ any `regex` Changelog CI will use default
 * Here **`pull_request_title_regex`** will match any pull request title that starts with **`Release`**
 you can match **Any Pull Request Title** by adding  this **`pull_request_title_regex": ".*"`**,
 
-**[See this example output with group_config](#example-changelog-output-using-config-file)**
+**[See this example output with group_config](#example-changelog-output-using-config-file-pull-request)**
 
 **[See this example output without group_config](#example-changelog-output-without-using-config-file)**
 
