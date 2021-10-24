@@ -960,6 +960,28 @@ def print_message(message, message_type=None):
     return subprocess.run(['echo', f'::{message_type}::{message}'])
 
 
+def get_whats_new():
+    """function that prints whats new in Changelog CI Latest Version"""
+
+    url = 'https://api.github.com/repos/saadmk11/changelog-ci/releases/latest'
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        response_data = response.json()
+        latest_release_tag = response_data['tag_name']
+        latest_release_html_url = response_data['html_url']
+        latest_release_body = response_data['body']
+
+        print_message(
+            f"What's New In Changelog CI {latest_release_tag}",
+            message_type='group'
+        )
+        print_message(latest_release_body)
+        print_message(f'Get More Information Here: {latest_release_html_url}')
+
+        print_message('', message_type='endgroup')
+
+
 CHANGELOG_CI_CLASSES = {
     ChangelogCIConfiguration.PULL_REQUEST: ChangelogCIPullRequest,
     ChangelogCIConfiguration.COMMIT: ChangelogCICommitMessage
@@ -1043,3 +1065,5 @@ if __name__ == '__main__':
     ci.run()
 
     print_message('', message_type='endgroup')
+
+    get_whats_new()
