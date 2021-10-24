@@ -962,7 +962,6 @@ def print_message(message, message_type=None):
 
 def display_whats_new():
     """function that prints whats new in Changelog CI Latest Version"""
-
     url = 'https://api.github.com/repos/saadmk11/changelog-ci/releases/latest'
     response = requests.get(url)
 
@@ -976,10 +975,10 @@ def display_whats_new():
             f"\U0001F389 What's New In Changelog CI {latest_release_tag} \U0001F389",
             message_type='group'
         )
-        print_message(f'\n\n{latest_release_body}')
+        print_message(f'\n{latest_release_body}')
         print_message(
-            f"To use these features please upgrade to {latest_release_tag} "
-            "if you haven't already"
+            "To use these features please upgrade to "
+            f"version '{latest_release_tag}' if you haven't already.\n"
         )
         print_message(f'Get More Information Here: {latest_release_html_url}')
 
