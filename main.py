@@ -929,7 +929,7 @@ class ChangelogCIConfiguration:
             msg = (
                 'Changelog filename was not provided or not valid, '
                 f'Changelog filename must end with '
-                f'{self.MARKDOWN_FILE} or {self.RESTRUCTUREDTEXT_FILE}.'
+                f'{self.MARKDOWN_FILE} or {self.RESTRUCTUREDTEXT_FILE} extensions.'
                 f'Falling back to `{self.changelog_filename}`.'
             )
             print_message(msg, message_type='warning')
