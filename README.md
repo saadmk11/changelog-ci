@@ -8,9 +8,9 @@
 
 ## What is Changelog CI?
 
-Changelog CI is a GitHub Action that enables a project to automatically generated changelogs.
+Changelog CI is a GitHub Action that enables a project to automatically generate changelogs.
 
-Changelog CI cam be triggered on `pull_request`, `workflow_dispatch` and any other events that can provide the required inputs.
+Changelog CI can be triggered on `pull_request`, `workflow_dispatch` and any other events that can provide the required inputs.
 Learn more about [events that trigger workflows](https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows)
 
 The workflow can be configured to perform **any (or all)** of the following actions:
