@@ -66,6 +66,7 @@ your `.github/workflows/workflow.yml` file:
     uses: saadmk11/changelog-ci@v0.8.0
     with:
       # Optional, you can provide any name for your changelog file,
+      # We currently support Markdown (.md) and reStructuredText (.rst) files
       # defaults to `CHANGELOG.md` if not provided.
       changelog_filename: MY_CHANGELOG.md
       # Optional, only required when you want more customization
