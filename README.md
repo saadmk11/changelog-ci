@@ -80,7 +80,7 @@ These are the inputs that can be provided on the workflow.
 | `config_file` | No | User configuration file path | `null` |
 | `committer_username` | No | Name of that user who will commit the changes to GitHub | github-actions[bot] |
 | `committer_email` | No | Email Address of that user who will commit the changes to GitHub | github-actions[bot]@users.noreply.github.com |
-| `release_version` | No (Required if workflow not triggered on a `pull_request` event) | The release version that will be used on the generated Changelog | `null` |
+| `release_version` | No (Required if workflow run is not triggered by a `pull_request` event) | The release version that will be used on the generated Changelog | `null` |
 | `github_token` | No | `GITHUB_TOKEN` provided by the workflow run or Personal Access Token (PAT) | `github.token` |
 
 #### Workflow with All Options:
