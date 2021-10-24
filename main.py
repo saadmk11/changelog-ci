@@ -795,7 +795,7 @@ class ChangelogCIConfiguration:
 
         if not pull_request_title_regex:
             msg = (
-                '`pull_request_title_regex` is not provided, '
+                '`pull_request_title_regex` was not provided, '
                 f'Falling back to {self.pull_request_title_regex}.'
             )
             print_message(msg, message_type='warning')
@@ -818,7 +818,7 @@ class ChangelogCIConfiguration:
 
         if not version_regex:
             msg = (
-                '`version_regex` is not provided, '
+                '`version_regex` was not provided, '
                 f'Falling back to {self.version_regex}.'
             )
             print_message(msg, message_type='warning')
