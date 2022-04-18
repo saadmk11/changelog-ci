@@ -94,10 +94,10 @@ on:
 
   # Optionally you can use `workflow_dispatch` to run Changelog CI Manually
   workflow_dispatch:
-  inputs:
-    release_version:
-      description: 'Set Release Version'
-      required: true
+    inputs:
+      release_version:
+        description: 'Set Release Version'
+        required: true
 
 jobs:
   build:
