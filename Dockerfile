@@ -13,6 +13,6 @@ COPY ./requirements.txt .
 
 RUN pip install -r requirements.txt
 
-COPY ./scripts ./scripts
+COPY . .
 
 CMD ["python", "-m", "scripts.main"]
