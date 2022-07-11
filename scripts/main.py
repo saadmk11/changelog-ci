@@ -5,30 +5,33 @@ import re
 import subprocess
 import time
 from functools import cached_property
+from typing import Tuple, Type
 
 import requests
-import yaml
+
+from .config import ChangelogCIConfiguration
+from .utils import print_message, display_whats_new
 
 
 class ChangelogCIBase:
     """Base Class for Changelog CI"""
 
-    GITHUB_API_URL = 'https://api.github.com'
+    GITHUB_API_URL: str = 'https://api.github.com'
 
-    WORKFLOW_DISPATCH_EVENT = 'workflow_dispatch'
-    PULL_REQUEST_EVENT = 'pull_request'
+    WORKFLOW_DISPATCH_EVENT: str = 'workflow_dispatch'
+    PULL_REQUEST_EVENT: str = 'pull_request'
 
     def __init__(
         self,
-        config,
-        repository,
-        event_name,
-        event_path,
-        pull_request_branch,
-        base_branch,
-        release_version=None,
-        token=None
-    ):
+        config: ChangelogCIConfiguration,
+        repository: str,
+        event_name: str,
+        event_path: str,
+        pull_request_branch: str,
+        base_branch: str,
+        release_version: str | None = None,
+        token: str | None = None
+    ) -> None:
         self.config = config
         self.repository = repository
         self.event_name = event_name
@@ -40,7 +43,7 @@ class ChangelogCIBase:
         self.token = token
 
     @staticmethod
-    def _get_pull_request_title_and_number(event_path):
+    def _get_pull_request_title_and_number(event_path: str) -> Tuple[str, int]:
         """Gets pull request title from `GITHUB_EVENT_PATH`"""
         with open(event_path, 'r') as json_file:
             # This is just a webhook payload available to the Action
@@ -51,7 +54,7 @@ class ChangelogCIBase:
         return title, number
 
     @cached_property
-    def _get_request_headers(self):
+    def _get_request_headers(self) -> dict:
         """Get headers for GitHub API request"""
         headers = {
             'Accept': 'application/vnd.github.v3+json'
@@ -63,7 +66,7 @@ class ChangelogCIBase:
 
         return headers
 
-    def _create_new_branch(self):
+    def _create_new_branch(self) -> str:
         """Create and push a new branch with the changes"""
         # Use timestamp to ensure uniqueness of the new branch
         new_branch = f'changelog-ci-{self.release_version}-{int(time.time())}'
@@ -78,7 +81,7 @@ class ChangelogCIBase:
 
         return new_branch
 
-    def _create_pull_request(self, branch_name, body):
+    def _create_pull_request(self, branch_name: str, body: str) -> None:
         """Create pull request on GitHub"""
         url = f'{self.GITHUB_API_URL}/repos/{self.repository}/pulls'
         payload = {
@@ -102,15 +105,16 @@ class ChangelogCIBase:
             )
             print_message(msg, message_type='error')
 
-    def _validate_pull_request_title(self, pull_request_title):
+    def _validate_pull_request_title(self, pull_request_title: str) -> bool:
         """Check if changelog should be generated for this pull request"""
         pattern = re.compile(self.config.pull_request_title_regex)
         match = pattern.search(pull_request_title)
 
         if match:
             return True
+        return False
 
-    def _set_release_version_from_pull_request_title(self, pull_request_title):
+    def _set_release_version_from_pull_request_title(self, pull_request_title: str) -> None:
         """Get version number from the pull request title"""
         pattern = re.compile(self.config.version_regex)
         match = pattern.search(pull_request_title)
@@ -118,22 +122,22 @@ class ChangelogCIBase:
         if match:
             self.release_version = match.group()
 
-    def _get_file_mode(self):
+    def _get_file_mode(self) -> str:
         """Gets the mode that the changelog file should be opened in"""
         if os.path.exists(self.config.changelog_filename):
             # if the changelog file exists
             # opens it in read-write mode
             file_mode = 'r+'
         else:
-            # if the changelog file does not exists
+            # if the changelog file does not exist
             # opens it in read-write mode
             # but creates the file first also
             file_mode = 'w+'
 
         return file_mode
 
-    def _get_latest_release_date(self):
-        """Using GitHub API gets latest release date"""
+    def _get_latest_release_date(self) -> str:
+        """Using GitHub API gets the latest release date"""
         url = (
             '{base_url}/repos/{repo_name}/releases/latest'
         ).format(
@@ -159,7 +163,7 @@ class ChangelogCIBase:
 
         return published_date
 
-    def _update_changelog_file(self, string_data):
+    def _update_changelog_file(self, string_data: str) -> None:
         """Write changelog to the changelog file"""
         file_mode = self._get_file_mode()
 
@@ -175,7 +179,7 @@ class ChangelogCIBase:
                 f.write('\n\n')
                 f.write(body)
 
-    def _commit_changelog(self, branch):
+    def _commit_changelog(self, branch: str) -> None:
         """Commit Changelog"""
         subprocess.run(['git', 'add', self.config.changelog_filename])
         subprocess.run(
@@ -189,7 +193,7 @@ class ChangelogCIBase:
             ['git', 'push', '-u', 'origin', branch]
         )
 
-    def _comment_changelog(self, string_data, pull_request_number):
+    def _comment_changelog(self, string_data: str, pull_request_number: int | None) -> None:
         """Comments Changelog to the pull request"""
         if not self.token:
             # Token is required by the GitHub API to create a Comment
@@ -237,12 +241,12 @@ class ChangelogCIBase:
             print_message(msg, message_type='error')
 
     def get_changes_after_last_release(self):
-        return NotImplemented
+        raise NotImplemented
 
-    def parse_changelog(self, file_type, version, changes):
-        return NotImplemented
+    def parse_changelog(self, file_type: str, version: str, changes: list):
+        raise NotImplemented
 
-    def run(self):
+    def run(self) -> None:
         """Entrypoint to the Changelog CI"""
         if (
             not self.config.commit_changelog and
@@ -371,7 +375,7 @@ class ChangelogCIBase:
 class ChangelogCIPullRequest(ChangelogCIBase):
     """Generates, commits and/or comments changelog using pull requests"""
 
-    def _get_changelog_line(self, file_type, item):
+    def _get_changelog_line(self, file_type: str, item: dict) -> str:
         """Generate each line of changelog"""
         if file_type == self.config.MARKDOWN_FILE:
             changelog_line_template = "* [#{number}]({url}): {title}\n"
@@ -384,7 +388,7 @@ class ChangelogCIPullRequest(ChangelogCIBase):
             title=item['title']
         )
 
-    def get_changes_after_last_release(self):
+    def get_changes_after_last_release(self) -> list:
         """Get all the merged pull request after latest release"""
         previous_release_date = self._get_latest_release_date()
 
@@ -443,7 +447,7 @@ class ChangelogCIPullRequest(ChangelogCIBase):
 
         return items
 
-    def parse_changelog(self, file_type, version, changes):
+    def parse_changelog(self, file_type: str, version: str, changes: list) -> str:
         """Parse the pull requests data and return a string"""
         new_changes = copy.deepcopy(changes)
         header = f'{self.config.header_prefix} {version}'
@@ -514,7 +518,7 @@ class ChangelogCIPullRequest(ChangelogCIBase):
 class ChangelogCICommitMessage(ChangelogCIBase):
     """Generates, commits and/or comments changelog using commit messages"""
 
-    def _get_changelog_line(self, file_type, item):
+    def _get_changelog_line(self, file_type: str, item: dict) -> str:
         """Generate each line of changelog"""
         if file_type == self.config.MARKDOWN_FILE:
             changelog_line_template = "* [{sha}]({url}): {message}\n"
@@ -527,7 +531,7 @@ class ChangelogCICommitMessage(ChangelogCIBase):
             message=item['message']
         )
 
-    def get_changes_after_last_release(self):
+    def get_changes_after_last_release(self) -> list:
         """Get all the merged pull request after latest release"""
         url = '{base_url}/repos/{repo_name}/commits'.format(
             base_url=self.GITHUB_API_URL,
@@ -577,7 +581,7 @@ class ChangelogCICommitMessage(ChangelogCIBase):
 
         return items
 
-    def parse_changelog(self, file_type, version, changes):
+    def parse_changelog(self, file_type: str, version: str, changes: list) -> str:
         """Parse the commit data and return a string"""
         new_changes = copy.deepcopy(changes)
         header = f'{self.config.header_prefix} {version}'
@@ -593,403 +597,6 @@ class ChangelogCICommitMessage(ChangelogCIBase):
         )
 
         return string_data
-
-
-class ChangelogCIConfiguration:
-    """Configuration class for Changelog CI"""
-
-    # The regular expression used to extract semantic versioning is a
-    # slightly less restrictive modification of
-    # the following regular expression
-    # https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
-    DEFAULT_SEMVER_REGEX = (
-        r"v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.?(0|[1-9]\d*)?(?:-(("
-        r"?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|["
-        r"1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(["
-        r"0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?"
-    )
-    DEFAULT_PULL_REQUEST_TITLE_REGEX = r"^(?i:release)"
-    DEFAULT_VERSION_PREFIX = "Version:"
-    DEFAULT_GROUP_CONFIG = []
-    COMMIT_CHANGELOG = True
-    COMMENT_CHANGELOG = False
-    INCLUDE_UNLABELED_CHANGES = True
-    UNLABELED_GROUP_TITLE = 'Other Changes'
-    DEFAULT_COMMIT_AUTHOR = (
-        'github-actions[bot] <github-actions[bot]@users.noreply.github.com>'
-    )
-    # Changelog types
-    PULL_REQUEST = 'pull_request'
-    COMMIT = 'commit_message'
-
-    MARKDOWN_FILE = 'md'
-    RESTRUCTUREDTEXT_FILE = 'rst'
-    DEFAULT_CHANGELOG_FILENAME = f'CHANGELOG.{MARKDOWN_FILE}'
-
-    def __init__(self, config_file, **other_options):
-        # Initialize with default configuration
-        self.header_prefix = self.DEFAULT_VERSION_PREFIX
-        self.commit_changelog = self.COMMIT_CHANGELOG
-        self.comment_changelog = self.COMMENT_CHANGELOG
-        self.pull_request_title_regex = self.DEFAULT_PULL_REQUEST_TITLE_REGEX
-        self.version_regex = self.DEFAULT_SEMVER_REGEX
-        self.changelog_type = self.PULL_REQUEST
-        self.group_config = self.DEFAULT_GROUP_CONFIG
-        self.include_unlabeled_changes = self.INCLUDE_UNLABELED_CHANGES
-        self.unlabeled_group_title = self.UNLABELED_GROUP_TITLE
-        self.changelog_file_type = self.MARKDOWN_FILE
-        self.changelog_filename = self.DEFAULT_CHANGELOG_FILENAME
-        self.git_commit_author = self.DEFAULT_COMMIT_AUTHOR
-
-        self.user_raw_config = self.get_user_config(config_file, other_options)
-
-        self.validate_configuration()
-
-    @staticmethod
-    def get_user_config(config_file, other_options):
-        """
-        Read user provided configuration file and
-        return user configuration
-        """
-        user_config = other_options
-
-        if not config_file:
-            print_message(
-                'No Configuration file found, '
-                'falling back to default configuration to parse changelog',
-                message_type='warning'
-            )
-            return user_config
-
-        try:
-            # parse config files with the extension .yml and .yaml
-            # using YAML syntax
-            if config_file.endswith('yml') or config_file.endswith('yaml'):
-                loader = yaml.safe_load
-            # parse config files with the extension .json
-            # using JSON syntax
-            elif config_file.endswith('json'):
-                loader = json.load
-            else:
-                print_message(
-                    'We only support `JSON` or `YAML` file for configuration '
-                    'falling back to default configuration to parse changelog',
-                    message_type='error'
-                )
-                return user_config
-
-            with open(config_file, 'r') as file:
-                user_config.update(loader(file))
-
-            return user_config
-
-        except Exception as e:
-            msg = (
-                f'Invalid Configuration file, error: {e}, '
-                'falling back to default configuration to parse changelog'
-            )
-            print_message(msg, message_type='error')
-            return user_config
-
-    def validate_configuration(self):
-        """
-        Validate all the configuration options and
-        update configuration attributes
-        """
-        if not self.user_raw_config:
-            return
-
-        if not isinstance(self.user_raw_config, dict):
-            print_message(
-                'Configuration does not contain required mapping '
-                'falling back to default configuration to parse changelog',
-                message_type='error'
-            )
-            return
-
-        self.validate_header_prefix()
-        self.validate_commit_changelog()
-        self.validate_comment_changelog()
-        self.validate_pull_request_title_regex()
-        self.validate_version_regex()
-        self.validate_changelog_type()
-        self.validate_group_config()
-        self.validate_include_unlabeled_changes()
-        self.validate_unlabeled_group_title()
-        self.validate_changelog_filename()
-        self.validate_changelog_file_type()
-        self.validate_git_commit_author()
-
-    def validate_header_prefix(self):
-        """Validate and set header_prefix configuration option"""
-        header_prefix = self.user_raw_config.get('header_prefix')
-
-        if not header_prefix or not isinstance(header_prefix, str):
-            msg = (
-                '`header_prefix` was not provided or not valid, '
-                f'falling back to `{self.header_prefix}`.'
-            )
-            print_message(msg, message_type='warning')
-        else:
-            self.header_prefix = header_prefix
-
-    def validate_unlabeled_group_title(self):
-        """Validate and set unlabeled_group_title configuration option"""
-        unlabeled_group_title = self.user_raw_config.get('unlabeled_group_title')
-
-        if not unlabeled_group_title or not isinstance(unlabeled_group_title, str):
-            msg = (
-                '`unlabeled_group_title` was not provided or not valid, '
-                f'falling back to `{self.unlabeled_group_title}`.'
-            )
-            print_message(msg, message_type='warning')
-        else:
-            self.unlabeled_group_title = unlabeled_group_title
-
-    def validate_include_unlabeled_changes(self):
-        """Validate and set include_unlabeled_changes configuration option"""
-        include_unlabeled_changes = self.user_raw_config.get(
-            'include_unlabeled_changes'
-        )
-
-        if include_unlabeled_changes not in [0, 1, False, True]:
-            msg = (
-                '`include_unlabeled_changes` was not provided or not valid, '
-                f'falling back to `{self.include_unlabeled_changes}`.'
-            )
-            print_message(msg, message_type='warning')
-        else:
-            self.include_unlabeled_changes = bool(include_unlabeled_changes)
-
-    def validate_commit_changelog(self):
-        """Validate and set commit_changelog configuration option"""
-        commit_changelog = self.user_raw_config.get('commit_changelog')
-
-        if commit_changelog not in [0, 1, False, True]:
-            msg = (
-                '`commit_changelog` was not provided or not valid, '
-                f'falling back to `{self.commit_changelog}`.'
-            )
-            print_message(msg, message_type='warning')
-        else:
-            self.commit_changelog = bool(commit_changelog)
-
-    def validate_comment_changelog(self):
-        """Validate and set comment_changelog configuration option"""
-        comment_changelog = self.user_raw_config.get('comment_changelog')
-
-        if comment_changelog not in [0, 1, False, True]:
-            msg = (
-                '`comment_changelog` was not provided or not valid, '
-                f'falling back to `{self.comment_changelog}`.'
-            )
-            print_message(msg, message_type='warning')
-        else:
-            self.comment_changelog = bool(comment_changelog)
-
-    def validate_pull_request_title_regex(self):
-        """Validate and set pull_request_title_regex configuration option"""
-        pull_request_title_regex = self.user_raw_config.get(
-            'pull_request_title_regex'
-        )
-
-        if not pull_request_title_regex:
-            msg = (
-                '`pull_request_title_regex` was not provided, '
-                f'Falling back to {self.pull_request_title_regex}.'
-            )
-            print_message(msg, message_type='warning')
-            return
-
-        try:
-            # This will raise an error if the provided regex is not valid
-            re.compile(pull_request_title_regex)
-            self.pull_request_title_regex = pull_request_title_regex
-        except Exception:
-            msg = (
-                '`pull_request_title_regex` is not valid, '
-                f'Falling back to {self.pull_request_title_regex}.'
-            )
-            print_message(msg, message_type='error')
-
-    def validate_version_regex(self):
-        """Validate and set validate_version_regex configuration option"""
-        version_regex = self.user_raw_config.get('version_regex')
-
-        if not version_regex:
-            msg = (
-                '`version_regex` was not provided, '
-                f'Falling back to {self.version_regex}.'
-            )
-            print_message(msg, message_type='warning')
-            return
-
-        try:
-            # This will raise an error if the provided regex is not valid
-            re.compile(version_regex)
-            self.version_regex = version_regex
-        except Exception:
-            msg = (
-                '`version_regex` is not valid, '
-                f'Falling back to {self.version_regex}.'
-            )
-            print_message(msg, message_type='warning')
-
-    def validate_changelog_type(self):
-        """Validate and set changelog_type configuration option"""
-        changelog_type = self.user_raw_config.get('changelog_type')
-
-        if not (
-            changelog_type and
-            isinstance(changelog_type, str) and
-            changelog_type in [self.PULL_REQUEST, self.COMMIT]
-        ):
-            msg = (
-                '`changelog_type` was not provided or not valid, '
-                f'the options are "{self.PULL_REQUEST}" or "{self.COMMIT}", '
-                f'falling back to default value of "{self.changelog_type}".'
-            )
-            print_message(msg, message_type='warning')
-        else:
-            self.changelog_type = changelog_type
-
-    def validate_group_config(self):
-        """Validate and set group_config configuration option"""
-        group_config = self.user_raw_config.get('group_config')
-
-        if not group_config:
-            msg = '`group_config` was not provided'
-            print_message(msg, message_type='warning')
-            return
-
-        if not isinstance(group_config, list):
-            msg = '`group_config` is not valid, It must be an Array/List.'
-            print_message(msg, message_type='error')
-            return
-
-        for item in group_config:
-            self.validate_group_config_item(item)
-
-    def validate_group_config_item(self, item):
-        """Validate and set group_config item configuration option"""
-        if not isinstance(item, dict):
-            msg = (
-                '`group_config` items must have key, '
-                'value pairs of `title` and `labels`'
-            )
-            print_message(msg, message_type='error')
-            return
-
-        title = item.get('title')
-        labels = item.get('labels')
-
-        if not title or not isinstance(title, str):
-            msg = (
-                '`group_config` item must contain string title, '
-                f'but got `{title}`'
-            )
-            print_message(msg, message_type='error')
-            return
-
-        if not labels or not isinstance(labels, list):
-            msg = (
-                '`group_config` item must contain array of labels, '
-                f'but got `{labels}`'
-            )
-            print_message(msg, message_type='error')
-            return
-
-        if not all(isinstance(label, str) for label in labels):
-            msg = (
-                '`group_config` labels array must be string type, '
-                f'but got `{labels}`'
-            )
-            print_message(msg, message_type='error')
-            return
-
-        self.group_config.append(item)
-
-    def validate_changelog_file_type(self):
-        """Validate and set changelog_file_type item configuration option"""
-        if self.changelog_filename.endswith('.md'):
-            self.changelog_file_type = self.MARKDOWN_FILE
-        elif self.changelog_filename.endswith('.rst'):
-            self.changelog_file_type = self.RESTRUCTUREDTEXT_FILE
-
-    def validate_changelog_filename(self):
-        """Validate and set changelog_filename item configuration option"""
-        changelog_filename = self.user_raw_config.get('changelog_filename', '')
-
-        if (
-            changelog_filename.endswith('.md') or
-            changelog_filename.endswith('.rst')
-        ):
-            self.changelog_filename = changelog_filename
-        else:
-            msg = (
-                'Changelog filename was not provided or not valid, '
-                f'Changelog filename must end with '
-                f'"{self.MARKDOWN_FILE}" or "{self.RESTRUCTUREDTEXT_FILE}" extensions. '
-                f'Falling back to `{self.changelog_filename}`.'
-            )
-            print_message(msg, message_type='warning')
-
-    def validate_git_commit_author(self):
-        """Validate and set changelog_filename item configuration option"""
-        git_commit_author = self.user_raw_config.get('git_commit_author', '')
-
-        if git_commit_author:
-            self.git_commit_author = git_commit_author
-        else:
-            msg = (
-                'Git Commit Author not found, '
-                f'Falling back to `{self.git_commit_author}`.'
-            )
-            print_message(msg, message_type='warning')
-
-
-def print_message(message, message_type=None):
-    """Helper function to print colorful outputs in GitHub Actions shell"""
-    # https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions
-    if not message_type:
-        return subprocess.run(['echo', f'{message}'])
-
-    if message_type == 'endgroup':
-        return subprocess.run(['echo', '::endgroup::'])
-
-    return subprocess.run(['echo', f'::{message_type}::{message}'])
-
-
-def display_whats_new():
-    """function that prints whats new in Changelog CI Latest Version"""
-    url = 'https://api.github.com/repos/saadmk11/changelog-ci/releases/latest'
-    response = requests.get(url)
-
-    if response.status_code == 200:
-        response_data = response.json()
-        latest_release_tag = response_data['tag_name']
-        latest_release_html_url = response_data['html_url']
-        latest_release_body = response_data['body']
-
-        print_message(
-            f"\U0001F389 What's New In Changelog CI {latest_release_tag} \U0001F389",
-            message_type='group'
-        )
-        print_message(f'\n{latest_release_body}')
-        print_message(
-            f"Get More Information about '{latest_release_tag}' "
-            f"Here: {latest_release_html_url}"
-        )
-        print_message(
-            "\nTo use these features please upgrade to "
-            f"version '{latest_release_tag}' if you haven't already."
-        )
-        print_message(
-            '\nReport Bugs or Add Feature Requests Here: '
-            'https://github.com/saadmk11/changelog-ci/issues'
-        )
-
-        print_message('', message_type='endgroup')
 
 
 CHANGELOG_CI_CLASSES = {
@@ -1056,9 +663,9 @@ if __name__ == '__main__':
     # Group: Generate Changelog
     print_message('Generate Changelog', message_type='group')
     # Get CI class using configuration
-    changelog_ci_class = CHANGELOG_CI_CLASSES.get(
+    changelog_ci_class: Type[ChangelogCIBase] = CHANGELOG_CI_CLASSES[
         config.changelog_type
-    )
+    ]
 
     # Initialize the Changelog CI
     ci = changelog_ci_class(

@@ -1,4 +1,4 @@
-FROM python:3.8
+FROM python:3.10
 
 LABEL "com.github.actions.name"="Changelog CI"
 LABEL "com.github.actions.description"="Changelog CI is a GitHub Action that generates changelog, Then the changelog is committed and/or commented to the release Pull request."
@@ -9,11 +9,10 @@ LABEL "repository"="https://github.com/saadmk11/changelog-ci"
 LABEL "homepage"="https://github.com/saadmk11/changelog-ci"
 LABEL "maintainer"="saadmk11"
 
-COPY requirements.txt /requirements.txt
+COPY ./requirements.txt .
 
 RUN pip install -r requirements.txt
 
-COPY main.py /main.py
+COPY ./scripts .
 
-RUN ["chmod", "+x", "/main.py"]
-ENTRYPOINT ["python", "/main.py"]
+CMD ["python", "-m", "scripts.main"]
