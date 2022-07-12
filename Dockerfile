@@ -1,4 +1,4 @@
-FROM python:3.8
+FROM python:3.10.5-slim-buster
 
 LABEL "com.github.actions.name"="Changelog CI"
 LABEL "com.github.actions.description"="Changelog CI is a GitHub Action that generates changelog, Then the changelog is committed and/or commented to the release Pull request."
@@ -9,11 +9,21 @@ LABEL "repository"="https://github.com/saadmk11/changelog-ci"
 LABEL "homepage"="https://github.com/saadmk11/changelog-ci"
 LABEL "maintainer"="saadmk11"
 
-COPY requirements.txt /requirements.txt
+RUN apt-get update \
+    && apt-get install \
+       -y \
+       --no-install-recommends \
+       --no-install-suggests \
+       git \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY ./requirements.txt .
 
 RUN pip install -r requirements.txt
 
-COPY main.py /main.py
+COPY . ./app
 
-RUN ["chmod", "+x", "/main.py"]
-ENTRYPOINT ["python", "/main.py"]
+ENV PYTHONPATH "${PYTHONPATH}:/app"
+
+CMD ["python", "-m", "scripts.main"]
