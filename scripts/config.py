@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Callable, TextIO
+from typing import Any, Callable, TextIO
 
 import yaml
 
@@ -38,7 +38,7 @@ class ChangelogCIConfiguration:
     RESTRUCTUREDTEXT_FILE: str = "rst"
     DEFAULT_CHANGELOG_FILENAME: str = f"CHANGELOG.{MARKDOWN_FILE}"
 
-    def __init__(self, config_file, **other_options) -> None:
+    def __init__(self, config_file: str | None, **other_options: Any) -> None:
         # Initialize with default configuration
         self.header_prefix = self.DEFAULT_VERSION_PREFIX
         self.commit_changelog = self.COMMIT_CHANGELOG
