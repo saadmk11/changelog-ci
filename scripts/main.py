@@ -2,7 +2,6 @@ import copy
 import json
 import os
 import re
-import subprocess
 import time
 from functools import cached_property
 from typing import Tuple, Type
@@ -10,7 +9,12 @@ from typing import Tuple, Type
 import requests
 
 from .config import ChangelogCIConfiguration
-from .run_git import checkout_pull_request_branch
+from .run_git import (
+    checkout_pull_request_branch,
+    configure_git_author,
+    create_new_git_branch,
+    git_commit_changelog,
+)
 from .utils import print_message, display_whats_new
 
 
@@ -72,12 +76,7 @@ class ChangelogCIBase:
         # Use timestamp to ensure uniqueness of the new branch
         new_branch = f'changelog-ci-{self.release_version}-{int(time.time())}'
 
-        subprocess.run(
-            ['git', 'checkout', self.base_branch]
-        )
-        subprocess.run(
-            ['git', 'checkout', '-b', new_branch]
-        )
+        create_new_git_branch(self.base_branch, new_branch)
         self._commit_changelog(new_branch)
 
         return new_branch
@@ -180,18 +179,16 @@ class ChangelogCIBase:
                 f.write('\n\n')
                 f.write(body)
 
-    def _commit_changelog(self, branch: str) -> None:
+    def _commit_changelog(self, commit_branch_name: str) -> None:
         """Commit Changelog"""
-        subprocess.run(['git', 'add', self.config.changelog_filename])
-        subprocess.run(
-            [
-                'git', 'commit',
-                f'--author={self.config.git_commit_author}',
-                '-m', f'[Changelog CI] Add Changelog for Version {self.release_version}'
-            ]
+        commit_message = (
+            f'[Changelog CI] Add Changelog for Version {self.release_version}'
         )
-        subprocess.run(
-            ['git', 'push', '-u', 'origin', branch]
+        git_commit_changelog(
+            commit_message,
+            self.config.changelog_filename,
+            self.config.git_commit_author,
+            commit_branch_name
         )
 
     def _comment_changelog(self, string_data: str, pull_request_number: int | None) -> None:
@@ -627,31 +624,20 @@ if __name__ == '__main__':
     # Committer username and email address
     username = os.environ['INPUT_COMMITTER_USERNAME']
     email = os.environ['INPUT_COMMITTER_EMAIL']
-
-    # Group: Checkout git repository
-    print_message('Checkout git repository', message_type='group')
-
-    # subprocess.run(
-    #     [
-    #         'git', 'fetch', '--prune', '--unshallow', 'origin',
-    #         pull_request_branch
-    #     ]
-    # )
-    # subprocess.run(['git', 'checkout', pull_request_branch])
-    if pull_request_branch:
-        print(f'Checkout branch: {pull_request_branch}')
-        checkout_pull_request_branch(pull_request_branch)
-    else:
-        print('No PR branch found.')
-
-    print_message('', message_type='endgroup')
-
-    # Group: Configure Git
-    print_message('Configure Git', message_type='group')
-
-    subprocess.run(['git', 'config', 'user.name', username])
-    subprocess.run(['git', 'config', 'user.email', email])
     git_commit_author = f'{username} <{email}>'
+
+    if pull_request_branch:
+        # Group: Checkout git pull request branch
+        print_message(
+            f'Checkout "{pull_request_branch}" branch', message_type='group'
+        )
+        checkout_pull_request_branch(pull_request_branch)
+        print_message('', message_type='endgroup')
+
+    # Group: Configure Git Author
+    print_message('Configure Git Author', message_type='group')
+
+    configure_git_author(username, email)
     print_message(f'Setting Git Commit Author to {git_commit_author}.')
 
     print_message('', message_type='endgroup')
