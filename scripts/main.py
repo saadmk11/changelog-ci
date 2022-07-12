@@ -10,6 +10,7 @@ from typing import Tuple, Type
 import requests
 
 from .config import ChangelogCIConfiguration
+from .run_git import checkout_pull_request_branch
 from .utils import print_message, display_whats_new
 
 
@@ -630,13 +631,18 @@ if __name__ == '__main__':
     # Group: Checkout git repository
     print_message('Checkout git repository', message_type='group')
 
-    subprocess.run(
-        [
-            'git', 'fetch', '--prune', '--unshallow', 'origin',
-            pull_request_branch
-        ]
-    )
-    subprocess.run(['git', 'checkout', pull_request_branch])
+    # subprocess.run(
+    #     [
+    #         'git', 'fetch', '--prune', '--unshallow', 'origin',
+    #         pull_request_branch
+    #     ]
+    # )
+    # subprocess.run(['git', 'checkout', pull_request_branch])
+    if pull_request_branch:
+        print(f'Checkout branch: {pull_request_branch}')
+        checkout_pull_request_branch(pull_request_branch)
+    else:
+        print('No PR branch found.')
 
     print_message('', message_type='endgroup')
 
