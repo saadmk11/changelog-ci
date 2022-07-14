@@ -1,3 +1,4 @@
+import os
 import subprocess
 from typing import Literal
 
@@ -7,9 +8,12 @@ import requests
 def print_message(
     message: str,
     message_type: Literal["warning", "error", "group", "endgroup"] | None = None
-) -> subprocess.CompletedProcess:
+) -> subprocess.CompletedProcess | None:
     """Helper function to print colorful outputs in GitHub Actions shell"""
     # https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions
+    if os.environ.get('PYTHON_TESTENV'):
+        return None
+
     if not message_type:
         return subprocess.run(["echo", f"{message}"])
 

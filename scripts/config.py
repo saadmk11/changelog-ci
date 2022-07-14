@@ -1,71 +1,117 @@
 import json
 import re
-from typing import Any, Callable, TextIO
+from functools import cached_property
+from typing import Any, Callable, Mapping, NamedTuple, TextIO
 
 import yaml
 
 from .utils import print_message
 
 
-class ChangelogCIConfiguration:
-    """Configuration class for Changelog CI"""
+# Changelog Types
+PULL_REQUEST: str = "pull_request"
+COMMIT_MESSAGE: str = "commit_message"
 
+# Changelog File Extensions
+MARKDOWN_FILE: str = "md"
+RESTRUCTUREDTEXT_FILE: str = "rst"
+
+
+UserConfigType = dict[str, str | bool | list[dict[str, str | list[str]]] | None]
+
+
+class ActionEnvironment(NamedTuple):
+    event_path: str
+    repository: str
+    pull_request_branch: str
+    base_branch: str
+    event_name: str
+
+    @cached_property
+    def event_payload(self) -> dict:
+        with open(self.event_path) as f:
+            return json.load(f)
+
+    @classmethod
+    def from_env(cls, env: Mapping[str, str]) -> "ActionEnvironment":
+        return cls(
+            event_path=env['GITHUB_EVENT_PATH'],
+            repository=env['GITHUB_REPOSITORY'],
+            pull_request_branch=env['GITHUB_HEAD_REF'],
+            base_branch=env['GITHUB_REF'],
+            event_name=env['GITHUB_EVENT_NAME'],
+        )
+
+
+class Configuration(NamedTuple):
+    """Configuration class for Changelog CI"""
+    header_prefix: str = "Version:"
+    commit_changelog: bool = True
+    comment_changelog: bool = False
+    pull_request_title_regex: str = r"^(?i:release)"
     # The regular expression used to extract semantic versioning is a
     # slightly less restrictive modification of
     # the following regular expression
     # https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
-    DEFAULT_SEMVER_REGEX: str = (
+    version_regex: str = (
         r"v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.?(0|[1-9]\d*)?(?:-(("
         r"?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|["
         r"1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(["
         r"0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?"
     )
-    DEFAULT_PULL_REQUEST_TITLE_REGEX: str = r"^(?i:release)"
-    DEFAULT_VERSION_PREFIX: str = "Version:"
-    DEFAULT_GROUP_CONFIG: list = []
-    COMMIT_CHANGELOG: bool = True
-    COMMENT_CHANGELOG: bool = False
-    INCLUDE_UNLABELED_CHANGES: bool = True
-    UNLABELED_GROUP_TITLE: str = "Other Changes"
-    DEFAULT_COMMIT_AUTHOR: str = (
-        "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
-    )
-    # Changelog types
-    PULL_REQUEST: str = "pull_request"
-    COMMIT: str = "commit_message"
+    changelog_type: str = PULL_REQUEST
+    group_config: list[dict[str, str | list[str]]] = []
+    include_unlabeled_changes: bool = True
+    unlabeled_group_title: str = "Other Changes"
+    changelog_filename: str = f"CHANGELOG.{MARKDOWN_FILE}"
 
-    MARKDOWN_FILE: str = "md"
-    RESTRUCTUREDTEXT_FILE: str = "rst"
-    DEFAULT_CHANGELOG_FILENAME: str = f"CHANGELOG.{MARKDOWN_FILE}"
+    git_committer_username: str = "github-actions[bot]"
+    git_committer_email: str = "github-actions[bot]@users.noreply.github.com"
+    git_commit_author: str = f"{git_committer_username} <{git_committer_email}>"
+    release_version: str | None = None
+    github_token: str | None = None
 
-    def __init__(self, config_file: str | None, **other_options: Any) -> None:
-        # Initialize with default configuration
-        self.header_prefix = self.DEFAULT_VERSION_PREFIX
-        self.commit_changelog = self.COMMIT_CHANGELOG
-        self.comment_changelog = self.COMMENT_CHANGELOG
-        self.pull_request_title_regex = self.DEFAULT_PULL_REQUEST_TITLE_REGEX
-        self.version_regex = self.DEFAULT_SEMVER_REGEX
-        self.changelog_type = self.PULL_REQUEST
-        self.group_config = self.DEFAULT_GROUP_CONFIG
-        self.include_unlabeled_changes = self.INCLUDE_UNLABELED_CHANGES
-        self.unlabeled_group_title = self.UNLABELED_GROUP_TITLE
-        self.changelog_file_type = self.MARKDOWN_FILE
-        self.changelog_filename = self.DEFAULT_CHANGELOG_FILENAME
-        self.git_commit_author = self.DEFAULT_COMMIT_AUTHOR
+    @property
+    def changelog_file_type(self) -> str:
+        """changelog_file_type option"""
+        if self.changelog_filename.endswith('.rst'):
+            return RESTRUCTUREDTEXT_FILE
+        return MARKDOWN_FILE
 
-        self.user_raw_config = self.get_user_config(config_file, other_options)
-
-        self.validate_configuration()
-
-    @staticmethod
-    def get_user_config(config_file: str | None, other_options: dict) -> dict:
+    @classmethod
+    def create(
+        cls,
+        env: Mapping[str, str | None]
+    ) -> "Configuration":
         """
-        Read user provided configuration file and
+        Create a Configuration object
+        from a config file and environment variables
+        """
+        config_file_path = env.get('INPUT_CONFIG_FILE')
+        cleaned_user_config = cls.clean_user_config(
+            cls.get_user_config(config_file_path, env)
+        )
+        return cls(**cleaned_user_config)
+
+    @classmethod
+    def get_user_config(
+        cls,
+        config_file_path: str | None,
+        env: Mapping[str, str | None]
+    ) -> UserConfigType:
+        """
+        Read user provided configuration file and input and
         return user configuration
         """
-        user_config = other_options
+        user_config: dict = {
+            'changelog_filename': env.get("INPUT_CHANGELOG_FILENAME"),
+            'git_committer_username': env.get("INPUT_COMMITTER_USERNAME"),
+            'git_committer_email': env.get("INPUT_COMMITTER_EMAIL"),
+            'release_version': env.get("INPUT_RELEASE_VERSION"),
+            'github_token': env.get('INPUT_GITHUB_TOKEN')
+        }
 
-        if not config_file:
+        if not config_file_path:
             print_message(
                 "No Configuration file found, "
                 "falling back to default configuration to parse changelog",
@@ -73,16 +119,27 @@ class ChangelogCIConfiguration:
             )
             return user_config
 
+        config_file_data = cls.get_config_file_data(config_file_path)
+        user_config.update(config_file_data)
+
+        return user_config
+
+    @staticmethod
+    def get_config_file_data(config_file_path: str) -> UserConfigType:
+        """
+        Open config file and return file data
+        """
         loader: Callable[[TextIO], dict]
+        config_file_data: dict = {}
 
         try:
             # parse config files with the extension .yml and .yaml
             # using YAML syntax
-            if config_file.endswith("yml") or config_file.endswith("yaml"):
+            if config_file_path.endswith("yml") or config_file_path.endswith("yaml"):
                 loader = yaml.safe_load
             # parse config files with the extension .json
             # using JSON syntax
-            elif config_file.endswith("json"):
+            elif config_file_path.endswith("json"):
                 loader = json.load
             else:
                 print_message(
@@ -90,12 +147,10 @@ class ChangelogCIConfiguration:
                     "falling back to default configuration to parse changelog",
                     message_type="error"
                 )
-                return user_config
+                return config_file_data
 
-            with open(config_file, "r") as file:
-                user_config.update(loader(file))
-
-            return user_config
+            with open(config_file_path, "r") as file:
+                config_file_data = loader(file)
 
         except Exception as e:
             msg = (
@@ -103,199 +158,246 @@ class ChangelogCIConfiguration:
                 "falling back to default configuration to parse changelog"
             )
             print_message(msg, message_type="error")
+
+        return config_file_data
+
+    @classmethod
+    def clean_user_config(cls, user_config: dict) -> dict:
+        if not user_config:
             return user_config
 
-    def validate_configuration(self) -> None:
-        """
-        Validate all the configuration options and
-        update configuration attributes
-        """
-        if not self.user_raw_config:
-            return
+        cleaned_user_config: dict = {}
 
-        if not isinstance(self.user_raw_config, dict):
-            print_message(
-                "Configuration does not contain required mapping "
-                "falling back to default configuration to parse changelog",
-                message_type="error"
-            )
-            return
+        for key, value in user_config.items():
+            if key in Configuration._fields:
+                cleand_value = getattr(
+                    cls, f"clean_{key.lower()}", lambda x: None
+                )(value)
+                if cleand_value is not None:
+                    cleaned_user_config[key] = cleand_value
 
-        self.validate_header_prefix()
-        self.validate_commit_changelog()
-        self.validate_comment_changelog()
-        self.validate_pull_request_title_regex()
-        self.validate_version_regex()
-        self.validate_changelog_type()
-        self.validate_group_config()
-        self.validate_include_unlabeled_changes()
-        self.validate_unlabeled_group_title()
-        self.validate_changelog_filename()
-        self.validate_changelog_file_type()
-        self.validate_git_commit_author()
+        return cleaned_user_config
 
-    def validate_header_prefix(self) -> None:
-        """Validate and set header_prefix configuration option"""
-        header_prefix = self.user_raw_config.get("header_prefix")
-
-        if not header_prefix or not isinstance(header_prefix, str):
+    @classmethod
+    def clean_header_prefix(cls, value: Any) -> str | None:
+        """clean header_prefix configuration option"""
+        if not value or not isinstance(value, str):
             msg = (
                 "`header_prefix` was not provided or not valid, "
-                f"falling back to `{self.header_prefix}`."
+                f"falling back to default value."
             )
             print_message(msg, message_type="warning")
-        else:
-            self.header_prefix = header_prefix
+            return None
+        return value
 
-    def validate_unlabeled_group_title(self) -> None:
-        """Validate and set unlabeled_group_title configuration option"""
-        unlabeled_group_title = self.user_raw_config.get("unlabeled_group_title")
-
-        if not unlabeled_group_title or not isinstance(unlabeled_group_title, str):
-            msg = (
-                "`unlabeled_group_title` was not provided or not valid, "
-                f"falling back to `{self.unlabeled_group_title}`."
-            )
-            print_message(msg, message_type="warning")
-        else:
-            self.unlabeled_group_title = unlabeled_group_title
-
-    def validate_include_unlabeled_changes(self) -> None:
-        """Validate and set include_unlabeled_changes configuration option"""
-        include_unlabeled_changes = self.user_raw_config.get(
-            "include_unlabeled_changes"
-        )
-
-        if include_unlabeled_changes not in [0, 1, False, True]:
-            msg = (
-                "`include_unlabeled_changes` was not provided or not valid, "
-                f"falling back to `{self.include_unlabeled_changes}`."
-            )
-            print_message(msg, message_type="warning")
-        else:
-            self.include_unlabeled_changes = bool(include_unlabeled_changes)
-
-    def validate_commit_changelog(self) -> None:
-        """Validate and set commit_changelog configuration option"""
-        commit_changelog = self.user_raw_config.get("commit_changelog")
-
-        if commit_changelog not in [0, 1, False, True]:
+    @classmethod
+    def clean_commit_changelog(cls, value: Any) -> bool | None:
+        """clean commit_changelog configuration option"""
+        if value not in [0, 1, False, True]:
             msg = (
                 "`commit_changelog` was not provided or not valid, "
-                f"falling back to `{self.commit_changelog}`."
+                f"falling back to default value."
             )
             print_message(msg, message_type="warning")
-        else:
-            self.commit_changelog = bool(commit_changelog)
+            return None
+        return bool(value)
 
-    def validate_comment_changelog(self) -> None:
-        """Validate and set comment_changelog configuration option"""
-        comment_changelog = self.user_raw_config.get("comment_changelog")
-
-        if comment_changelog not in [0, 1, False, True]:
+    @classmethod
+    def clean_comment_changelog(cls, value: Any) -> bool | None:
+        """clean comment_changelog configuration option"""
+        if value not in [0, 1, False, True]:
             msg = (
                 "`comment_changelog` was not provided or not valid, "
-                f"falling back to `{self.comment_changelog}`."
+                f"falling back to default value."
             )
             print_message(msg, message_type="warning")
-        else:
-            self.comment_changelog = bool(comment_changelog)
+            return None
+        return bool(value)
 
-    def validate_pull_request_title_regex(self) -> None:
-        """Validate and set pull_request_title_regex configuration option"""
-        pull_request_title_regex = self.user_raw_config.get(
-            "pull_request_title_regex"
-        )
-
-        if not pull_request_title_regex:
+    @classmethod
+    def clean_pull_request_title_regex(cls, value: Any) -> str | None:
+        """clean pull_request_title_regex configuration option"""
+        if not value:
             msg = (
                 "`pull_request_title_regex` was not provided, "
-                f"Falling back to {self.pull_request_title_regex}."
+                f"Falling back to default."
             )
             print_message(msg, message_type="warning")
-            return
+            return None
 
         try:
             # This will raise an error if the provided regex is not valid
-            re.compile(pull_request_title_regex)
-            self.pull_request_title_regex = pull_request_title_regex
+            re.compile(value)
+            return value
         except Exception:
             msg = (
                 "`pull_request_title_regex` is not valid, "
-                f"Falling back to {self.pull_request_title_regex}."
+                f"Falling back to default value."
             )
             print_message(msg, message_type="error")
+            return None
 
-    def validate_version_regex(self) -> None:
-        """Validate and set validate_version_regex configuration option"""
-        version_regex = self.user_raw_config.get("version_regex")
-
-        if not version_regex:
+    @classmethod
+    def clean_version_regex(cls, value: Any) -> str | None:
+        """clean validate_version_regex configuration option"""
+        if not value:
             msg = (
                 "`version_regex` was not provided, "
-                f"Falling back to {self.version_regex}."
+                f"Falling back to default value."
             )
             print_message(msg, message_type="warning")
-            return
+            return None
 
         try:
             # This will raise an error if the provided regex is not valid
-            re.compile(version_regex)
-            self.version_regex = version_regex
+            re.compile(value)
+            return value
         except Exception:
             msg = (
                 "`version_regex` is not valid, "
-                f"Falling back to {self.version_regex}."
+                f"Falling back to default value."
             )
             print_message(msg, message_type="warning")
+            return None
 
-    def validate_changelog_type(self) -> None:
-        """Validate and set changelog_type configuration option"""
-        changelog_type = self.user_raw_config.get("changelog_type")
-
+    @classmethod
+    def clean_changelog_type(cls, value: Any) -> str | None:
+        """clean changelog_type configuration option"""
         if not (
-            changelog_type and
-            isinstance(changelog_type, str) and
-            changelog_type in [self.PULL_REQUEST, self.COMMIT]
+            value and
+            isinstance(value, str) and
+            value in [PULL_REQUEST, COMMIT_MESSAGE]
         ):
             msg = (
                 "`changelog_type` was not provided or not valid, "
-                f"the options are '{self.PULL_REQUEST}' or '{self.COMMIT}', "
-                f"falling back to default value of '{self.changelog_type}'."
+                f"the options are '{PULL_REQUEST}' or '{COMMIT_MESSAGE}', "
+                f"falling back to default."
             )
             print_message(msg, message_type="warning")
+            return None
+        return value
+
+    @classmethod
+    def clean_include_unlabeled_changes(cls, value: Any) -> bool | None:
+        """clean include_unlabeled_changes configuration option"""
+        if value not in [0, 1, False, True]:
+            msg = (
+                "`include_unlabeled_changes` was not provided or not valid, "
+                f"falling back to default value."
+            )
+            print_message(msg, message_type="warning")
+            return None
+
+        return bool(value)
+
+    @classmethod
+    def clean_unlabeled_group_title(cls, value: Any) -> str | None:
+        """clean unlabeled_group_title configuration option"""
+        if not value or not isinstance(value, str):
+            msg = (
+                "`unlabeled_group_title` was not provided or not valid, "
+                f"falling back to default value."
+            )
+            print_message(msg, message_type="warning")
+            return None
+        return value
+
+    @classmethod
+    def clean_changelog_filename(cls, value: Any) -> str | None:
+        """clean changelog_filename item configuration option"""
+        if value and (value.endswith('.md') or value.endswith('.rst')):
+            return value
         else:
-            self.changelog_type = changelog_type
+            msg = (
+                'Changelog filename was not provided or not valid, '
+                f'Changelog filename must end with '
+                f'"{MARKDOWN_FILE}" or "{RESTRUCTUREDTEXT_FILE}" extensions. '
+                f'Falling back to default value.'
+            )
+            print_message(msg, message_type='warning')
+            return None
 
-    def validate_group_config(self) -> None:
-        """Validate and set group_config configuration option"""
-        group_config = self.user_raw_config.get("group_config")
+    @classmethod
+    def clean_git_committer_username(cls, value: Any) -> str | None:
+        """clean git_committer_username item configuration option"""
+        if value:
+            return value
+        else:
+            msg = (
+                '`git_committer_username` was not provided, '
+                f'Falling back to default value.'
+            )
+            print_message(msg, message_type='warning')
+            return None
 
-        if not group_config:
+    @classmethod
+    def clean_git_committer_email(cls, value: Any) -> str | None:
+        """clean git_committer_email item configuration option"""
+        if value:
+            return value
+        else:
+            msg = (
+                '`git_committer_email` was not provided, '
+                f'Falling back to default value.'
+            )
+            print_message(msg, message_type='warning')
+            return None
+
+    @classmethod
+    def clean_release_version(cls, value: Any) -> str | None:
+        """clean release_version item configuration option"""
+        if value:
+            return value
+        else:
+            print_message('`release_version` was not provided as an input.')
+            return None
+
+    @classmethod
+    def clean_github_token(cls, value: Any) -> str | None:
+        """clean release_version item configuration option"""
+        if value:
+            return value
+        else:
+            print_message('`github_token` was not provided as an input.')
+            return None
+
+    @classmethod
+    def clean_group_config(cls, value: Any) -> list | None:
+        """clean group_config configuration option"""
+        group_config = []
+        if not value:
             msg = "`group_config` was not provided"
             print_message(msg, message_type="warning")
-            return
+            return None
 
-        if not isinstance(group_config, list):
+        if not isinstance(value, list):
             msg = "`group_config` is not valid, It must be an Array/List."
             print_message(msg, message_type="error")
-            return
+            return None
 
-        for item in group_config:
-            self.validate_group_config_item(item)
+        for item in value:
+            cleaned_group_config_item = cls.clean_group_config_item(item)
+            if cleaned_group_config_item:
+                group_config.append(cleaned_group_config_item)
 
-    def validate_group_config_item(self, item: dict) -> None:
-        """Validate and set group_config item configuration option"""
-        if not isinstance(item, dict):
+        return group_config
+
+    @classmethod
+    def clean_group_config_item(
+        cls,
+        value: dict[str, str | list[str]]
+    ) -> dict[str, str | list[str]] | None:
+        """clean group_config item configuration option"""
+        if not isinstance(value, dict):
             msg = (
                 "`group_config` items must have key, "
                 'value pairs of `title` and `labels`'
             )
             print_message(msg, message_type='error')
-            return
+            return None
 
-        title = item.get('title')
-        labels = item.get('labels')
+        title = value.get('title')
+        labels = value.get('labels')
 
         if not title or not isinstance(title, str):
             msg = (
@@ -303,7 +405,7 @@ class ChangelogCIConfiguration:
                 f'but got `{title}`'
             )
             print_message(msg, message_type='error')
-            return
+            return None
 
         if not labels or not isinstance(labels, list):
             msg = (
@@ -311,7 +413,7 @@ class ChangelogCIConfiguration:
                 f'but got `{labels}`'
             )
             print_message(msg, message_type='error')
-            return
+            return None
 
         if not all(isinstance(label, str) for label in labels):
             msg = (
@@ -319,44 +421,6 @@ class ChangelogCIConfiguration:
                 f'but got `{labels}`'
             )
             print_message(msg, message_type='error')
-            return
+            return None
 
-        self.group_config.append(item)
-
-    def validate_changelog_file_type(self) -> None:
-        """Validate and set changelog_file_type item configuration option"""
-        if self.changelog_filename.endswith('.md'):
-            self.changelog_file_type = self.MARKDOWN_FILE
-        elif self.changelog_filename.endswith('.rst'):
-            self.changelog_file_type = self.RESTRUCTUREDTEXT_FILE
-
-    def validate_changelog_filename(self) -> None:
-        """Validate and set changelog_filename item configuration option"""
-        changelog_filename = self.user_raw_config.get('changelog_filename', '')
-
-        if (
-            changelog_filename.endswith('.md') or
-            changelog_filename.endswith('.rst')
-        ):
-            self.changelog_filename = changelog_filename
-        else:
-            msg = (
-                'Changelog filename was not provided or not valid, '
-                f'Changelog filename must end with '
-                f'"{self.MARKDOWN_FILE}" or "{self.RESTRUCTUREDTEXT_FILE}" extensions. '
-                f'Falling back to `{self.changelog_filename}`.'
-            )
-            print_message(msg, message_type='warning')
-
-    def validate_git_commit_author(self) -> None:
-        """Validate and set changelog_filename item configuration option"""
-        git_commit_author = self.user_raw_config.get('git_commit_author', '')
-
-        if git_commit_author:
-            self.git_commit_author = git_commit_author
-        else:
-            msg = (
-                'Git Commit Author not found, '
-                f'Falling back to `{self.git_commit_author}`.'
-            )
-            print_message(msg, message_type='warning')
+        return value
