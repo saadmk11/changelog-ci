@@ -187,11 +187,11 @@ class TestConfiguration(unittest.TestCase):
         self.assertEqual(config.changelog_file_type, MARKDOWN_FILE)
 
     def test_git_commit_author(self):
-        default_env_dict = {
+        env_dict = {
             "INPUT_COMMITTER_USERNAME": "changelog-ci",
             "INPUT_COMMITTER_EMAIL": "test@email.com",
         }
-        config = Configuration.create(default_env_dict)
+        config = Configuration.create(env_dict)
         self.assertEqual(config.git_commit_author, "changelog-ci <test@email.com>")
 
     def test_get_user_config_without_file(self):
