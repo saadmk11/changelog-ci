@@ -372,6 +372,7 @@ class ChangelogCIPullRequest(ChangelogCIBase):
             "is:merged+"
             "sort:created-asc+"
             f"{merged_date_filter}"
+            "&per_page=100"
         )
 
         items = []
@@ -491,11 +492,11 @@ class ChangelogCICommitMessage(ChangelogCIBase):
 
     def get_changes_after_last_release(self) -> list[dict[str, str]]:
         """Get all the merged pull request after latest release"""
-        url = f"{self.GITHUB_API_URL}/repos/" f"{self.action_env.repository}/commits"
+        url = f"{self.GITHUB_API_URL}/repos/{self.action_env.repository}/commits?per_page=100"
         previous_release_date = self._get_latest_release_date()
 
         if previous_release_date:
-            url = f"{url}?since={previous_release_date}"
+            url = f"{url}&since={previous_release_date}"
 
         items = []
 
