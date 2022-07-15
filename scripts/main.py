@@ -7,12 +7,12 @@ from typing import Type
 import requests
 
 from .config import (
-    ActionEnvironment,
     COMMIT_MESSAGE,
-    Configuration,
     MARKDOWN_FILE,
     PULL_REQUEST,
     RESTRUCTUREDTEXT_FILE,
+    ActionEnvironment,
+    Configuration,
 )
 from .run_git import (
     checkout_pull_request_branch,
@@ -20,7 +20,7 @@ from .run_git import (
     create_new_git_branch,
     git_commit_changelog,
 )
-from .utils import print_message, display_whats_new
+from .utils import display_whats_new, print_message
 
 
 class ChangelogCIBase:

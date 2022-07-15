@@ -3,12 +3,11 @@ from unittest import mock
 
 from scripts.config import (
     COMMIT_MESSAGE,
-    Configuration,
     MARKDOWN_FILE,
     PULL_REQUEST,
     RESTRUCTUREDTEXT_FILE,
+    Configuration,
 )
-
 
 default_env_dict = {
     "INPUT_CHANGELOG_FILENAME": "MY_CHANGELOG.rst",

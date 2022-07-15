@@ -6,7 +6,6 @@ import yaml
 
 from .utils import print_message
 
-
 # Changelog Types
 PULL_REQUEST: str = "pull_request"
 COMMIT_MESSAGE: str = "commit_message"
