@@ -1,6 +1,5 @@
 import json
 import re
-from functools import cached_property
 from typing import Any, Callable, Mapping, NamedTuple, TextIO
 
 import yaml
@@ -27,7 +26,7 @@ class ActionEnvironment(NamedTuple):
     base_branch: str
     event_name: str
 
-    @cached_property
+    @property
     def event_payload(self) -> dict:
         with open(self.event_path) as f:
             return json.load(f)

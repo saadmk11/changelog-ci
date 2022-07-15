@@ -244,8 +244,9 @@ class ChangelogCIBase:
         pull_request_number = None
 
         if self.action_env.event_name == self.PULL_REQUEST_EVENT:
-            pull_request_title = self.action_env.event_payload["pull_request"]["title"]
-            pull_request_number = self.action_env.event_payload["number"]
+            event_payload = self.action_env.event_payload
+            pull_request_title = event_payload["pull_request"]["title"]
+            pull_request_number = event_payload["number"]
 
             if not self._validate_pull_request_title(pull_request_title):
                 # if pull request regex doesn't match then exit
