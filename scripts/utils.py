@@ -8,7 +8,7 @@ import requests
 def print_message(
     message: str,
     message_type: Literal["warning", "error", "group", "endgroup"] | None = None,
-) -> subprocess.CompletedProcess | None:
+) -> subprocess.CompletedProcess[bytes] | None:
     """Helper function to print colorful outputs in GitHub Actions shell"""
     # https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions
     if os.environ.get("PYTHON_TESTENV"):

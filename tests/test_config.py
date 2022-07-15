@@ -21,6 +21,7 @@ default_env_dict = {
 
 
 class TestConfiguration(unittest.TestCase):
+    """Test the Configuration class"""
     def test_create_with_no_data(self):
         config = Configuration.create({})
         self.assertEqual(config.changelog_type, PULL_REQUEST)
@@ -49,7 +50,7 @@ class TestConfiguration(unittest.TestCase):
         )
         self.assertEqual(
             config.git_commit_author,
-            f"{config.git_committer_username} " f"" f"<{config.git_committer_email}>",
+            f"{config.git_committer_username} <{config.git_committer_email}>",
         )
         self.assertIsNone(config.release_version)
         self.assertIsNone(config.github_token)
@@ -104,7 +105,7 @@ class TestConfiguration(unittest.TestCase):
         self.assertEqual(config.git_committer_email, "test@email.com")
         self.assertEqual(
             config.git_commit_author,
-            f"{config.git_committer_username} " f"<{config.git_committer_email}>",
+            f"{config.git_committer_username} <{config.git_committer_email}>",
         )
         self.assertEqual(config.release_version, "1.0.0")
         self.assertEqual(config.github_token, "12345")
@@ -162,7 +163,7 @@ class TestConfiguration(unittest.TestCase):
         )
         self.assertEqual(
             config.git_commit_author,
-            f"{config.git_committer_username} " f"<{config.git_committer_email}>",
+            f"{config.git_committer_username} <{config.git_committer_email}>",
         )
         self.assertIsNone(config.release_version)
         self.assertIsNone(config.github_token)

@@ -98,7 +98,7 @@ class Configuration(NamedTuple):
         Read user provided configuration file and input and
         return user configuration
         """
-        user_config: dict = {
+        user_config: UserConfigType = {
             "changelog_filename": env.get("INPUT_CHANGELOG_FILENAME"),
             "git_committer_username": env.get("INPUT_COMMITTER_USERNAME"),
             "git_committer_email": env.get("INPUT_COMMITTER_EMAIL"),
