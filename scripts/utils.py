@@ -7,11 +7,11 @@ import requests
 
 def print_message(
     message: str,
-    message_type: Literal["warning", "error", "group", "endgroup"] | None = None
+    message_type: Literal["warning", "error", "group", "endgroup"] | None = None,
 ) -> subprocess.CompletedProcess | None:
     """Helper function to print colorful outputs in GitHub Actions shell"""
     # https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions
-    if os.environ.get('PYTHON_TESTENV'):
+    if os.environ.get("PYTHON_TESTENV"):
         return None
 
     if not message_type:
@@ -36,7 +36,7 @@ def display_whats_new() -> None:
 
         print_message(
             f"\U0001F389 What's New In Changelog CI {latest_release_tag} \U0001F389",
-            message_type="group"
+            message_type="group",
         )
         print_message(f"\n{latest_release_body}")
         print_message(

@@ -35,16 +35,17 @@ class ActionEnvironment(NamedTuple):
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> "ActionEnvironment":
         return cls(
-            event_path=env['GITHUB_EVENT_PATH'],
-            repository=env['GITHUB_REPOSITORY'],
-            pull_request_branch=env['GITHUB_HEAD_REF'],
-            base_branch=env['GITHUB_REF'],
-            event_name=env['GITHUB_EVENT_NAME'],
+            event_path=env["GITHUB_EVENT_PATH"],
+            repository=env["GITHUB_REPOSITORY"],
+            pull_request_branch=env["GITHUB_HEAD_REF"],
+            base_branch=env["GITHUB_REF"],
+            event_name=env["GITHUB_EVENT_NAME"],
         )
 
 
 class Configuration(NamedTuple):
     """Configuration class for Changelog CI"""
+
     header_prefix: str = "Version:"
     commit_changelog: bool = True
     comment_changelog: bool = False
@@ -67,55 +68,50 @@ class Configuration(NamedTuple):
 
     git_committer_username: str = "github-actions[bot]"
     git_committer_email: str = "github-actions[bot]@users.noreply.github.com"
-    git_commit_author: str = f"{git_committer_username} <{git_committer_email}>"
     release_version: str | None = None
     github_token: str | None = None
 
     @property
     def changelog_file_type(self) -> str:
         """changelog_file_type option"""
-        if self.changelog_filename.endswith('.rst'):
+        if self.changelog_filename.endswith(".rst"):
             return RESTRUCTUREDTEXT_FILE
         return MARKDOWN_FILE
 
+    @property
+    def git_commit_author(self) -> str:
+        """git_commit_author option"""
+        return f"{self.git_committer_username} <{self.git_committer_email}>"
+
     @classmethod
-    def create(
-        cls,
-        env: Mapping[str, str | None]
-    ) -> "Configuration":
+    def create(cls, env: Mapping[str, str | None]) -> "Configuration":
         """
         Create a Configuration object
         from a config file and environment variables
         """
-        config_file_path = env.get('INPUT_CONFIG_FILE')
-        cleaned_user_config = cls.clean_user_config(
-            cls.get_user_config(config_file_path, env)
-        )
+        cleaned_user_config = cls.clean_user_config(cls.get_user_config(env))
         return cls(**cleaned_user_config)
 
     @classmethod
-    def get_user_config(
-        cls,
-        config_file_path: str | None,
-        env: Mapping[str, str | None]
-    ) -> UserConfigType:
+    def get_user_config(cls, env: Mapping[str, str | None]) -> UserConfigType:
         """
         Read user provided configuration file and input and
         return user configuration
         """
         user_config: dict = {
-            'changelog_filename': env.get("INPUT_CHANGELOG_FILENAME"),
-            'git_committer_username': env.get("INPUT_COMMITTER_USERNAME"),
-            'git_committer_email': env.get("INPUT_COMMITTER_EMAIL"),
-            'release_version': env.get("INPUT_RELEASE_VERSION"),
-            'github_token': env.get('INPUT_GITHUB_TOKEN')
+            "changelog_filename": env.get("INPUT_CHANGELOG_FILENAME"),
+            "git_committer_username": env.get("INPUT_COMMITTER_USERNAME"),
+            "git_committer_email": env.get("INPUT_COMMITTER_EMAIL"),
+            "release_version": env.get("INPUT_RELEASE_VERSION"),
+            "github_token": env.get("INPUT_GITHUB_TOKEN"),
         }
+        config_file_path = env.get("INPUT_CONFIG_FILE")
 
         if not config_file_path:
             print_message(
                 "No Configuration file found, "
                 "falling back to default configuration to parse changelog",
-                message_type="warning"
+                message_type="warning",
             )
             return user_config
 
@@ -145,7 +141,7 @@ class Configuration(NamedTuple):
                 print_message(
                     "We only support `JSON` or `YAML` file for configuration "
                     "falling back to default configuration to parse changelog",
-                    message_type="error"
+                    message_type="error",
                 )
                 return config_file_data
 
@@ -170,9 +166,9 @@ class Configuration(NamedTuple):
 
         for key, value in user_config.items():
             if key in Configuration._fields:
-                cleand_value = getattr(
-                    cls, f"clean_{key.lower()}", lambda x: None
-                )(value)
+                cleand_value = getattr(cls, f"clean_{key.lower()}", lambda x: None)(
+                    value
+                )
                 if cleand_value is not None:
                     cleaned_user_config[key] = cleand_value
 
@@ -184,7 +180,7 @@ class Configuration(NamedTuple):
         if not value or not isinstance(value, str):
             msg = (
                 "`header_prefix` was not provided or not valid, "
-                f"falling back to default value."
+                "falling back to default value."
             )
             print_message(msg, message_type="warning")
             return None
@@ -196,7 +192,7 @@ class Configuration(NamedTuple):
         if value not in [0, 1, False, True]:
             msg = (
                 "`commit_changelog` was not provided or not valid, "
-                f"falling back to default value."
+                "falling back to default value."
             )
             print_message(msg, message_type="warning")
             return None
@@ -208,7 +204,7 @@ class Configuration(NamedTuple):
         if value not in [0, 1, False, True]:
             msg = (
                 "`comment_changelog` was not provided or not valid, "
-                f"falling back to default value."
+                "falling back to default value."
             )
             print_message(msg, message_type="warning")
             return None
@@ -220,7 +216,7 @@ class Configuration(NamedTuple):
         if not value:
             msg = (
                 "`pull_request_title_regex` was not provided, "
-                f"Falling back to default."
+                "Falling back to default."
             )
             print_message(msg, message_type="warning")
             return None
@@ -232,7 +228,7 @@ class Configuration(NamedTuple):
         except Exception:
             msg = (
                 "`pull_request_title_regex` is not valid, "
-                f"Falling back to default value."
+                "Falling back to default value."
             )
             print_message(msg, message_type="error")
             return None
@@ -241,10 +237,7 @@ class Configuration(NamedTuple):
     def clean_version_regex(cls, value: Any) -> str | None:
         """clean validate_version_regex configuration option"""
         if not value:
-            msg = (
-                "`version_regex` was not provided, "
-                f"Falling back to default value."
-            )
+            msg = "`version_regex` was not provided, Falling back to default value."
             print_message(msg, message_type="warning")
             return None
 
@@ -253,10 +246,7 @@ class Configuration(NamedTuple):
             re.compile(value)
             return value
         except Exception:
-            msg = (
-                "`version_regex` is not valid, "
-                f"Falling back to default value."
-            )
+            msg = "`version_regex` is not valid, Falling back to default value."
             print_message(msg, message_type="warning")
             return None
 
@@ -264,9 +254,7 @@ class Configuration(NamedTuple):
     def clean_changelog_type(cls, value: Any) -> str | None:
         """clean changelog_type configuration option"""
         if not (
-            value and
-            isinstance(value, str) and
-            value in [PULL_REQUEST, COMMIT_MESSAGE]
+            value and isinstance(value, str) and value in [PULL_REQUEST, COMMIT_MESSAGE]
         ):
             msg = (
                 "`changelog_type` was not provided or not valid, "
@@ -283,7 +271,7 @@ class Configuration(NamedTuple):
         if value not in [0, 1, False, True]:
             msg = (
                 "`include_unlabeled_changes` was not provided or not valid, "
-                f"falling back to default value."
+                "falling back to default value."
             )
             print_message(msg, message_type="warning")
             return None
@@ -296,7 +284,7 @@ class Configuration(NamedTuple):
         if not value or not isinstance(value, str):
             msg = (
                 "`unlabeled_group_title` was not provided or not valid, "
-                f"falling back to default value."
+                "falling back to default value."
             )
             print_message(msg, message_type="warning")
             return None
@@ -305,66 +293,71 @@ class Configuration(NamedTuple):
     @classmethod
     def clean_changelog_filename(cls, value: Any) -> str | None:
         """clean changelog_filename item configuration option"""
-        if value and (value.endswith('.md') or value.endswith('.rst')):
+        if (
+            value
+            and isinstance(value, str)
+            and (value.endswith(".md") or value.endswith(".rst"))
+        ):
             return value
         else:
             msg = (
-                'Changelog filename was not provided or not valid, '
-                f'Changelog filename must end with '
+                "Changelog filename was not provided or not valid, "
+                f"Changelog filename must end with "
                 f'"{MARKDOWN_FILE}" or "{RESTRUCTUREDTEXT_FILE}" extensions. '
-                f'Falling back to default value.'
+                f"Falling back to default value."
             )
-            print_message(msg, message_type='warning')
+            print_message(msg, message_type="warning")
             return None
 
     @classmethod
     def clean_git_committer_username(cls, value: Any) -> str | None:
         """clean git_committer_username item configuration option"""
-        if value:
+        if value and isinstance(value, str):
             return value
         else:
             msg = (
-                '`git_committer_username` was not provided, '
-                f'Falling back to default value.'
+                "`git_committer_username` was not provided, "
+                "Falling back to default value."
             )
-            print_message(msg, message_type='warning')
+            print_message(msg, message_type="warning")
             return None
 
     @classmethod
     def clean_git_committer_email(cls, value: Any) -> str | None:
         """clean git_committer_email item configuration option"""
-        if value:
+        if value and isinstance(value, str):
             return value
         else:
             msg = (
-                '`git_committer_email` was not provided, '
-                f'Falling back to default value.'
+                "`git_committer_email` was not provided, "
+                "Falling back to default value."
             )
-            print_message(msg, message_type='warning')
+            print_message(msg, message_type="warning")
             return None
 
     @classmethod
     def clean_release_version(cls, value: Any) -> str | None:
         """clean release_version item configuration option"""
-        if value:
+        if value and isinstance(value, str):
             return value
         else:
-            print_message('`release_version` was not provided as an input.')
+            print_message("`release_version` was not provided as an input.")
             return None
 
     @classmethod
     def clean_github_token(cls, value: Any) -> str | None:
         """clean release_version item configuration option"""
-        if value:
+        if value and isinstance(value, str):
             return value
         else:
-            print_message('`github_token` was not provided as an input.')
+            print_message("`github_token` was not provided as an input.")
             return None
 
     @classmethod
     def clean_group_config(cls, value: Any) -> list | None:
         """clean group_config configuration option"""
         group_config = []
+
         if not value:
             msg = "`group_config` was not provided"
             print_message(msg, message_type="warning")
@@ -376,51 +369,47 @@ class Configuration(NamedTuple):
             return None
 
         for item in value:
-            cleaned_group_config_item = cls.clean_group_config_item(item)
+            cleaned_group_config_item = cls._clean_group_config_item(item)
             if cleaned_group_config_item:
                 group_config.append(cleaned_group_config_item)
 
         return group_config
 
     @classmethod
-    def clean_group_config_item(
-        cls,
-        value: dict[str, str | list[str]]
+    def _clean_group_config_item(
+        cls, value: dict[str, str | list[str]]
     ) -> dict[str, str | list[str]] | None:
         """clean group_config item configuration option"""
         if not isinstance(value, dict):
             msg = (
                 "`group_config` items must have key, "
-                'value pairs of `title` and `labels`'
+                "value pairs of `title` and `labels`"
             )
-            print_message(msg, message_type='error')
+            print_message(msg, message_type="error")
             return None
 
-        title = value.get('title')
-        labels = value.get('labels')
+        title = value.get("title")
+        labels = value.get("labels")
 
         if not title or not isinstance(title, str):
-            msg = (
-                '`group_config` item must contain string title, '
-                f'but got `{title}`'
-            )
-            print_message(msg, message_type='error')
+            msg = "`group_config` item must contain string title, " f"but got `{title}`"
+            print_message(msg, message_type="error")
             return None
 
         if not labels or not isinstance(labels, list):
             msg = (
-                '`group_config` item must contain array of labels, '
-                f'but got `{labels}`'
+                "`group_config` item must contain array of labels, "
+                f"but got `{labels}`"
             )
-            print_message(msg, message_type='error')
+            print_message(msg, message_type="error")
             return None
 
         if not all(isinstance(label, str) for label in labels):
             msg = (
-                '`group_config` labels array must be string type, '
-                f'but got `{labels}`'
+                "`group_config` labels array must be string type, "
+                f"but got `{labels}`"
             )
-            print_message(msg, message_type='error')
+            print_message(msg, message_type="error")
             return None
 
         return value
