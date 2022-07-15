@@ -205,7 +205,9 @@ class ChangelogCIBase:
                 f"{self.action_env.repository}, status code: {response.status_code}"
             )
 
-            print_message(msg, message_type="error")
+            print_message(msg, message_type="warning")
+        else:
+            print_message(f"Comment added at {response.json()['html_url']} \U0001F389")
 
     def get_changes_after_last_release(self):
         raise NotImplementedError
@@ -359,18 +361,17 @@ class ChangelogCIPullRequest(ChangelogCIBase):
             # do not filter by merged date
             merged_date_filter = ""
 
+        # Detail on the GitHubSearch API:
+        # https://docs.github.com/en/rest/search#search-issues-and-pull-requests
+        # https://docs.github.com/en/search-github/searching-on-github/searching-issues-and-pull-requests
+        # https://docs.github.com/en/search-github/getting-started-with-searching-on-github/sorting-search-results
         url = (
-            "{base_url}/search/issues"
-            "?q=repo:{repo_name}+"
+            f"{self.GITHUB_API_URL}/search/issues"
+            f"?q=repo:{self.action_env.repository}+"
             "is:pr+"
             "is:merged+"
-            "sort:author-date-asc+"
-            "{merged_date_filter}"
-            "&sort=merged"
-        ).format(
-            base_url=self.GITHUB_API_URL,
-            repo_name=self.action_env.repository,
-            merged_date_filter=merged_date_filter,
+            "sort:created-asc+"
+            f"{merged_date_filter}"
         )
 
         items = []
