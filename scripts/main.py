@@ -427,7 +427,9 @@ class ChangelogCIPullRequest(ChangelogCIBase):
 
                 items_string = ""
 
-                for pull_request in new_changes:
+                pull_request_list = copy.deepcopy(new_changes)
+
+                for pull_request in pull_request_list:
                     # check if the pull request label matches with
                     # any label of the config
                     if any(
@@ -445,7 +447,7 @@ class ChangelogCIPullRequest(ChangelogCIBase):
                         string_data += f"\n#### {config['title']}\n\n"
                     else:
                         string_data += (
-                            f"\n{config['title']}\n" f"{'-' * len(config['title'])}\n\n"
+                            f"\n{config['title']}\n {'-' * len(config['title'])}\n\n"
                         )
                     string_data += items_string
 
