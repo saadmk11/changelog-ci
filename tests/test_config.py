@@ -22,6 +22,7 @@ default_env_dict = {
 
 class TestConfiguration(unittest.TestCase):
     """Test the Configuration class"""
+
     def test_create_with_no_data(self):
         config = Configuration.create({})
         self.assertEqual(config.changelog_type, PULL_REQUEST)
