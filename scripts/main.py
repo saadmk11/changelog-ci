@@ -485,7 +485,7 @@ class ChangelogCICommitMessage(ChangelogCIBase):
             sha=item["sha"][:7], url=item["url"], message=item["message"]
         )
 
-    def get_changes_after_last_release(self) -> list:
+    def get_changes_after_last_release(self) -> list[dict[str, str]]:
         """Get all the merged pull request after latest release"""
         url = f"{self.GITHUB_API_URL}/repos/" f"{self.action_env.repository}/commits"
         previous_release_date = self._get_latest_release_date()
