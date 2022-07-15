@@ -33,7 +33,7 @@ jobs:
     - name: Check Typing with Mypy
       run: |
         python -m pip install mypy==0.961
-        mypy --install-types .
+        mypy --install-types --non-interactive .
 
     - name: Run Tests
       run: PYTHON_TESTENV=true python -m unittest
