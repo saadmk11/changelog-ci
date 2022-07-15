@@ -164,7 +164,7 @@ class Configuration(NamedTuple):
         cleaned_user_config: dict = {}
 
         for key, value in user_config.items():
-            if key in Configuration._fields:
+            if key in cls._fields:
                 cleand_value = getattr(cls, f"clean_{key.lower()}", lambda x: None)(
                     value
                 )

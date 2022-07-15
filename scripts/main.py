@@ -361,7 +361,7 @@ class ChangelogCIPullRequest(ChangelogCIBase):
             # do not filter by merged date
             merged_date_filter = ""
 
-        # Detail on the GitHubSearch API:
+        # Detail on the GitHub Search API:
         # https://docs.github.com/en/rest/search#search-issues-and-pull-requests
         # https://docs.github.com/en/search-github/searching-on-github/searching-issues-and-pull-requests
         # https://docs.github.com/en/search-github/getting-started-with-searching-on-github/sorting-search-results
@@ -492,6 +492,8 @@ class ChangelogCICommitMessage(ChangelogCIBase):
 
     def get_changes_after_last_release(self) -> list[dict[str, str]]:
         """Get all the merged pull request after latest release"""
+        # Detail on the GitHub Commits API:
+        # https://docs.github.com/en/rest/commits/commits#list-commits
         url = f"{self.GITHUB_API_URL}/repos/{self.action_env.repository}/commits?per_page=100"
         previous_release_date = self._get_latest_release_date()
 
