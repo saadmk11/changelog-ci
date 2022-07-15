@@ -139,3 +139,5 @@ cython_debug/
 
 # PyCharm
 .idea/
+
+try.py
