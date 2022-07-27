@@ -17,13 +17,8 @@ def configure_git_author(username: str, email: str) -> None:
     """
     Configure the git author.
     """
-    subprocess.run(["echo", "::group:: Configure Git Author"])
-    gha_utils.notice(f"Setting Git Commit User to {username}.")
-    gha_utils.notice(f"Setting Git Commit email to {email}.")
-
     subprocess.run(["git", "config", "user.name", username])
     subprocess.run(["git", "config", "user.email", email])
-    subprocess.run(["echo", "::endgroup::"])
 
 
 def create_new_git_branch(base_branch_name: str, new_branch_name: str) -> None:
