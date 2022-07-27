@@ -4,6 +4,7 @@ import re
 import time
 from typing import Type
 
+import github_action_utils as gha_utils  # type: ignore
 import requests
 
 from .config import (
@@ -20,7 +21,7 @@ from .run_git import (
     create_new_git_branch,
     git_commit_changelog,
 )
-from .utils import display_whats_new, print_message
+from .utils import display_whats_new
 
 
 class ChangelogCIBase:
@@ -69,13 +70,12 @@ class ChangelogCIBase:
 
         if response.status_code == 201:
             html_url = response.json()["html_url"]
-            print_message(f"Pull request opened at {html_url} \U0001F389")
+            gha_utils.notice(f"Pull request opened at {html_url} \U0001F389")
         else:
-            msg = (
+            gha_utils.error(
                 f"Could not create a pull request on "
                 f"{self.action_env.repository}, status code: {response.status_code}"
             )
-            print_message(msg, message_type="error")
 
     def _validate_pull_request_title(self, pull_request_title: str) -> bool:
         """Check if changelog should be generated for this pull request"""
@@ -127,12 +127,10 @@ class ChangelogCIBase:
             published_date = response_data["published_at"]
         else:
             # if there is no previous release API will return 404 Not Found
-            msg = (
+            gha_utils.warning(
                 f"Could not find any previous release for "
                 f"{self.action_env.repository}, status code: {response.status_code}"
             )
-            print_message(msg, message_type="warning")
-
         return published_date
 
     def _update_changelog_file(self, string_data: str) -> None:
@@ -170,16 +168,14 @@ class ChangelogCIBase:
         if not self.config.github_token:
             # Token is required by the GitHub API to create a Comment
             # if not provided exit with error message
-            msg = (
+            gha_utils.error(
                 "Could not add a comment. "
                 "`github_token` input is required for this operation. "
                 "If you want to enable Changelog comment, please add "
                 "`github_token` to your workflow yaml file. "
                 "Look at Changelog CI's documentation for more information."
             )
-
-            print_message(msg, message_type="error")
-            return
+            return None
 
         owner, repo = self.action_env.repository.split("/")
 
@@ -199,15 +195,15 @@ class ChangelogCIBase:
 
         if response.status_code != 201:
             # API should return 201, otherwise show error message
-            msg = (
+            gha_utils.warning(
                 f"Error while trying to create a comment. "
                 f"GitHub API returned error response for "
                 f"{self.action_env.repository}, status code: {response.status_code}"
             )
-
-            print_message(msg, message_type="warning")
         else:
-            print_message(f"Comment added at {response.json()['html_url']} \U0001F389")
+            gha_utils.notice(
+                f"Comment added at {response.json()['html_url']} \U0001F389"
+            )
 
     def get_changes_after_last_release(self):
         raise NotImplementedError
@@ -220,27 +216,25 @@ class ChangelogCIBase:
         if not self.config.commit_changelog and not self.config.comment_changelog:
             # if both commit_changelog and comment_changelog is set to false
             # then exit with warning and don't generate Changelog
-            msg = (
+            gha_utils.error(
                 "Skipping Changelog generation as both `commit_changelog` "
                 "and `comment_changelog` is set to False. "
                 "If you did not intend to do this please set "
                 "one or both of them to True."
             )
-            print_message(msg, message_type="error")
             return
 
         if (
             not self.action_env.event_name == self.PULL_REQUEST_EVENT
             and not self.release_version
         ):
-            msg = (
+            gha_utils.error(
                 "Skipping Changelog generation. "
                 "Changelog CI could not find the Release Version. "
                 "Changelog CI should be triggered on a pull request or "
                 "`release_version` input must be provided on the workflow. "
                 "Please Check the Documentation for more details."
             )
-            print_message(msg, message_type="error")
             return
 
         pull_request_number = None
@@ -253,12 +247,11 @@ class ChangelogCIBase:
             if not self._validate_pull_request_title(pull_request_title):
                 # if pull request regex doesn't match then exit
                 # and don't generate changelog
-                msg = (
+                gha_utils.error(
                     f"The title of the pull request did not match. "
                     f'Regex tried: "{self.config.pull_request_title_regex}", '
                     f"Aborting Changelog Generation."
                 )
-                print_message(msg, message_type="error")
                 return
 
             self._set_release_version_from_pull_request_title(
@@ -270,18 +263,17 @@ class ChangelogCIBase:
             # It might happen if the pull request is not meant to be release
             # or the title was not accurate.
             if self.action_env.event_name == self.PULL_REQUEST_EVENT:
-                msg = (
+                gha_utils.error(
                     f"Could not find matching version number from pull request title. "
                     f"Regex tried: {self.config.version_regex} "
                     f"Aborting Changelog Generation"
                 )
             else:
-                msg = (
+                gha_utils.error(
                     "`release_version` input must be provided to generate Changelog. "
                     "Please Check the Documentation for more details. "
                     "Aborting Changelog Generation"
                 )
-            print_message(msg, message_type="error")
             return
 
         changes = self.get_changes_after_last_release()
@@ -293,6 +285,9 @@ class ChangelogCIBase:
         string_data = self.parse_changelog(
             self.config.changelog_file_type, self.release_version, changes
         )
+
+        gha_utils.set_output("changelog", string_data)
+
         markdown_string_data = string_data
 
         if all(
@@ -309,30 +304,25 @@ class ChangelogCIBase:
         if self.config.commit_changelog:
             self._update_changelog_file(string_data)
             if self.action_env.event_name == self.PULL_REQUEST_EVENT:
-                print_message("Commit Changelog", message_type="group")
-                self._commit_changelog(self.action_env.pull_request_branch)
-                print_message("", message_type="endgroup")
+                with gha_utils.group("Commit Changelog"):
+                    self._commit_changelog(self.action_env.pull_request_branch)
             else:
-                print_message("Create New Branch", message_type="group")
-                new_branch = self._create_new_branch()
-                print_message("", message_type="endgroup")
+                with gha_utils.group("Create New Branch"):
+                    new_branch = self._create_new_branch()
 
-                print_message("Create Pull Request", message_type="group")
-                self._create_pull_request(new_branch, markdown_string_data)
-                print_message("", message_type="endgroup")
+                with gha_utils.group("Create Pull Request"):
+                    self._create_pull_request(new_branch, markdown_string_data)
 
         if self.config.comment_changelog:
-            print_message("Comment Changelog", message_type="group")
-
-            if not self.action_env.event_name == self.PULL_REQUEST_EVENT:
-                msg = (
-                    "`comment_changelog` can only be used if Changelog CI is triggered on a pull request. "
-                    "Please Check the Documentation for more details."
-                )
-                print_message(msg, message_type="error")
-            else:
-                self._comment_changelog(markdown_string_data, pull_request_number)
-            print_message("", message_type="endgroup")
+            with gha_utils.group("Comment Changelog"):
+                if not self.action_env.event_name == self.PULL_REQUEST_EVENT:
+                    gha_utils.error(
+                        "`comment_changelog` can only be used "
+                        "if Changelog CI is triggered on a pull request. "
+                        "Please Check the Documentation for more details."
+                    )
+                else:
+                    self._comment_changelog(markdown_string_data, pull_request_number)
 
 
 class ChangelogCIPullRequest(ChangelogCIBase):
@@ -394,19 +384,16 @@ class ChangelogCIPullRequest(ChangelogCIBase):
                     }
                     items.append(data)
             else:
-                msg = (
+                gha_utils.error(
                     f"There was no pull request "
                     f"made on {self.action_env.repository} after last release."
                 )
-                print_message(msg, message_type="error")
         else:
-            msg = (
+            gha_utils.error(
                 f"Could not get pull requests for "
                 f"{self.action_env.repository} from GitHub API. "
                 f"response status code: {response.status_code}"
             )
-            print_message(msg, message_type="error")
-
         return items
 
     def parse_changelog(self, file_type: str, version: str, changes: list) -> str:
@@ -522,21 +509,18 @@ class ChangelogCICommitMessage(ChangelogCIBase):
                         }
                         items.append(data)
                     else:
-                        print_message(f'Skipping Merge Commit "{message}"')
+                        gha_utils.notice(f'Skipping Merge Commit "{message}"')
             else:
-                msg = (
+                gha_utils.error(
                     f"There was no commit "
                     f"made on {self.action_env.repository} after last release."
                 )
-                print_message(msg, message_type="error")
         else:
-            msg = (
+            gha_utils.error(
                 f"Could not get commits for "
                 f"{self.action_env.repository} from GitHub API. "
                 f"response status code: {response.status_code}"
             )
-            print_message(msg, message_type="error")
-
         return items
 
     def parse_changelog(self, file_type: str, version: str, changes: list) -> str:
@@ -562,41 +546,36 @@ CHANGELOG_CI_CLASSES = {
 
 
 if __name__ == "__main__":
-    print_message("Parse Configuration", message_type="group")
-    user_configuration = Configuration.create(os.environ)
-    action_environment = ActionEnvironment.from_env(os.environ)
-    print_message("", message_type="endgroup")
+    with gha_utils.group("Parse Configuration"):
+        user_configuration = Configuration.create(os.environ)
+        action_environment = ActionEnvironment.from_env(os.environ)
 
     if action_environment.pull_request_branch:
         # Group: Checkout git pull request branch
-        print_message(
-            f'Checkout "{action_environment.pull_request_branch}" branch',
-            message_type="group",
-        )
-        checkout_pull_request_branch(action_environment.pull_request_branch)
-        print_message("", message_type="endgroup")
+        with gha_utils.group(
+            f'Checkout "{action_environment.pull_request_branch}" branch'
+        ):
+            checkout_pull_request_branch(action_environment.pull_request_branch)
 
     # Group: Configure Git Author
-    print_message("Configure Git Author", message_type="group")
-    configure_git_author(
-        user_configuration.git_committer_username,
-        user_configuration.git_committer_email,
-    )
-    print_message(
-        f"Setting Git Commit Author to {user_configuration.git_commit_author}."
-    )
-    print_message("", message_type="endgroup")
+    with gha_utils.group("Configure Git Author"):
+        configure_git_author(
+            user_configuration.git_committer_username,
+            user_configuration.git_committer_email,
+        )
+        gha_utils.notice(
+            f"Setting Git Commit Author to {user_configuration.git_commit_author}."
+        )
 
     # Group: Generate Changelog
-    print_message("Generate Changelog", message_type="group")
-    # Get CI class using configuration
-    changelog_ci_class: Type[ChangelogCIBase] = CHANGELOG_CI_CLASSES[
-        user_configuration.changelog_type
-    ]
-    # Initialize the Changelog CI
-    ci = changelog_ci_class(user_configuration, action_environment)
-    # Run Changelog CI
-    ci.run()
-    print_message("", message_type="endgroup")
+    with gha_utils.group("Generate Changelog"):
+        # Get CI class using configuration
+        changelog_ci_class: Type[ChangelogCIBase] = CHANGELOG_CI_CLASSES[
+            user_configuration.changelog_type
+        ]
+        # Initialize the Changelog CI
+        ci = changelog_ci_class(user_configuration, action_environment)
+        # Run Changelog CI
+        ci.run()
 
     display_whats_new()

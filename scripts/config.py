@@ -2,9 +2,8 @@ import json
 import re
 from typing import Any, Callable, Mapping, NamedTuple, TextIO
 
+import github_action_utils as gha_utils  # type: ignore
 import yaml
-
-from .utils import print_message
 
 # Changelog Types
 PULL_REQUEST: str = "pull_request"
@@ -24,11 +23,7 @@ class ActionEnvironment(NamedTuple):
     pull_request_branch: str
     base_branch: str
     event_name: str
-
-    @property
-    def event_payload(self) -> dict:
-        with open(self.event_path) as f:
-            return json.load(f)
+    event_payload: dict[str, Any]
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> "ActionEnvironment":
@@ -38,6 +33,7 @@ class ActionEnvironment(NamedTuple):
             pull_request_branch=env["GITHUB_HEAD_REF"],
             base_branch=env["GITHUB_REF"],
             event_name=env["GITHUB_EVENT_NAME"],
+            event_payload=gha_utils.event_payload(),
         )
 
 
@@ -106,10 +102,9 @@ class Configuration(NamedTuple):
         config_file_path = env.get("INPUT_CONFIG_FILE")
 
         if not config_file_path:
-            print_message(
+            gha_utils.warning(
                 "No Configuration file found, "
-                "falling back to default configuration to parse changelog",
-                message_type="warning",
+                "falling back to default configuration to parse changelog"
             )
             return user_config
 
@@ -136,10 +131,9 @@ class Configuration(NamedTuple):
             elif config_file_path.endswith("json"):
                 loader = json.load
             else:
-                print_message(
+                gha_utils.error(
                     "We only support `JSON` or `YAML` file for configuration "
-                    "falling back to default configuration to parse changelog",
-                    message_type="error",
+                    "falling back to default configuration to parse changelog"
                 )
                 return config_file_data
 
@@ -147,12 +141,10 @@ class Configuration(NamedTuple):
                 config_file_data = loader(file)
 
         except Exception as e:
-            msg = (
+            gha_utils.error(
                 f"Invalid Configuration file, error: {e}, "
                 "falling back to default configuration to parse changelog"
             )
-            print_message(msg, message_type="error")
-
         return config_file_data
 
     @classmethod
@@ -176,11 +168,10 @@ class Configuration(NamedTuple):
     def clean_header_prefix(cls, value: Any) -> str | None:
         """clean header_prefix configuration option"""
         if not value or not isinstance(value, str):
-            msg = (
+            gha_utils.warning(
                 "`header_prefix` was not provided or not valid, "
                 "falling back to default value."
             )
-            print_message(msg, message_type="warning")
             return None
         return value
 
@@ -188,11 +179,10 @@ class Configuration(NamedTuple):
     def clean_commit_changelog(cls, value: Any) -> bool | None:
         """clean commit_changelog configuration option"""
         if value not in [0, 1, False, True]:
-            msg = (
+            gha_utils.warning(
                 "`commit_changelog` was not provided or not valid, "
                 "falling back to default value."
             )
-            print_message(msg, message_type="warning")
             return None
         return bool(value)
 
@@ -200,11 +190,10 @@ class Configuration(NamedTuple):
     def clean_comment_changelog(cls, value: Any) -> bool | None:
         """clean comment_changelog configuration option"""
         if value not in [0, 1, False, True]:
-            msg = (
+            gha_utils.warning(
                 "`comment_changelog` was not provided or not valid, "
                 "falling back to default value."
             )
-            print_message(msg, message_type="warning")
             return None
         return bool(value)
 
@@ -212,11 +201,10 @@ class Configuration(NamedTuple):
     def clean_pull_request_title_regex(cls, value: Any) -> str | None:
         """clean pull_request_title_regex configuration option"""
         if not value:
-            msg = (
+            gha_utils.warning(
                 "`pull_request_title_regex` was not provided, "
                 "Falling back to default."
             )
-            print_message(msg, message_type="warning")
             return None
 
         try:
@@ -224,19 +212,19 @@ class Configuration(NamedTuple):
             re.compile(value)
             return value
         except Exception:
-            msg = (
+            gha_utils.error(
                 "`pull_request_title_regex` is not valid, "
                 "Falling back to default value."
             )
-            print_message(msg, message_type="error")
             return None
 
     @classmethod
     def clean_version_regex(cls, value: Any) -> str | None:
         """clean validate_version_regex configuration option"""
         if not value:
-            msg = "`version_regex` was not provided, Falling back to default value."
-            print_message(msg, message_type="warning")
+            gha_utils.warning(
+                "`version_regex` was not provided, Falling back to default value."
+            )
             return None
 
         try:
@@ -244,8 +232,9 @@ class Configuration(NamedTuple):
             re.compile(value)
             return value
         except Exception:
-            msg = "`version_regex` is not valid, Falling back to default value."
-            print_message(msg, message_type="warning")
+            gha_utils.warning(
+                "`version_regex` is not valid, Falling back to default value."
+            )
             return None
 
     @classmethod
@@ -254,12 +243,11 @@ class Configuration(NamedTuple):
         if not (
             value and isinstance(value, str) and value in [PULL_REQUEST, COMMIT_MESSAGE]
         ):
-            msg = (
+            gha_utils.warning(
                 "`changelog_type` was not provided or not valid, "
                 f"the options are '{PULL_REQUEST}' or '{COMMIT_MESSAGE}', "
                 f"falling back to default."
             )
-            print_message(msg, message_type="warning")
             return None
         return value
 
@@ -267,11 +255,10 @@ class Configuration(NamedTuple):
     def clean_include_unlabeled_changes(cls, value: Any) -> bool | None:
         """clean include_unlabeled_changes configuration option"""
         if value not in [0, 1, False, True]:
-            msg = (
+            gha_utils.warning(
                 "`include_unlabeled_changes` was not provided or not valid, "
                 "falling back to default value."
             )
-            print_message(msg, message_type="warning")
             return None
 
         return bool(value)
@@ -280,11 +267,10 @@ class Configuration(NamedTuple):
     def clean_unlabeled_group_title(cls, value: Any) -> str | None:
         """clean unlabeled_group_title configuration option"""
         if not value or not isinstance(value, str):
-            msg = (
+            gha_utils.warning(
                 "`unlabeled_group_title` was not provided or not valid, "
                 "falling back to default value."
             )
-            print_message(msg, message_type="warning")
             return None
         return value
 
@@ -298,13 +284,12 @@ class Configuration(NamedTuple):
         ):
             return value
         else:
-            msg = (
+            gha_utils.warning(
                 "Changelog filename was not provided or not valid, "
                 f"Changelog filename must end with "
                 f'"{MARKDOWN_FILE}" or "{RESTRUCTUREDTEXT_FILE}" extensions. '
                 f"Falling back to default value."
             )
-            print_message(msg, message_type="warning")
             return None
 
     @classmethod
@@ -313,11 +298,10 @@ class Configuration(NamedTuple):
         if value and isinstance(value, str):
             return value
         else:
-            msg = (
+            gha_utils.warning(
                 "`git_committer_username` was not provided, "
                 "Falling back to default value."
             )
-            print_message(msg, message_type="warning")
             return None
 
     @classmethod
@@ -326,11 +310,10 @@ class Configuration(NamedTuple):
         if value and isinstance(value, str):
             return value
         else:
-            msg = (
+            gha_utils.warning(
                 "`git_committer_email` was not provided, "
                 "Falling back to default value."
             )
-            print_message(msg, message_type="warning")
             return None
 
     @classmethod
@@ -339,7 +322,7 @@ class Configuration(NamedTuple):
         if value and isinstance(value, str):
             return value
         else:
-            print_message("`release_version` was not provided as an input.")
+            gha_utils.notice("`release_version` was not provided as an input.")
             return None
 
     @classmethod
@@ -348,7 +331,7 @@ class Configuration(NamedTuple):
         if value and isinstance(value, str):
             return value
         else:
-            print_message("`github_token` was not provided as an input.")
+            gha_utils.notice("`github_token` was not provided as an input.")
             return None
 
     @classmethod
@@ -357,13 +340,11 @@ class Configuration(NamedTuple):
         group_config = []
 
         if not value:
-            msg = "`group_config` was not provided"
-            print_message(msg, message_type="warning")
+            gha_utils.warning("`group_config` was not provided")
             return None
 
         if not isinstance(value, list):
-            msg = "`group_config` is not valid, It must be an Array/List."
-            print_message(msg, message_type="error")
+            gha_utils.error("`group_config` is not valid, It must be an Array/List.")
             return None
 
         for item in value:
@@ -379,35 +360,33 @@ class Configuration(NamedTuple):
     ) -> dict[str, str | list[str]] | None:
         """clean group_config item configuration option"""
         if not isinstance(value, dict):
-            msg = (
+            gha_utils.error(
                 "`group_config` items must have key, "
                 "value pairs of `title` and `labels`"
             )
-            print_message(msg, message_type="error")
             return None
 
         title = value.get("title")
         labels = value.get("labels")
 
         if not title or not isinstance(title, str):
-            msg = "`group_config` item must contain string title, " f"but got `{title}`"
-            print_message(msg, message_type="error")
+            gha_utils.error(
+                "`group_config` item must contain string title, " f"but got `{title}`"
+            )
             return None
 
         if not labels or not isinstance(labels, list):
-            msg = (
+            gha_utils.error(
                 "`group_config` item must contain array of labels, "
                 f"but got `{labels}`"
             )
-            print_message(msg, message_type="error")
             return None
 
         if not all(isinstance(label, str) for label in labels):
-            msg = (
+            gha_utils.error(
                 "`group_config` labels array must be string type, "
                 f"but got `{labels}`"
             )
-            print_message(msg, message_type="error")
             return None
 
         return value

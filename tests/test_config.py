@@ -19,10 +19,11 @@ default_env_dict = {
 }
 
 
+@mock.patch("scripts.config.gha_utils")
 class TestConfiguration(unittest.TestCase):
     """Test the Configuration class"""
 
-    def test_create_with_no_data(self):
+    def test_create_with_no_data(self, gha_utils):
         config = Configuration.create({})
         self.assertEqual(config.changelog_type, PULL_REQUEST)
         self.assertEqual(config.header_prefix, "Version:")
@@ -59,7 +60,7 @@ class TestConfiguration(unittest.TestCase):
     @mock.patch(
         "scripts.config.Configuration.get_config_file_data",
     )
-    def test_create_with_valid_data(self, get_config_file_data):
+    def test_create_with_valid_data(self, get_config_file_data, gha_utils):
         group_config = [
             {"title": "Bug Fixes", "labels": ["bug", "bugfix"]},
             {
@@ -114,7 +115,7 @@ class TestConfiguration(unittest.TestCase):
     @mock.patch(
         "scripts.config.Configuration.get_config_file_data",
     )
-    def test_create_with_invalid_data(self, get_config_file_data):
+    def test_create_with_invalid_data(self, get_config_file_data, gha_utils):
         get_config_file_data.return_value = {
             "changelog_type": "invalid_changelog_type",
             "header_prefix": 1,
@@ -172,7 +173,7 @@ class TestConfiguration(unittest.TestCase):
     @mock.patch(
         "scripts.config.Configuration.get_config_file_data",
     )
-    def test_changelog_file_type(self, get_config_file_data):
+    def test_changelog_file_type(self, get_config_file_data, gha_utils):
         get_config_file_data.return_value = {"changelog_filename": "CHANGELOG.rst"}
         config = Configuration.create(default_env_dict)
         self.assertEqual(config.changelog_file_type, RESTRUCTUREDTEXT_FILE)
@@ -180,12 +181,12 @@ class TestConfiguration(unittest.TestCase):
     @mock.patch(
         "scripts.config.Configuration.get_config_file_data",
     )
-    def test_invalid_changelog_file_type(self, get_config_file_data):
+    def test_invalid_changelog_file_type(self, get_config_file_data, gha_utils):
         get_config_file_data.return_value = {"changelog_filename": "CHANGELOG.xyz"}
         config = Configuration.create(default_env_dict)
         self.assertEqual(config.changelog_file_type, MARKDOWN_FILE)
 
-    def test_git_commit_author(self):
+    def test_git_commit_author(self, gha_utils):
         env_dict = {
             "INPUT_COMMITTER_USERNAME": "changelog-ci",
             "INPUT_COMMITTER_EMAIL": "test@email.com",
@@ -193,7 +194,7 @@ class TestConfiguration(unittest.TestCase):
         config = Configuration.create(env_dict)
         self.assertEqual(config.git_commit_author, "changelog-ci <test@email.com>")
 
-    def test_get_user_config_without_file(self):
+    def test_get_user_config_without_file(self, gha_utils):
         self.assertEqual(
             Configuration.get_user_config(default_env_dict),
             {
@@ -208,7 +209,7 @@ class TestConfiguration(unittest.TestCase):
     @mock.patch(
         "scripts.config.Configuration.get_config_file_data",
     )
-    def test_get_user_config_with_file(self, get_config_file_data):
+    def test_get_user_config_with_file(self, get_config_file_data, gha_utils):
         get_config_file_data.return_value = {
             "changelog_filename": "CHANGELOG.md",
             "changelog_type": "commit_message",
@@ -227,28 +228,28 @@ class TestConfiguration(unittest.TestCase):
             },
         )
 
-    def test_clean_header_prefix(self):
+    def test_clean_header_prefix(self, gha_utils):
         self.assertEqual(Configuration.clean_header_prefix("Release:"), "Release:")
         self.assertIsNone(Configuration.clean_header_prefix(1))
 
-    def test_clean_commit_changelog(self):
+    def test_clean_commit_changelog(self, gha_utils):
         self.assertFalse(Configuration.clean_commit_changelog(False))
         self.assertTrue(Configuration.clean_commit_changelog(1))
         self.assertIsNone(Configuration.clean_commit_changelog("test"))
 
-    def test_clean_comment_changelog(self):
+    def test_clean_comment_changelog(self, gha_utils):
         self.assertFalse(Configuration.clean_comment_changelog(False))
         self.assertTrue(Configuration.clean_comment_changelog(1))
         self.assertIsNone(Configuration.clean_comment_changelog("test"))
 
-    def test_clean_pull_request_title_regex(self):
+    def test_clean_pull_request_title_regex(self, gha_utils):
         self.assertIsNone(Configuration.clean_pull_request_title_regex(1))
         self.assertEqual(
             Configuration.clean_pull_request_title_regex("^Release"), "^Release"
         )
         self.assertIsNone(Configuration.clean_pull_request_title_regex("^["))
 
-    def test_clean_version_regex(self):
+    def test_clean_version_regex(self, gha_utils):
         self.assertIsNone(Configuration.clean_version_regex(1))
         self.assertEqual(
             Configuration.clean_version_regex(
@@ -262,33 +263,33 @@ class TestConfiguration(unittest.TestCase):
         )
         self.assertIsNone(Configuration.clean_version_regex("^["))
 
-    def test_clean_changelog_type(self):
+    def test_clean_changelog_type(self, gha_utils):
         self.assertEqual(Configuration.clean_changelog_type(PULL_REQUEST), PULL_REQUEST)
         self.assertIsNone(Configuration.clean_changelog_type(1))
         self.assertIsNone(Configuration.clean_changelog_type("test"))
 
-    def test_clean_include_unlabeled_changes(self):
+    def test_clean_include_unlabeled_changes(self, gha_utils):
         self.assertFalse(Configuration.clean_include_unlabeled_changes(False))
         self.assertTrue(Configuration.clean_include_unlabeled_changes(1))
         self.assertIsNone(Configuration.clean_include_unlabeled_changes("test"))
 
-    def test_clean_unlabeled_group_title(self):
+    def test_clean_unlabeled_group_title(self, gha_utils):
         self.assertEqual(Configuration.clean_unlabeled_group_title("test"), "test")
         self.assertIsNone(Configuration.clean_unlabeled_group_title(1))
 
-    def test_clean_changelog_filename(self):
+    def test_clean_changelog_filename(self, gha_utils):
         self.assertEqual(Configuration.clean_changelog_filename("test.md"), "test.md")
         self.assertEqual(Configuration.clean_changelog_filename("test.rst"), "test.rst")
         self.assertIsNone(Configuration.clean_changelog_filename(1))
         self.assertIsNone(Configuration.clean_changelog_filename("test.xyz"))
 
-    def test_clean_git_committer_username(self):
+    def test_clean_git_committer_username(self, gha_utils):
         self.assertEqual(Configuration.clean_git_committer_username("test"), "test")
 
         self.assertIsNone(Configuration.clean_git_committer_username(1))
         self.assertIsNone(Configuration.clean_git_committer_username(True))
 
-    def test_clean_git_committer_email(self):
+    def test_clean_git_committer_email(self, gha_utils):
         self.assertEqual(
             Configuration.clean_git_committer_email("test@email.com"), "test@email.com"
         )
@@ -296,13 +297,13 @@ class TestConfiguration(unittest.TestCase):
         self.assertIsNone(Configuration.clean_git_committer_email(1))
         self.assertIsNone(Configuration.clean_git_committer_email(True))
 
-    def test_clean_release_version(self):
+    def test_clean_release_version(self, gha_utils):
         self.assertEqual(Configuration.clean_release_version("1.2.3"), "1.2.3")
 
         self.assertIsNone(Configuration.clean_release_version(1.1))
         self.assertIsNone(Configuration.clean_release_version(True))
 
-    def test_clean_group_config(self):
+    def test_clean_group_config(self, gha_utils):
         group_config = [
             {"title": "Bug Fixes", "labels": ["bug", "bugfix"]},
             {
@@ -315,7 +316,7 @@ class TestConfiguration(unittest.TestCase):
         self.assertIsNone(Configuration.clean_group_config("test"))
         self.assertIsNone(Configuration.clean_group_config([]))
 
-    def test_clean_group_config_item(self):
+    def test_clean_group_config_item(self, gha_utils):
         group_config_item = {"title": "Bug Fixes", "labels": ["bug", "bugfix"]}
 
         self.assertEqual(
