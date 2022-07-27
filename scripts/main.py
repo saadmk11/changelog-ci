@@ -552,9 +552,10 @@ if __name__ == "__main__":
 
     if action_environment.pull_request_branch:
         # Group: Checkout git pull request branch
-        with gha_utils.group(
-            f'Checkout "{action_environment.pull_request_branch}" branch'
-        ):
+        checkout_branch_group_title = (
+            f"Checkout '{action_environment.pull_request_branch}' branch"
+        )
+        with gha_utils.group(checkout_branch_group_title):
             checkout_pull_request_branch(action_environment.pull_request_branch)
 
     # Group: Configure Git Author

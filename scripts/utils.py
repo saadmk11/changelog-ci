@@ -18,16 +18,16 @@ def display_whats_new() -> None:
         )
 
         with gha_utils.group(group_title):
-            gha_utils.echo(latest_release_body)
-            gha_utils.echo(
+            print(latest_release_body)
+            print(
                 f"Get More Information about '{latest_release_tag}' "
                 f"Here: {latest_release_html_url}"
             )
-            gha_utils.echo(
+            print(
                 "\nTo use these features please upgrade to "
                 f"version '{latest_release_tag}' if you haven't already."
             )
-            gha_utils.echo(
+            print(
                 "\nReport Bugs or Add Feature Requests Here: "
                 "https://github.com/saadmk11/changelog-ci/issues"
             )
