@@ -47,13 +47,10 @@ class ChangelogCIBase:
         return headers
 
     def _create_new_branch(self) -> str:
-        """Create and push a new branch with the changes"""
+        """Creates a new branch"""
         # Use timestamp to ensure uniqueness of the new branch
         new_branch = f"changelog-ci-{self.release_version}-{int(time.time())}"
-
         create_new_git_branch(self.action_env.base_branch, new_branch)
-        self._commit_changelog(new_branch)
-
         return new_branch
 
     def _create_pull_request(self, branch_name: str, body: str) -> None:
@@ -304,11 +301,10 @@ class ChangelogCIBase:
         if self.config.commit_changelog:
             self._update_changelog_file(string_data)
             if self.action_env.event_name == self.PULL_REQUEST_EVENT:
-                with gha_utils.group("Commit Changelog"):
-                    self._commit_changelog(self.action_env.pull_request_branch)
+                self._commit_changelog(self.action_env.pull_request_branch)
             else:
-                with gha_utils.group("Create New Branch"):
-                    new_branch = self._create_new_branch()
+                new_branch = self._create_new_branch()
+                self._commit_changelog(new_branch)
 
                 with gha_utils.group("Create Pull Request"):
                     self._create_pull_request(new_branch, markdown_string_data)
@@ -551,23 +547,15 @@ if __name__ == "__main__":
         action_environment = ActionEnvironment.from_env(os.environ)
 
     if action_environment.pull_request_branch:
-        # Group: Checkout git pull request branch
-        checkout_branch_group_title = (
-            f"Checkout '{action_environment.pull_request_branch}' branch"
-        )
-        gha_utils.start_group(checkout_branch_group_title)
+        # Checkout git pull request branch
         checkout_pull_request_branch(action_environment.pull_request_branch)
-        gha_utils.end_group()
 
-    # Group: Configure Git Author
-    with gha_utils.group("Configure Git Author"):
-        configure_git_author(
-            user_configuration.git_committer_username,
-            user_configuration.git_committer_email,
-        )
-        gha_utils.notice(
-            f"Setting Git Commit Author to {user_configuration.git_commit_author}."
-        )
+    # Configure Git Author
+    configure_git_author(
+        user_configuration.git_committer_username,
+        user_configuration.git_committer_email,
+    )
+
 
     # Group: Generate Changelog
     with gha_utils.group("Generate Changelog"):
