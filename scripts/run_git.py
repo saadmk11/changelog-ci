@@ -7,7 +7,7 @@ def checkout_pull_request_branch(branch_name: str) -> None:
     """
     Checkout the PR branch and pull the latest changes.
     """
-    subprocess.run(["echo", f"::group:: Checkout '{branch_name}' branch"])
+    subprocess.run(["echo", f"\n::group:: Checkout '{branch_name}' branch"])
     subprocess.run(["git", "fetch", "--prune", "--unshallow", "origin", branch_name])
     subprocess.run(["git", "checkout", branch_name])
     subprocess.run(["echo", "::endgroup::"])
@@ -28,7 +28,7 @@ def create_new_git_branch(base_branch_name: str, new_branch_name: str) -> None:
     subprocess.run(
         [
             "echo",
-            f"::group:: Create New Branch ({base_branch_name} -> {new_branch_name})",
+            f"\n::group:: Create New Branch ({base_branch_name} -> {new_branch_name})",
         ]
     )
     subprocess.run(["git", "checkout", base_branch_name])
@@ -42,7 +42,7 @@ def git_commit_changelog(
     """
     Commit the changelog file.
     """
-    subprocess.run(["echo", f"::group:: Commit Changelog ({changed_file})"])
+    subprocess.run(["echo", f"\n::group:: Commit Changelog ({changed_file})"])
     subprocess.run(["git", "add", changed_file])
     subprocess.run(["git", "commit", f"--author={commit_author}", "-m", commit_message])
     subprocess.run(["git", "push", "-u", "origin", commit_branch_name])
