@@ -556,7 +556,6 @@ if __name__ == "__main__":
         user_configuration.git_committer_email,
     )
 
-
     # Group: Generate Changelog
     with gha_utils.group("Generate Changelog"):
         # Get CI class using configuration
