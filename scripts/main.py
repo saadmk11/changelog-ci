@@ -550,15 +550,11 @@ if __name__ == "__main__":
         # Checkout git pull request branch
         checkout_pull_request_branch(action_environment.pull_request_branch)
 
-    with gha_utils.group("Configure Git Author"):
-        gha_utils.notice(
-            f"Setting Git Commit Author to '{user_configuration.git_commit_author}'."
-        )
-        # Configure Git Author
-        configure_git_author(
-            user_configuration.git_committer_username,
-            user_configuration.git_committer_email,
-        )
+    # Configure Git Author
+    configure_git_author(
+        user_configuration.git_committer_username,
+        user_configuration.git_committer_email,
+    )
 
     # Group: Generate Changelog
     with gha_utils.group("Generate Changelog"):
