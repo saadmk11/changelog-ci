@@ -557,7 +557,7 @@ if __name__ == "__main__":
     )
 
     # Group: Generate Changelog
-    with gha_utils.group("Generate Changelog"):
+    with gha_utils.group("Generate Changelog", use_subprocess=True):
         # Get CI class using configuration
         changelog_ci_class: Type[ChangelogCIBase] = CHANGELOG_CI_CLASSES[
             user_configuration.changelog_type
