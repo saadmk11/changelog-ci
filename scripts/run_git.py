@@ -19,8 +19,8 @@ def configure_git_author(username: str, email: str) -> None:
     Configure the git author.
     """
     with gha_utils.group("Configure Git Author", use_subprocess=True):
-        gha_utils.notice(f"Setting Git Commit User to '{username}'.")
-        gha_utils.notice(f"Setting Git Commit email to '{email}'.")
+        gha_utils.notice(f"Setting Git Commit User to '{username}'.", use_subprocess=True)
+        gha_utils.notice(f"Setting Git Commit email to '{email}'.", use_subprocess=True)
 
         subprocess.run(["git", "config", "user.name", username])
         subprocess.run(["git", "config", "user.email", email])
