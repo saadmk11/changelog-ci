@@ -9,6 +9,8 @@ LABEL "repository"="https://github.com/saadmk11/changelog-ci"
 LABEL "homepage"="https://github.com/saadmk11/changelog-ci"
 LABEL "maintainer"="saadmk11"
 
+ENV COMMANDS_USE_SUBPROCESS 1
+
 RUN apt-get update \
     && apt-get install \
        -y \

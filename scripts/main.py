@@ -556,13 +556,15 @@ if __name__ == "__main__":
         user_configuration.git_committer_email,
     )
 
-    # Get CI class using configuration
-    changelog_ci_class: Type[ChangelogCIBase] = CHANGELOG_CI_CLASSES[
-        user_configuration.changelog_type
-    ]
-    # Initialize the Changelog CI
-    ci = changelog_ci_class(user_configuration, action_environment)
-    # Run Changelog CI
-    ci.run()
+    # Group: Generate Changelog
+    with gha_utils.group("Generate Changelog"):
+        # Get CI class using configuration
+        changelog_ci_class: Type[ChangelogCIBase] = CHANGELOG_CI_CLASSES[
+            user_configuration.changelog_type
+        ]
+        # Initialize the Changelog CI
+        ci = changelog_ci_class(user_configuration, action_environment)
+        # Run Changelog CI
+        ci.run()
 
     display_whats_new()
