@@ -38,4 +38,4 @@ jobs:
       run: isort **/*.py -c --diff --profile black
 
     - name: Run Tests
-      run: PYTHON_TESTENV=true python -m unittest
+      run: python -m unittest

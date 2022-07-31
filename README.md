@@ -142,9 +142,25 @@ some other options, see [Configuration](#configuration) to learn more.
 ![Changelog CI Status](https://github.com/<username>/<repository>/workflows/Changelog%20CI/badge.svg)
 ```
 
-**Output:**
-
 ![Changelog CI Status](https://github.com/saadmk11/changelog-ci/workflows/Changelog%20CI/badge.svg)
+
+#### Workflow Output:
+
+The workflow outputs the changelog as a `GitHub Action Output`. The name of the output is `changelog`.
+The output can be used in other steps of the action. For example:
+
+```yaml
+- name: changelog-ci
+  uses: saadmk11/changelog-ci@v1.0.0
+  id: changelog-ci
+
+- name: Get Changelog Output
+  run: |
+    echo "${{ steps.changelog-ci.outputs.changelog }}"
+    echo "${{ steps.changelog-ci.outputs.changelog }}" >> $GITHUB_STEP_SUMMARY
+```
+
+Here the output is used to write the generated changelog to the GitHub Actions Job Summary.
 
 ## Configuration
 
