@@ -31,7 +31,7 @@ def create_new_git_branch(base_branch_name: str, new_branch_name: str) -> None:
     Create a new git branch from base branch.
     """
     with gha_utils.group(
-        f"\nCreate New Branch ({base_branch_name} -> {new_branch_name})"
+        f"Create New Branch ({base_branch_name} -> {new_branch_name})"
     ):
         run_subprocess_command(["git", "checkout", base_branch_name])
         run_subprocess_command(["git", "checkout", "-b", new_branch_name])
