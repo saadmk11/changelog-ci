@@ -283,8 +283,6 @@ class ChangelogCIBase:
             self.config.changelog_file_type, self.release_version, changes
         )
 
-        gha_utils.set_output("changelog", string_data)
-
         markdown_string_data = string_data
 
         if all(
@@ -319,6 +317,8 @@ class ChangelogCIBase:
                     )
                 else:
                     self._comment_changelog(markdown_string_data, pull_request_number)
+
+        gha_utils.set_output("changelog", string_data)
 
 
 class ChangelogCIPullRequest(ChangelogCIBase):
