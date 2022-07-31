@@ -142,8 +142,6 @@ some other options, see [Configuration](#configuration) to learn more.
 ![Changelog CI Status](https://github.com/<username>/<repository>/workflows/Changelog%20CI/badge.svg)
 ```
 
-**Output:**
-
 ![Changelog CI Status](https://github.com/saadmk11/changelog-ci/workflows/Changelog%20CI/badge.svg)
 
 #### Workflow Output:
