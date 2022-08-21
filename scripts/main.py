@@ -1,8 +1,10 @@
+import abc
 import copy
 import os
 import re
 import time
-from typing import Type
+from functools import lru_cache
+from typing import Any
 
 import github_action_utils as gha_utils  # type: ignore
 import requests
@@ -24,7 +26,7 @@ from .run_git import (
 from .utils import display_whats_new
 
 
-class ChangelogCIBase:
+class ChangelogCIBase(abc.ABC):
     """Base Class for Changelog CI"""
 
     GITHUB_API_URL: str = "https://api.github.com"
@@ -35,7 +37,11 @@ class ChangelogCIBase:
     def __init__(self, config: Configuration, action_env: ActionEnvironment) -> None:
         self.config = config
         self.action_env = action_env
-        self.release_version = self.config.release_version
+        self.event_payload = self.action_env.event_payload
+        self.release_version = self._get_release_version()
+
+        self.changelog_string = ""
+        self.change_list: list[dict[str, Any]] = []
 
     @property
     def _get_request_headers(self) -> dict[str, str]:
@@ -46,54 +52,8 @@ class ChangelogCIBase:
 
         return headers
 
-    def _create_new_branch(self) -> str:
-        """Creates a new branch"""
-        # Use timestamp to ensure uniqueness of the new branch
-        new_branch = f"changelog-ci-{self.release_version}-{int(time.time())}"
-        create_new_git_branch(self.action_env.base_branch, new_branch)
-        return new_branch
-
-    def _create_pull_request(self, branch_name: str, body: str) -> None:
-        """Create pull request on GitHub"""
-        url = f"{self.GITHUB_API_URL}/repos/{self.action_env.repository}/pulls"
-        payload = {
-            "title": f"[Changelog CI] Add Changelog for Version {self.release_version}",
-            "head": branch_name,
-            "base": self.action_env.base_branch,
-            "body": body,
-        }
-
-        response = requests.post(url, json=payload, headers=self._get_request_headers)
-
-        if response.status_code == 201:
-            html_url = response.json()["html_url"]
-            gha_utils.notice(f"Pull request opened at {html_url} \U0001F389")
-        else:
-            gha_utils.error(
-                f"Could not create a pull request on "
-                f"{self.action_env.repository}, status code: {response.status_code}"
-            )
-
-    def _validate_pull_request_title(self, pull_request_title: str) -> bool:
-        """Check if changelog should be generated for this pull request"""
-        pattern = re.compile(self.config.pull_request_title_regex)
-        match = pattern.search(pull_request_title)
-
-        if match:
-            return True
-        return False
-
-    def _set_release_version_from_pull_request_title(
-        self, pull_request_title: str
-    ) -> None:
-        """Get version number from the pull request title"""
-        pattern = re.compile(self.config.version_regex)
-        match = pattern.search(pull_request_title)
-
-        if match:
-            self.release_version = match.group()
-
-    def _get_file_mode(self) -> str:
+    @property
+    def _open_file_mode(self) -> str:
         """Gets the mode that the changelog file should be opened in"""
         if os.path.exists(self.config.changelog_filename):
             # if the changelog file exists
@@ -106,6 +66,33 @@ class ChangelogCIBase:
             file_mode = "w+"
 
         return file_mode
+
+    @abc.abstractmethod
+    def _get_changes_after_last_release(self) -> list[dict[str, Any]]:
+        """Get changes list after last release"""
+        pass
+
+    @lru_cache
+    @abc.abstractmethod
+    def _parse_changelog(self, file_type: str) -> str:
+        """Parse changelog, and build the changelog string (Markdown or ReStructuredText)"""
+        pass
+
+    @abc.abstractmethod
+    def _comment_changelog(self, changelog_string: str) -> None:
+        """Comment changelog on GitHub"""
+        pass
+
+    @property
+    @abc.abstractmethod
+    def _commit_branch_name(self) -> str:
+        """Get the name of the branch to commit the changelog to"""
+        pass
+
+    @abc.abstractmethod
+    def _get_release_version(self) -> str:
+        """Returns the release version"""
+        pass
 
     def _get_latest_release_date(self) -> str:
         """Using GitHub API gets the latest release date"""
@@ -132,9 +119,7 @@ class ChangelogCIBase:
 
     def _update_changelog_file(self, string_data: str) -> None:
         """Write changelog to the changelog file"""
-        file_mode = self._get_file_mode()
-
-        with open(self.config.changelog_filename, file_mode) as f:
+        with open(self.config.changelog_filename, self._open_file_mode) as f:
             # read the existing data and store it in a variable
             body = f.read()
             # write at the top of the file
@@ -158,9 +143,80 @@ class ChangelogCIBase:
             commit_branch_name,
         )
 
-    def _comment_changelog(
-        self, string_data: str, pull_request_number: int | None
-    ) -> None:
+    def _create_pull_request(self, branch_name: str, body: str) -> None:
+        """Create pull request on GitHub"""
+        url = f"{self.GITHUB_API_URL}/repos/{self.action_env.repository}/pulls"
+        payload = {
+            "title": f"[Changelog CI] Add Changelog for Version {self.release_version}",
+            "head": branch_name,
+            "base": self.action_env.base_branch,
+            "body": body,
+        }
+
+        response = requests.post(url, json=payload, headers=self._get_request_headers)
+
+        if response.status_code == 201:
+            html_url = response.json()["html_url"]
+            gha_utils.notice(f"Pull request opened at {html_url} \U0001F389")
+        else:
+            gha_utils.error(
+                f"Could not create a pull request on "
+                f"{self.action_env.repository}, status code: {response.status_code}"
+            )
+
+    def run(self) -> None:
+        """Entrypoint to the Changelog CI"""
+        if not self.config.commit_changelog and not self.config.comment_changelog:
+            # if both commit_changelog and comment_changelog is set to false
+            # then exit with warning and don't generate Changelog
+            gha_utils.error(
+                "Skipping Changelog generation as both `commit_changelog` "
+                "and `comment_changelog` is set to False. "
+                "If you did not intend to do this please set "
+                "one or both of them to True."
+            )
+            raise SystemExit(1)
+
+        self.change_list = self._get_changes_after_last_release()
+
+        # exit the method if there is no changes found
+        if not self.change_list:
+            raise SystemExit(0)
+
+        self.changelog_string = self._parse_changelog(self.config.changelog_file_type)
+
+        if self.config.commit_changelog:
+            self._update_changelog_file(self.changelog_string)
+            self._commit_changelog(self._commit_branch_name)
+
+        if self.config.comment_changelog:
+            with gha_utils.group("Comment Changelog"):
+                if self.config.changelog_file_type == RESTRUCTUREDTEXT_FILE:
+                    markdown_changelog_string = self._parse_changelog(MARKDOWN_FILE)
+                else:
+                    markdown_changelog_string = self.changelog_string
+
+                self._comment_changelog(markdown_changelog_string)
+
+        gha_utils.set_output("changelog", self.changelog_string)
+
+
+class ChangelogCIPullRequest(ChangelogCIBase):
+    """Generates, commits and/or comments changelog using pull requests"""
+
+    @staticmethod
+    def _get_changelog_line(file_type: str, item: dict[str, Any]) -> str:
+        """Generate each line of changelog"""
+        if file_type == MARKDOWN_FILE:
+            changelog_line_template = "* [#{number}]({url}): {title}\n"
+        else:
+            changelog_line_template = "* `#{number} <{url}>`__: {title}\n"
+
+        return changelog_line_template.format(
+            number=item["number"], url=item["url"], title=item["title"]
+        )
+
+    def _comment_changelog(self, changelog_string: str) -> None:
         """Comments Changelog to the pull request"""
         if not self.config.github_token:
             # Token is required by the GitHub API to create a Comment
@@ -174,13 +230,15 @@ class ChangelogCIBase:
             )
             return None
 
+        pull_request_number = self.event_payload["number"]
+
         owner, repo = self.action_env.repository.split("/")
 
         payload = {
             "owner": owner,
             "repo": repo,
             "issue_number": pull_request_number,
-            "body": string_data,
+            "body": changelog_string,
         }
 
         url = (
@@ -202,141 +260,47 @@ class ChangelogCIBase:
                 f"Comment added at {response.json()['html_url']} \U0001F389"
             )
 
-    def get_changes_after_last_release(self):
-        raise NotImplementedError
+    def _check_pull_request_title(self) -> None:
+        """Check if changelog should be generated for this pull request"""
+        pull_request_title = self.event_payload["pull_request"]["title"]
+        pattern = re.compile(self.config.pull_request_title_regex)
+        match = pattern.search(pull_request_title)
 
-    def parse_changelog(self, file_type: str, version: str, changes: list):
-        raise NotImplementedError
-
-    def run(self) -> None:
-        """Entrypoint to the Changelog CI"""
-        if not self.config.commit_changelog and not self.config.comment_changelog:
-            # if both commit_changelog and comment_changelog is set to false
-            # then exit with warning and don't generate Changelog
+        if not match:
+            # if pull request regex doesn't match then exit
+            # and don't generate changelog
             gha_utils.error(
-                "Skipping Changelog generation as both `commit_changelog` "
-                "and `comment_changelog` is set to False. "
-                "If you did not intend to do this please set "
-                "one or both of them to True."
+                f"The title of the pull request did not match. "
+                f'Regex tried: "{self.config.pull_request_title_regex}", '
+                f"Aborting Changelog Generation."
             )
-            return
+            raise SystemExit(0)
 
-        if (
-            not self.action_env.event_name == self.PULL_REQUEST_EVENT
-            and not self.release_version
-        ):
-            gha_utils.error(
-                "Skipping Changelog generation. "
-                "Changelog CI could not find the Release Version. "
-                "Changelog CI should be triggered on a pull request or "
-                "`release_version` input must be provided on the workflow. "
-                "Please Check the Documentation for more details."
-            )
-            return
+    def _get_release_version(self) -> str:
+        """Get release version number from the pull request title"""
+        pull_request_title = self.event_payload["pull_request"]["title"]
+        pattern = re.compile(self.config.version_regex)
+        match = pattern.search(pull_request_title)
 
-        pull_request_number = None
+        if match:
+            return match.group()
 
-        if self.action_env.event_name == self.PULL_REQUEST_EVENT:
-            event_payload = self.action_env.event_payload
-            pull_request_title = event_payload["pull_request"]["title"]
-            pull_request_number = event_payload["number"]
-
-            if not self._validate_pull_request_title(pull_request_title):
-                # if pull request regex doesn't match then exit
-                # and don't generate changelog
-                gha_utils.error(
-                    f"The title of the pull request did not match. "
-                    f'Regex tried: "{self.config.pull_request_title_regex}", '
-                    f"Aborting Changelog Generation."
-                )
-                return
-
-            self._set_release_version_from_pull_request_title(
-                pull_request_title=pull_request_title
-            )
-
-        if not self.release_version:
-            # if the pull request title is not valid, exit the method
-            # It might happen if the pull request is not meant to be release
-            # or the title was not accurate.
-            if self.action_env.event_name == self.PULL_REQUEST_EVENT:
-                gha_utils.error(
-                    f"Could not find matching version number from pull request title. "
-                    f"Regex tried: {self.config.version_regex} "
-                    f"Aborting Changelog Generation"
-                )
-            else:
-                gha_utils.error(
-                    "`release_version` input must be provided to generate Changelog. "
-                    "Please Check the Documentation for more details. "
-                    "Aborting Changelog Generation"
-                )
-            return
-
-        changes = self.get_changes_after_last_release()
-
-        # exit the method if there is no changes found
-        if not changes:
-            return
-
-        string_data = self.parse_changelog(
-            self.config.changelog_file_type, self.release_version, changes
+        # if the pull request title is not valid, exit the method
+        # It might happen if the pull request is not meant to be release
+        # or the title was not accurate.
+        gha_utils.error(
+            f"Could not find matching version number from pull request title. "
+            f"Regex tried: {self.config.version_regex} "
+            f"Aborting Changelog Generation"
         )
+        raise SystemExit(0)
 
-        markdown_string_data = string_data
+    @property
+    def _commit_branch_name(self) -> str:
+        """Get the name of the branch to commit the changelog to"""
+        return self.action_env.pull_request_branch
 
-        if all(
-            [
-                self.config.comment_changelog
-                or self.action_env.event_name != self.PULL_REQUEST_EVENT,
-                self.config.changelog_file_type == RESTRUCTUREDTEXT_FILE,
-            ]
-        ):
-            markdown_string_data = self.parse_changelog(
-                MARKDOWN_FILE, self.release_version, changes
-            )
-
-        if self.config.commit_changelog:
-            self._update_changelog_file(string_data)
-            if self.action_env.event_name == self.PULL_REQUEST_EVENT:
-                self._commit_changelog(self.action_env.pull_request_branch)
-            else:
-                new_branch = self._create_new_branch()
-                self._commit_changelog(new_branch)
-
-                with gha_utils.group("Create Pull Request"):
-                    self._create_pull_request(new_branch, markdown_string_data)
-
-        if self.config.comment_changelog:
-            with gha_utils.group("Comment Changelog"):
-                if not self.action_env.event_name == self.PULL_REQUEST_EVENT:
-                    gha_utils.error(
-                        "`comment_changelog` can only be used "
-                        "if Changelog CI is triggered on a pull request. "
-                        "Please Check the Documentation for more details."
-                    )
-                else:
-                    self._comment_changelog(markdown_string_data, pull_request_number)
-
-        gha_utils.set_output("changelog", string_data)
-
-
-class ChangelogCIPullRequest(ChangelogCIBase):
-    """Generates, commits and/or comments changelog using pull requests"""
-
-    @staticmethod
-    def _get_changelog_line(file_type: str, item: dict) -> str:
-        """Generate each line of changelog"""
-        if file_type == MARKDOWN_FILE:
-            changelog_line_template = "* [#{number}]({url}): {title}\n"
-        else:
-            changelog_line_template = "* `#{number} <{url}>`__: {title}\n"
-
-        return changelog_line_template.format(
-            number=item["number"], url=item["url"], title=item["title"]
-        )
-
-    def get_changes_after_last_release(self) -> list[dict[str, str | int | list[str]]]:
+    def _get_changes_after_last_release(self) -> list[dict[str, str | int | list[str]]]:
         """Get all the merged pull request after latest release"""
         previous_release_date = self._get_latest_release_date()
 
@@ -392,15 +356,16 @@ class ChangelogCIPullRequest(ChangelogCIBase):
             )
         return items
 
-    def parse_changelog(self, file_type: str, version: str, changes: list) -> str:
-        """Parse the pull requests data and return a string"""
-        new_changes = copy.deepcopy(changes)
-        header = f"{self.config.header_prefix} {version}"
+    @lru_cache
+    def _parse_changelog(self, file_type: str) -> str:
+        """Parse the pull requests data and return a string (Markdown or ReStructuredText)"""
+        new_changes = copy.deepcopy(self.change_list)
+        header = f"{self.config.header_prefix} {self.release_version}"
 
         if file_type == MARKDOWN_FILE:
-            string_data = f"# {header}\n\n"
+            changelog_string = f"# {header}\n\n"
         else:
-            string_data = f"{header}\n{'=' * len(header)}\n\n"
+            changelog_string = f"{header}\n{'=' * len(header)}\n\n"
 
         group_config = self.config.group_config
 
@@ -429,40 +394,42 @@ class ChangelogCIPullRequest(ChangelogCIBase):
 
                 if items_string:
                     if file_type == MARKDOWN_FILE:
-                        string_data += f"\n#### {config['title']}\n\n"
+                        changelog_string += f"\n#### {config['title']}\n\n"
                     else:
-                        string_data += (
+                        changelog_string += (
                             f"\n{config['title']}\n {'-' * len(config['title'])}\n\n"
                         )
-                    string_data += items_string
+                    changelog_string += items_string
 
             if new_changes and self.config.include_unlabeled_changes:
                 # if they do not match any user provided group
                 # Add items in `unlabeled group` group
                 if file_type == MARKDOWN_FILE:
-                    string_data += f"\n#### {self.config.unlabeled_group_title}\n\n"
+                    changelog_string += (
+                        f"\n#### {self.config.unlabeled_group_title}\n\n"
+                    )
                 else:
-                    string_data += (
+                    changelog_string += (
                         f"\n{self.config.unlabeled_group_title}\n"
                         f"{'-' * len(self.config.unlabeled_group_title)}\n\n"
                     )
-                string_data += "".join(
+                changelog_string += "".join(
                     [self._get_changelog_line(file_type, item) for item in new_changes]
                 )
         else:
             # If group config does not exist then append it without and groups
-            string_data += "".join(
+            changelog_string += "".join(
                 [self._get_changelog_line(file_type, item) for item in new_changes]
             )
 
-        return string_data
+        return changelog_string
 
 
 class ChangelogCICommitMessage(ChangelogCIBase):
     """Generates, commits and/or comments changelog using commit messages"""
 
     @staticmethod
-    def _get_changelog_line(file_type: str, item: dict) -> str:
+    def _get_changelog_line(file_type: str, item: dict[str, Any]) -> str:
         """Generate each line of changelog"""
         if file_type == MARKDOWN_FILE:
             changelog_line_template = "* [{sha}]({url}): {message}\n"
@@ -473,7 +440,53 @@ class ChangelogCICommitMessage(ChangelogCIBase):
             sha=item["sha"][:7], url=item["url"], message=item["message"]
         )
 
-    def get_changes_after_last_release(self) -> list[dict[str, str]]:
+    def _comment_changelog(self, changelog_string: str) -> None:
+        """Comment changelog on GitHub"""
+        gha_utils.error(
+            "`comment_changelog` can only be used "
+            "if Changelog CI is triggered on a pull request. "
+            "Please Check the Documentation for more details."
+        )
+
+    def _create_new_branch(self) -> str:
+        """Creates a new branch"""
+        # Use timestamp to ensure uniqueness of the new branch
+        new_branch = f"changelog-ci-{self.release_version}-{int(time.time())}"
+        create_new_git_branch(self.action_env.base_branch, new_branch)
+        return new_branch
+
+    @property
+    def _commit_branch_name(self) -> str:
+        """Get the name of the branch to commit the changelog to"""
+        return self._create_new_branch()
+
+    def _commit_changelog(self, commit_branch_name: str) -> None:
+        """Commits the changelog to the new branch and creates a pull request"""
+        super()._commit_changelog(commit_branch_name)
+
+        if self.config.changelog_file_type == RESTRUCTUREDTEXT_FILE:
+            markdown_changelog_string = self._parse_changelog(MARKDOWN_FILE)
+        else:
+            markdown_changelog_string = self.changelog_string
+
+        with gha_utils.group("Create Pull Request"):
+            self._create_pull_request(commit_branch_name, markdown_changelog_string)
+
+    def _get_release_version(self) -> str:
+        """Returns the release version"""
+        release_version = self.config.release_version
+
+        if not release_version:
+            gha_utils.error(
+                "`release_version` input must be provided to generate Changelog. "
+                "Please Check the Documentation for more details. "
+                "Aborting Changelog Generation"
+            )
+            raise SystemExit(1)
+
+        return release_version
+
+    def _get_changes_after_last_release(self) -> list[dict[str, str]]:
         """Get all the merged pull request after latest release"""
         # Detail on the GitHub Commits API:
         # https://docs.github.com/en/rest/commits/commits#list-commits
@@ -519,20 +532,21 @@ class ChangelogCICommitMessage(ChangelogCIBase):
             )
         return items
 
-    def parse_changelog(self, file_type: str, version: str, changes: list) -> str:
-        """Parse the commit data and return a string"""
-        new_changes = copy.deepcopy(changes)
-        header = f"{self.config.header_prefix} {version}"
+    @lru_cache
+    def _parse_changelog(self, file_type: str) -> str:
+        """Parse the commit data and return a string (Markdown or ReStructuredText)"""
+        new_changes = copy.deepcopy(self.change_list)
+        header = f"{self.config.header_prefix} {self.release_version}"
 
         if file_type == MARKDOWN_FILE:
-            string_data = f"# {header}\n\n"
+            changelog_string = f"# {header}\n\n"
         else:
-            string_data = f"{header}\n{'=' * len(header)}\n\n"
-        string_data += "".join(
+            changelog_string = f"{header}\n{'=' * len(header)}\n\n"
+        changelog_string += "".join(
             [self._get_changelog_line(file_type, item) for item in new_changes]
         )
 
-        return string_data
+        return changelog_string
 
 
 CHANGELOG_CI_CLASSES = {
@@ -559,9 +573,7 @@ if __name__ == "__main__":
     # Group: Generate Changelog
     with gha_utils.group("Generate Changelog"):
         # Get CI class using configuration
-        changelog_ci_class: Type[ChangelogCIBase] = CHANGELOG_CI_CLASSES[
-            user_configuration.changelog_type
-        ]
+        changelog_ci_class = CHANGELOG_CI_CLASSES[user_configuration.changelog_type]
         # Initialize the Changelog CI
         ci = changelog_ci_class(user_configuration, action_environment)
         # Run Changelog CI

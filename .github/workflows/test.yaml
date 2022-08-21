@@ -32,7 +32,7 @@ jobs:
       run: black --diff --check $(git ls-files '*.py')
 
     - name: Check Typing with Mypy
-      run: mypy --install-types --non-interactive $(git ls-files '*.py')
+      run: mypy --strict --install-types --non-interactive $(git ls-files '*.py')
 
     - name: Check Import Sorting with Isort
       run: isort **/*.py -c --diff --profile black
