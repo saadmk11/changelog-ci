@@ -1,5 +1,18 @@
+from functools import lru_cache
+
 import github_action_utils as gha_utils  # type: ignore
 import requests
+
+
+@lru_cache
+def get_request_headers(github_token: str | None = None) -> dict[str, str]:
+    """Get headers for GitHub API request"""
+    headers = {"Accept": "application/vnd.github.v3+json"}
+
+    if github_token:
+        headers.update({"authorization": f"Bearer {github_token}"})
+
+    return headers
 
 
 def display_whats_new() -> None:

@@ -51,7 +51,7 @@ def git_commit_changelog(
         run_subprocess_command(["git", "push", "-u", "origin", commit_branch_name])
 
 
-def run_subprocess_command(command: list) -> None:
+def run_subprocess_command(command: list[str]) -> None:
     result = subprocess.run(command, capture_output=True, text=True)
 
     if result.returncode != 0:

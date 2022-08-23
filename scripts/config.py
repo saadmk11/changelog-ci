@@ -118,8 +118,8 @@ class Configuration(NamedTuple):
         """
         Open config file and return file data
         """
-        loader: Callable[[TextIO], dict]
-        config_file_data: dict = {}
+        loader: Callable[[TextIO], dict[str, Any]]
+        config_file_data: dict[str, Any] = {}
 
         try:
             # parse config files with the extension .yml and .yaml
@@ -148,11 +148,11 @@ class Configuration(NamedTuple):
         return config_file_data
 
     @classmethod
-    def clean_user_config(cls, user_config: dict) -> dict:
+    def clean_user_config(cls, user_config: dict[str, Any]) -> dict[str, Any]:
         if not user_config:
             return user_config
 
-        cleaned_user_config: dict = {}
+        cleaned_user_config: dict[str, Any] = {}
 
         for key, value in user_config.items():
             if key in cls._fields:
@@ -198,7 +198,7 @@ class Configuration(NamedTuple):
         return bool(value)
 
     @classmethod
-    def clean_pull_request_title_regex(cls, value: Any) -> str | None:
+    def clean_pull_request_title_regex(cls, value: str) -> str | None:
         """clean pull_request_title_regex configuration option"""
         if not value:
             gha_utils.warning(
@@ -219,7 +219,7 @@ class Configuration(NamedTuple):
             return None
 
     @classmethod
-    def clean_version_regex(cls, value: Any) -> str | None:
+    def clean_version_regex(cls, value: str) -> str | None:
         """clean validate_version_regex configuration option"""
         if not value:
             gha_utils.warning(
@@ -335,7 +335,7 @@ class Configuration(NamedTuple):
             return None
 
     @classmethod
-    def clean_group_config(cls, value: Any) -> list | None:
+    def clean_group_config(cls, value: Any) -> list[dict[str, Any]] | None:
         """clean group_config configuration option"""
         group_config = []
 
