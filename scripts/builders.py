@@ -10,7 +10,7 @@ from .utils import get_request_headers
 
 
 class ChangelogBuilderBase:
-    """Base Class for Changelog CI"""
+    """Base Class for Changelog Builder"""
 
     GITHUB_API_URL: str = "https://api.github.com"
 
@@ -29,6 +29,7 @@ class ChangelogBuilderBase:
 
     @staticmethod
     def _get_changelog_line(file_type: str, item: dict[str, Any]) -> str:
+        """Generate each line of the changelog"""
         raise NotImplementedError
 
     def _get_changes_after_last_release(self) -> list[dict[str, Any]]:
@@ -79,11 +80,11 @@ class ChangelogBuilderBase:
 
 
 class PullRequestChangelogBuilder(ChangelogBuilderBase):
-    """Generates, commits and/or comments changelog using pull requests"""
+    """Changelog Builder that Uses Pull Request Titles to Generate the Changelog"""
 
     @staticmethod
     def _get_changelog_line(file_type: str, item: dict[str, Any]) -> str:
-        """Generate each line of changelog"""
+        """Generate each line of the changelog"""
         if file_type == MARKDOWN_FILE:
             changelog_line_template = "* [#{number}]({url}): {title}\n"
         else:
@@ -221,11 +222,11 @@ class PullRequestChangelogBuilder(ChangelogBuilderBase):
 
 
 class CommitMessageChangelogBuilder(ChangelogBuilderBase):
-    """Generates, commits and/or comments changelog using commit messages"""
+    """Changelog Builder that Uses Commit Messages to Generate the Changelog"""
 
     @staticmethod
     def _get_changelog_line(file_type: str, item: dict[str, Any]) -> str:
-        """Generate each line of changelog"""
+        """Generate each line of the changelog"""
         if file_type == MARKDOWN_FILE:
             changelog_line_template = "* [{sha}]({url}): {message}\n"
         else:

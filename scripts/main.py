@@ -152,6 +152,7 @@ class ChangelogCIBase(abc.ABC):
 
         issue_number = self._comment_issue_number
 
+        # if issue_number is not available, exit the method
         if not issue_number:
             return
 
@@ -219,7 +220,7 @@ class ChangelogCIBase(abc.ABC):
 
 
 class ChangelogCIPullRequestEvent(ChangelogCIBase):
-    """Generates, commits and/or comments changelog using pull requests"""
+    """Generates, commits and/or comments changelog for pull request events"""
 
     def __init__(self, config: Configuration, action_env: ActionEnvironment) -> None:
         super().__init__(config, action_env)
@@ -280,7 +281,7 @@ class ChangelogCIPullRequestEvent(ChangelogCIBase):
 
 
 class ChangelogCICustomEvent(ChangelogCIBase):
-    """Generates, commits and/or comments changelog using commit messages"""
+    """Generates, commits and/or comments changelog for other events such as `workflow_dispatch`"""
 
     @property
     def _commit_branch_name(self) -> str:
