@@ -56,6 +56,7 @@ class Configuration(NamedTuple):
     )
     changelog_type: str = PULL_REQUEST
     group_config: list[dict[str, str | list[str]]] = []
+    exclude_labels: list[str] = []
     include_unlabeled_changes: bool = True
     unlabeled_group_title: str = "Other Changes"
     changelog_filename: str = f"CHANGELOG.{MARKDOWN_FILE}"
@@ -333,6 +334,15 @@ class Configuration(NamedTuple):
         else:
             gha_utils.notice("`github_token` was not provided as an input.")
             return None
+
+    @classmethod
+    def clean_exclude_labels(cls, value: Any) -> list[str] | None:
+        """clean exclude_labels item configuration option"""
+        if value and isinstance(value, list):
+            return value
+        else:
+            gha_utils.notice("`exclude_labels` was not provided as an input.")
+            return []
 
     @classmethod
     def clean_group_config(cls, value: Any) -> list[dict[str, Any]] | None:
