@@ -164,56 +164,59 @@ class PullRequestChangelogBuilder(ChangelogBuilderBase):
             changelog_string = f"{header}\n{'=' * len(header)}\n\n"
 
         group_config = self.config.group_config
+        exclude_labels = self.config.exclude_labels
 
-        if group_config:
-            for config in group_config:
+        if not group_config:
+            # If group config does not exist then append it without and groups
+            changelog_string += "".join(
+                [self._get_changelog_line(file_type, item) for item in new_changes]
+            )
+            return changelog_string
 
-                if len(new_changes) == 0:
-                    break
+        for config in group_config:
 
-                items_string = ""
+            if len(new_changes) == 0:
+                break
 
-                pull_request_list = copy.deepcopy(new_changes)
+            items_string = ""
 
-                for pull_request in pull_request_list:
-                    # check if the pull request label matches with
-                    # any label of the config
-                    if any(
-                        label in pull_request["labels"] for label in config["labels"]
-                    ):
-                        items_string += self._get_changelog_line(
-                            file_type, pull_request
-                        )
-                        # remove the item so that one item
-                        # does not match multiple groups
-                        new_changes.remove(pull_request)
+            pull_request_list = copy.deepcopy(new_changes)
 
-                if items_string:
-                    if file_type == MARKDOWN_FILE:
-                        changelog_string += f"\n#### {config['title']}\n\n"
-                    else:
-                        changelog_string += (
-                            f"\n{config['title']}\n {'-' * len(config['title'])}\n\n"
-                        )
-                    changelog_string += items_string
+            for pull_request in pull_request_list:
+                # check if the pull request label matches with
+                # any label of the `exclude_labels` list
+                if any(label in pull_request["labels"] for label in exclude_labels):
+                    # if it matches then remove it from the list
+                    new_changes.remove(pull_request)
+                    continue
 
-            if new_changes and self.config.include_unlabeled_changes:
-                # if they do not match any user provided group
-                # Add items in `unlabeled group` group
+                # check if the pull request label matches with
+                # any label of the config
+                if any(label in pull_request["labels"] for label in config["labels"]):
+                    items_string += self._get_changelog_line(file_type, pull_request)
+                    # remove the item so that one item
+                    # does not match multiple groups
+                    new_changes.remove(pull_request)
+
+            if items_string:
                 if file_type == MARKDOWN_FILE:
-                    changelog_string += (
-                        f"\n#### {self.config.unlabeled_group_title}\n\n"
-                    )
+                    changelog_string += f"\n#### {config['title']}\n\n"
                 else:
                     changelog_string += (
-                        f"\n{self.config.unlabeled_group_title}\n"
-                        f"{'-' * len(self.config.unlabeled_group_title)}\n\n"
+                        f"\n{config['title']}\n {'-' * len(config['title'])}\n\n"
                     )
-                changelog_string += "".join(
-                    [self._get_changelog_line(file_type, item) for item in new_changes]
+                changelog_string += items_string
+
+        if new_changes and self.config.include_unlabeled_changes:
+            # if they do not match any user provided group
+            # Add items in `unlabeled group` group
+            if file_type == MARKDOWN_FILE:
+                changelog_string += f"\n#### {self.config.unlabeled_group_title}\n\n"
+            else:
+                changelog_string += (
+                    f"\n{self.config.unlabeled_group_title}\n"
+                    f"{'-' * len(self.config.unlabeled_group_title)}\n\n"
                 )
-        else:
-            # If group config does not exist then append it without and groups
             changelog_string += "".join(
                 [self._get_changelog_line(file_type, item) for item in new_changes]
             )

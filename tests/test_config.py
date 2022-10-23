@@ -327,3 +327,13 @@ class TestConfiguration(unittest.TestCase):
             Configuration._clean_group_config_item({"title": "test", "labels": None})
         )
         self.assertIsNone(Configuration._clean_group_config_item({"title": "test"}))
+
+    def test_clean_exclude_labels(self, gha_utils):
+        exclude_labels = ["skip-changelog", "dependabot"]
+
+        self.assertEqual(
+            Configuration.clean_exclude_labels(exclude_labels), exclude_labels
+        )
+
+        self.assertEqual(Configuration.clean_exclude_labels("test"), [])
+        self.assertEqual(Configuration.clean_exclude_labels({"title": "test"}), [])
