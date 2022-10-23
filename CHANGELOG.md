@@ -1,3 +1,16 @@
+# Version: 1.1.0
+
+* [#86](https://github.com/saadmk11/changelog-ci/pull/86): Restructure Code and Improve Type Annotations
+* [#77](https://github.com/saadmk11/changelog-ci/pull/77): Update GitHub Action Versions
+* [#76](https://github.com/saadmk11/changelog-ci/pull/76): Fix Typo
+* [#81](https://github.com/saadmk11/changelog-ci/pull/81): fixed indentation in action (readme)
+* [#83](https://github.com/saadmk11/changelog-ci/pull/83): Refactor Code and Add Type Annotations
+* [#85](https://github.com/saadmk11/changelog-ci/pull/85): Use `github-action-utils` for running GitHub Action Workflow Commands and Set Workflow Output with Changelog Data
+* [#84](https://github.com/saadmk11/changelog-ci/pull/84): Refactored Changelog CI, Fixed Bugs and Added Tests
+* [#87](https://github.com/saadmk11/changelog-ci/pull/87): Add Config Option to Exclude Pull Requests That Matches Labels
+* [#88](https://github.com/saadmk11/changelog-ci/pull/88): Update `github-action-utils`
+
+
 # Version: 1.0.0
 
 * [#57](https://github.com/saadmk11/changelog-ci/pull/57): Cleanup code
