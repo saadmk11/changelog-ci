@@ -1,3 +1,8 @@
+# Version: 1.1.1
+
+* [#90](https://github.com/saadmk11/changelog-ci/pull/90): Use Git Safe Directory
+
+
 # Version: 1.1.0
 
 * [#86](https://github.com/saadmk11/changelog-ci/pull/86): Restructure Code and Improve Type Annotations
