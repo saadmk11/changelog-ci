@@ -23,6 +23,7 @@ from .config import (
 from .run_git import (
     checkout_pull_request_branch,
     configure_git_author,
+    configure_git_safe_directory,
     create_new_git_branch,
     git_commit_changelog,
 )
@@ -334,6 +335,9 @@ if __name__ == "__main__":
     with gha_utils.group("Parse Configuration"):
         user_configuration = Configuration.create(os.environ)
         action_environment = ActionEnvironment.from_env(os.environ)
+
+    # Configure Git Safe Directory
+    configure_git_safe_directory(action_environment.github_workspace)
 
     if action_environment.pull_request_branch:
         # Checkout git pull request branch
