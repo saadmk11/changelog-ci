@@ -24,6 +24,7 @@ class ActionEnvironment(NamedTuple):
     base_branch: str
     event_name: str
     event_payload: dict[str, Any]
+    github_workspace: str
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> "ActionEnvironment":
@@ -34,6 +35,7 @@ class ActionEnvironment(NamedTuple):
             base_branch=env["GITHUB_REF"],
             event_name=env["GITHUB_EVENT_NAME"],
             event_payload=gha_utils.event_payload(),
+            github_workspace=env["GITHUB_WORKSPACE"],
         )
 
 
