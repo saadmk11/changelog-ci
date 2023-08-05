@@ -67,7 +67,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Run Changelog CI
-        uses: saadmk11/changelog-ci@v1.1.1
+        uses: saadmk11/changelog-ci@v1.1.2
 ```
 
 ### Workflow input options
@@ -108,7 +108,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Run Changelog CI
-        uses: saadmk11/changelog-ci@v1.1.1
+        uses: saadmk11/changelog-ci@v1.1.2
         with:
           # Optional, you can provide any name for your changelog file,
           # We currently support Markdown (.md) and reStructuredText (.rst) files
@@ -151,7 +151,7 @@ The output can be used in other steps of the action. For example:
 
 ```yaml
 - name: changelog-ci
-  uses: saadmk11/changelog-ci@v1.1.1
+  uses: saadmk11/changelog-ci@v1.1.2
   id: changelog-ci
 
 - name: Get Changelog Output

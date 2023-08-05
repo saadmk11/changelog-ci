@@ -1,3 +1,9 @@
+# Version: 1.1.2
+
+* [#100](https://github.com/saadmk11/changelog-ci/pull/100): Update PyYAML version
+* [#101](https://github.com/saadmk11/changelog-ci/pull/101): Use pip-tools for dependency management
+
+
 # Version: 1.1.1
 
 * [#90](https://github.com/saadmk11/changelog-ci/pull/90): Use Git Safe Directory
