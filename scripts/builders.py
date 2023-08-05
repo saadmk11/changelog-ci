@@ -174,7 +174,6 @@ class PullRequestChangelogBuilder(ChangelogBuilderBase):
             return changelog_string
 
         for config in group_config:
-
             if len(new_changes) == 0:
                 break
 
