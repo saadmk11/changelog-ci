@@ -1,3 +1,8 @@
+# Version: 1.2.0
+
+* [#109](https://github.com/saadmk11/changelog-ci/pull/109): Update Dockerfile Base Image
+
+
 # Version: 1.1.2
 
 * [#100](https://github.com/saadmk11/changelog-ci/pull/100): Update PyYAML version
