@@ -1,7 +1,7 @@
 import unittest
 from unittest import mock
 
-from scripts.config import (
+from changelog_ci_scripts.config import (
     COMMIT_MESSAGE,
     MARKDOWN_FILE,
     PULL_REQUEST,
@@ -19,7 +19,7 @@ default_env_dict = {
 }
 
 
-@mock.patch("scripts.config.gha_utils")
+@mock.patch("changelog_ci_scripts.config.gha_utils")
 class TestConfiguration(unittest.TestCase):
     """Test the Configuration class"""
 
@@ -58,7 +58,7 @@ class TestConfiguration(unittest.TestCase):
         self.assertEqual(config.changelog_file_type, MARKDOWN_FILE)
 
     @mock.patch(
-        "scripts.config.Configuration.get_config_file_data",
+        "changelog_ci_scripts.config.Configuration.get_config_file_data",
     )
     def test_create_with_valid_data(self, get_config_file_data, gha_utils):
         group_config = [
@@ -113,7 +113,7 @@ class TestConfiguration(unittest.TestCase):
         self.assertEqual(config.changelog_file_type, RESTRUCTUREDTEXT_FILE)
 
     @mock.patch(
-        "scripts.config.Configuration.get_config_file_data",
+        "changelog_ci_scripts.config.Configuration.get_config_file_data",
     )
     def test_create_with_invalid_data(self, get_config_file_data, gha_utils):
         get_config_file_data.return_value = {
@@ -171,7 +171,7 @@ class TestConfiguration(unittest.TestCase):
         self.assertEqual(config.changelog_file_type, MARKDOWN_FILE)
 
     @mock.patch(
-        "scripts.config.Configuration.get_config_file_data",
+        "changelog_ci_scripts.config.Configuration.get_config_file_data",
     )
     def test_changelog_file_type(self, get_config_file_data, gha_utils):
         get_config_file_data.return_value = {"changelog_filename": "CHANGELOG.rst"}
@@ -179,7 +179,7 @@ class TestConfiguration(unittest.TestCase):
         self.assertEqual(config.changelog_file_type, RESTRUCTUREDTEXT_FILE)
 
     @mock.patch(
-        "scripts.config.Configuration.get_config_file_data",
+        "changelog_ci_scripts.config.Configuration.get_config_file_data",
     )
     def test_invalid_changelog_file_type(self, get_config_file_data, gha_utils):
         get_config_file_data.return_value = {"changelog_filename": "CHANGELOG.xyz"}
@@ -207,7 +207,7 @@ class TestConfiguration(unittest.TestCase):
         )
 
     @mock.patch(
-        "scripts.config.Configuration.get_config_file_data",
+        "changelog_ci_scripts.config.Configuration.get_config_file_data",
     )
     def test_get_user_config_with_file(self, get_config_file_data, gha_utils):
         get_config_file_data.return_value = {

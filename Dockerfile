@@ -26,4 +26,4 @@ COPY . ./app
 
 ENV PYTHONPATH "${PYTHONPATH}:/app"
 
-CMD ["python", "-m", "scripts.main"]
+CMD ["python", "-m", "changelog_ci_scripts.main"]
