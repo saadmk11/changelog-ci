@@ -1,0 +1,146 @@
+[
+  {
+    "input": {},
+    "expected": {
+      "header_prefix": "Version:",
+      "commit_changelog": true,
+      "comment_changelog": false,
+      "pull_request_title_regex": "^(?i:release)",
+      "version_regex": "v?(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.?(0|[1-9]\\d*)?(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?",
+      "changelog_type": "pull_request",
+      "group_config": [],
+      "exclude_labels": [],
+      "include_unlabeled_changes": true,
+      "unlabeled_group_title": "Other Changes",
+      "changelog_filename": "CHANGELOG.md",
+      "git_committer_username": "github-actions[bot]",
+      "git_committer_email": "github-actions[bot]@users.noreply.github.com",
+      "release_version": null,
+      "github_token": null
+    }
+  },
+  {
+    "input": {
+      "commit_changelog": 0,
+      "comment_changelog": 1,
+      "include_unlabeled_changes": 1.0
+    },
+    "expected": {
+      "header_prefix": "Version:",
+      "commit_changelog": false,
+      "comment_changelog": true,
+      "pull_request_title_regex": "^(?i:release)",
+      "version_regex": "v?(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.?(0|[1-9]\\d*)?(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?",
+      "changelog_type": "pull_request",
+      "group_config": [],
+      "exclude_labels": [],
+      "include_unlabeled_changes": true,
+      "unlabeled_group_title": "Other Changes",
+      "changelog_filename": "CHANGELOG.md",
+      "git_committer_username": "github-actions[bot]",
+      "git_committer_email": "github-actions[bot]@users.noreply.github.com",
+      "release_version": null,
+      "github_token": null
+    }
+  },
+  {
+    "input": {
+      "header_prefix": 1,
+      "version_regex": "[",
+      "changelog_type": "oops",
+      "changelog_filename": "bad.txt",
+      "unknown": "ignored"
+    },
+    "expected": {
+      "header_prefix": "Version:",
+      "commit_changelog": true,
+      "comment_changelog": false,
+      "pull_request_title_regex": "^(?i:release)",
+      "version_regex": "v?(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.?(0|[1-9]\\d*)?(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?",
+      "changelog_type": "pull_request",
+      "group_config": [],
+      "exclude_labels": [],
+      "include_unlabeled_changes": true,
+      "unlabeled_group_title": "Other Changes",
+      "changelog_filename": "CHANGELOG.md",
+      "git_committer_username": "github-actions[bot]",
+      "git_committer_email": "github-actions[bot]@users.noreply.github.com",
+      "release_version": null,
+      "github_token": null
+    }
+  },
+  {
+    "input": {
+      "group_config": [
+        null,
+        {
+          "title": "",
+          "labels": [
+            "bug"
+          ]
+        },
+        {
+          "title": "Fixes",
+          "labels": [
+            "bug"
+          ],
+          "extra": true
+        }
+      ]
+    },
+    "expected": {
+      "header_prefix": "Version:",
+      "commit_changelog": true,
+      "comment_changelog": false,
+      "pull_request_title_regex": "^(?i:release)",
+      "version_regex": "v?(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.?(0|[1-9]\\d*)?(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?",
+      "changelog_type": "pull_request",
+      "group_config": [
+        {
+          "title": "Fixes",
+          "labels": [
+            "bug"
+          ],
+          "extra": true
+        }
+      ],
+      "exclude_labels": [],
+      "include_unlabeled_changes": true,
+      "unlabeled_group_title": "Other Changes",
+      "changelog_filename": "CHANGELOG.md",
+      "git_committer_username": "github-actions[bot]",
+      "git_committer_email": "github-actions[bot]@users.noreply.github.com",
+      "release_version": null,
+      "github_token": null
+    }
+  },
+  {
+    "input": {
+      "exclude_labels": [
+        "skip",
+        2
+      ],
+      "github_token": false
+    },
+    "expected": {
+      "header_prefix": "Version:",
+      "commit_changelog": true,
+      "comment_changelog": false,
+      "pull_request_title_regex": "^(?i:release)",
+      "version_regex": "v?(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.?(0|[1-9]\\d*)?(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?",
+      "changelog_type": "pull_request",
+      "group_config": [],
+      "exclude_labels": [
+        "skip",
+        2
+      ],
+      "include_unlabeled_changes": true,
+      "unlabeled_group_title": "Other Changes",
+      "changelog_filename": "CHANGELOG.md",
+      "git_committer_username": "github-actions[bot]",
+      "git_committer_email": "github-actions[bot]@users.noreply.github.com",
+      "release_version": null,
+      "github_token": null
+    }
+  }
+]
