@@ -1,33 +1,154 @@
 name: Changelog CI
-description: Changelog CI is a GitHub Action that generates changelog, then it is committed and/or commented to the release pull request.
+description: Generate changelogs and optionally commit, comment or open a pull request.
 author: Maksudul Haque
 branding:
-  icon: 'clock'
-  color: 'blue'
+  icon: clock
+  color: blue
 inputs:
   changelog_filename:
-    description: 'Name of the changelog file if not provided defaults to CHANGELOG.md'
+    description: Name of the changelog file if not provided defaults to CHANGELOG.md
     required: false
-    default: 'CHANGELOG.md'
+    default: CHANGELOG.md
   config_file:
-    description: 'Location of the config JSON file'
+    description: Location of the config JSON file
     required: false
   committer_username:
-    description: 'Name of the user who will commit the changes to GitHub'
+    description: Name of the user who will commit the changes to GitHub
     required: false
-    default: 'github-actions[bot]'
+    default: github-actions[bot]
   committer_email:
-    description: 'Email Address of the user who will commit the changes to GitHub'
+    description: Email Address of the user who will commit the changes to GitHub
     required: false
-    default: 'github-actions[bot]@users.noreply.github.com'
+    default: github-actions[bot]@users.noreply.github.com
   release_version:
-    description: 'The release version that will be used on the generated Changelog'
+    description: The release version that will be used on the generated Changelog
     required: false
   github_token:
-    description: 'GITHUB_TOKEN or Personal Access Token (PAT)'
+    description: GITHUB_TOKEN or Personal Access Token (PAT)
     required: false
     default: ${{ github.token }}
-
+  changelog_type:
+    description: pull_request or commit_message
+    required: false
+  header_prefix:
+    description: Text before the release label
+    required: false
+  commit_changelog:
+    description: Whether to commit and push (JSON boolean)
+    required: false
+  comment_changelog:
+    description: Whether to comment on the release PR (JSON boolean)
+    required: false
+  pull_request_title_regex:
+    description: Release pull request title regular expression
+    required: false
+  version_regex:
+    description: Release version regular expression
+    required: false
+  group_config:
+    description: Ordered JSON array of objects with title and labels
+    required: false
+  exclude_labels:
+    description: JSON array of labels to exclude
+    required: false
+  include_unlabeled_changes:
+    description: Include changes unmatched by groups (JSON boolean)
+    required: false
+  unlabeled_group_title:
+    description: Heading for changes unmatched by groups
+    required: false
+  create_pull_request:
+    description: Whether to create a new PR (JSON boolean)
+    required: false
+  new_branch:
+    description: Optional branch name for non-PR events
+    required: false
+  new_pull_request_title:
+    description: Optional new PR title
+    required: false
+  commit_message:
+    description: Optional commit message
+    required: false
+  dry_run:
+    description: Preview without writes or mutations (JSON boolean)
+    required: false
+  diff:
+    description: Show a unified file diff (JSON boolean)
+    required: false
+  verbose:
+    description: Report collection progress (JSON boolean)
+    required: false
+  quiet:
+    description: Suppress progress (JSON boolean)
+    required: false
+  summary:
+    description: Append a GitHub job summary (JSON boolean)
+    required: false
 runs:
-  using: 'docker'
-  image: 'Dockerfile'
+  using: composite
+  steps:
+  - name: Install isolated runtime manager
+    id: uv
+    uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+    with:
+      version: 0.13.1
+      enable-cache: 'false'
+      ignore-nothing-to-cache: 'true'
+  - name: Generate changelog
+    id: changelog
+    shell: bash
+    env:
+      INPUT_CHANGELOG_FILENAME: ${{ inputs.changelog_filename }}
+      INPUT_CONFIG_FILE: ${{ inputs.config_file }}
+      INPUT_COMMITTER_USERNAME: ${{ inputs.committer_username }}
+      INPUT_COMMITTER_EMAIL: ${{ inputs.committer_email }}
+      INPUT_RELEASE_VERSION: ${{ inputs.release_version }}
+      INPUT_GITHUB_TOKEN: ${{ inputs.github_token }}
+      INPUT_CHANGELOG_TYPE: ${{ inputs.changelog_type }}
+      INPUT_HEADER_PREFIX: ${{ inputs.header_prefix }}
+      INPUT_COMMIT_CHANGELOG: ${{ inputs.commit_changelog }}
+      INPUT_COMMENT_CHANGELOG: ${{ inputs.comment_changelog }}
+      INPUT_PULL_REQUEST_TITLE_REGEX: ${{ inputs.pull_request_title_regex }}
+      INPUT_VERSION_REGEX: ${{ inputs.version_regex }}
+      INPUT_GROUP_CONFIG: ${{ inputs.group_config }}
+      INPUT_EXCLUDE_LABELS: ${{ inputs.exclude_labels }}
+      INPUT_INCLUDE_UNLABELED_CHANGES: ${{ inputs.include_unlabeled_changes }}
+      INPUT_UNLABELED_GROUP_TITLE: ${{ inputs.unlabeled_group_title }}
+      INPUT_CREATE_PULL_REQUEST: ${{ inputs.create_pull_request }}
+      INPUT_NEW_BRANCH: ${{ inputs.new_branch }}
+      INPUT_NEW_PULL_REQUEST_TITLE: ${{ inputs.new_pull_request_title }}
+      INPUT_COMMIT_MESSAGE: ${{ inputs.commit_message }}
+      INPUT_DRY_RUN: ${{ inputs.dry_run }}
+      INPUT_DIFF: ${{ inputs.diff }}
+      INPUT_VERBOSE: ${{ inputs.verbose }}
+      INPUT_QUIET: ${{ inputs.quiet }}
+      INPUT_SUMMARY: ${{ inputs.summary }}
+      _CHANGELOG_CI_COMPOSITE: 'true'
+      CHANGELOG_CI_UV: ${{ steps.uv.outputs.uv-path }}
+    run: |
+      for variable in ${!UV_@} ${!PIP_@}; do
+        unset "$variable"
+      done
+      unset PYTHONPATH PYTHONHOME VIRTUAL_ENV CONDA_PREFIX
+      export UV_CACHE_DIR="${RUNNER_TEMP}/changelog-ci/uv-cache"
+      export UV_PYTHON_INSTALL_DIR="${RUNNER_TEMP}/changelog-ci/python"
+      export UV_TOOL_DIR="${RUNNER_TEMP}/changelog-ci/tools"
+      "$CHANGELOG_CI_UV" --no-config tool run --isolated --no-env-file \
+        --managed-python --python 3.15 --default-index https://pypi.org/simple \
+        --from 'changelog-ci[actions]==2.0.0' changelog-ci actions --output-mode github
+outputs:
+  changelog:
+    description: Generated section, retaining legacy percent escaping
+    value: ${{ steps.changelog.outputs.changelog }}
+  changed:
+    description: Whether the calculated file differs, including during dry runs
+    value: ${{ steps.changelog.outputs.changed }}
+  changelog-file:
+    description: Requested changelog filename
+    value: ${{ steps.changelog.outputs.changelog-file }}
+  pull-request-number:
+    description: Number of a newly created PR, or empty
+    value: ${{ steps.changelog.outputs.pull-request-number }}
+  pull-request-url:
+    description: URL of a newly created PR, or empty
+    value: ${{ steps.changelog.outputs.pull-request-url }}

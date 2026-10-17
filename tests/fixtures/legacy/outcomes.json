@@ -1,0 +1,65 @@
+[
+  {
+    "event": "pull_request",
+    "title": "Release v2.0.0",
+    "version": "1.0.0",
+    "commit": true,
+    "comment": false,
+    "selected": "v2.0.0",
+    "exit_code": 0
+  },
+  {
+    "event": "pull_request",
+    "title": "Ordinary change",
+    "version": null,
+    "commit": true,
+    "comment": false,
+    "selected": null,
+    "exit_code": 0
+  },
+  {
+    "event": "pull_request",
+    "title": "Fix v2.0.0",
+    "version": null,
+    "commit": true,
+    "comment": false,
+    "selected": null,
+    "exit_code": 0
+  },
+  {
+    "event": "pull_request",
+    "title": "Anything",
+    "version": "custom date",
+    "commit": true,
+    "comment": false,
+    "selected": "custom date",
+    "exit_code": 0
+  },
+  {
+    "event": "pull_request",
+    "title": "Release v2.0.0",
+    "version": null,
+    "commit": false,
+    "comment": false,
+    "selected": "v2.0.0",
+    "exit_code": 1
+  },
+  {
+    "event": "workflow_dispatch",
+    "title": "",
+    "version": null,
+    "commit": true,
+    "comment": false,
+    "selected": null,
+    "exit_code": 1
+  },
+  {
+    "event": "workflow_dispatch",
+    "title": "",
+    "version": "custom date",
+    "commit": false,
+    "comment": false,
+    "selected": "custom date",
+    "exit_code": 1
+  }
+]
