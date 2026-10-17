@@ -44,8 +44,8 @@ def repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, P
     workspace = tmp_path / "work"
     command(tmp_path, "init", "--bare", "--initial-branch=main", str(remote))
     command(tmp_path, "init", "--initial-branch=main", str(workspace))
-    (workspace / "CHANGELOG.md").write_text("old\n")
-    (workspace / "other.txt").write_text("original\n")
+    (workspace / "CHANGELOG.md").write_bytes(b"old\n")
+    (workspace / "other.txt").write_bytes(b"original\n")
     command(workspace, "add", "--", "CHANGELOG.md", "other.txt")
     command(workspace, "commit", "-m", "Initial")
     command(workspace, "remote", "add", "origin", remote.as_uri())

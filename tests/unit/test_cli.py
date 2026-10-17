@@ -26,7 +26,7 @@ runner = CliRunner()
     ],
 )
 def test_help(args: list[str], expected: tuple[str, ...]) -> None:
-    result = runner.invoke(app, [*args, "--help"])
+    result = runner.invoke(app, [*args, "--help"], env={"COLUMNS": "120"})
     assert result.exit_code == 0, result.output
     assert "Usage:" in result.stdout
     for text in expected:

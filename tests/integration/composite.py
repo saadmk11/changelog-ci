@@ -154,22 +154,20 @@ def prepare(root: Path, directory: Path, scenario: str = "comment") -> None:
     invoke["run"] = invoke["run"].replace(
         "changelog-ci[actions]==2.0.0", wheel.as_uri() + "[actions]"
     )
-    invoke["env"].update(
-        {
-            "GITHUB_API_URL": f"https://127.0.0.1:{(directory / 'port').read_text()}",
-            "GITHUB_EVENT_PATH": str(directory / "event.json"),
-            "GITHUB_EVENT_NAME": "workflow_dispatch"
-            if scenario == "dispatch"
-            else "pull_request",
-            "GITHUB_REPOSITORY": "owner/repo",
-            "GITHUB_BASE_REF": "" if scenario == "dispatch" else "main",
-            "GITHUB_HEAD_REF": "" if scenario == "dispatch" else "release",
-            "GITHUB_REF": "refs/heads/main"
-            if scenario == "dispatch"
-            else "refs/pull/9/merge",
-            "SSL_CERT_FILE": str(directory / "trust.pem"),
-        }
-    )
+    runner_context = {
+        "GITHUB_API_URL": f"https://127.0.0.1:{(directory / 'port').read_text()}",
+        "GITHUB_EVENT_PATH": str(directory / "event.json"),
+        "GITHUB_EVENT_NAME": "workflow_dispatch"
+        if scenario == "dispatch"
+        else "pull_request",
+        "GITHUB_REPOSITORY": "owner/repo",
+        "GITHUB_BASE_REF": "" if scenario == "dispatch" else "main",
+        "GITHUB_HEAD_REF": "" if scenario == "dispatch" else "release",
+        "GITHUB_REF": "refs/heads/main"
+        if scenario == "dispatch"
+        else "refs/pull/9/merge",
+    }
+    invoke["env"]["SSL_CERT_FILE"] = str(directory / "trust.pem")
     workspace = directory / "consumer"
     if scenario == "comment":
         workspace.mkdir(exist_ok=True)
@@ -209,7 +207,16 @@ def prepare(root: Path, directory: Path, scenario: str = "comment") -> None:
                 "_CHANGELOG_CI_TEST_REMOTE": str(remote),
             }
         )
-    invoke["env"]["GITHUB_WORKSPACE"] = str(workspace)
+    runner_context["GITHUB_WORKSPACE"] = str(workspace)
+    # GitHub replaces reserved step env values before launching the shell.
+    invoke["run"] = (
+        "\n".join(
+            f"export {key}={shlex.quote(value)}"
+            for key, value in runner_context.items()
+        )
+        + "\n"
+        + invoke["run"]
+    )
     (directory / "action.yaml").write_text(
         yaml.safe_dump(meta, sort_keys=False, width=1000)
     )
@@ -268,6 +275,15 @@ def exercise(root: Path, directory: Path) -> None:
             {
                 "RUNNER_TEMP": temporary,
                 "GITHUB_OUTPUT": str(Path(temporary) / "output"),
+                # The runner injects its context after applying step env.
+                "GITHUB_API_URL": "https://127.0.0.1:1",
+                "GITHUB_EVENT_PATH": str(Path(temporary) / "runner-event.json"),
+                "GITHUB_EVENT_NAME": "pull_request",
+                "GITHUB_REPOSITORY": "runner/repository",
+                "GITHUB_BASE_REF": "runner-base",
+                "GITHUB_HEAD_REF": "runner-head",
+                "GITHUB_REF": "refs/pull/123/merge",
+                "GITHUB_WORKSPACE": temporary,
             }
         )
         subprocess.run(
