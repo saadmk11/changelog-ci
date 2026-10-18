@@ -1,3 +1,13 @@
+# Version: 2.0.0
+
+* [#120](https://github.com/saadmk11/changelog-ci/pull/120): Replace the Docker action with a composite action supporting Linux, macOS and Windows. Add standalone changelog generation, dry runs, diffs, standard output, job summaries and additional Action outputs.
+* [#120](https://github.com/saadmk11/changelog-ci/pull/120): Support Python 3.11–3.15 for the package and provision an isolated Python 3.15 runtime for the Action. Keep GitHub event loading, commits, comments and pull request creation separate from local generation.
+* [#121](https://github.com/saadmk11/changelog-ci/pull/121): Add the release version field to manual workflow runs and document how to declare and forward workflow inputs.
+* [#122](https://github.com/saadmk11/changelog-ci/pull/122): Name the Python package and CLI `gh-changelog-ci`. Add release metadata checks so tags such as `v2.0.0` publish package version `2.0.0`, and validate both wheel and source distributions.
+* [#117](https://github.com/saadmk11/changelog-ci/pull/117): Update GitHub Action versions.
+* [#111](https://github.com/saadmk11/changelog-ci/pull/111): Update GitHub Actions Version Updater to v1.0.0.
+
+
 # Version: 1.2.0
 
 * [#109](https://github.com/saadmk11/changelog-ci/pull/109): Update Dockerfile Base Image
