@@ -25,3 +25,5 @@ jobs:
         uses: saadmk11/changelog-ci@master
         with:
           release_version: ${{ inputs.release_version }}
+          verbose: 'true'
+          summary: 'true'

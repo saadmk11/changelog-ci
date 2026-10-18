@@ -142,8 +142,8 @@ Additional optional inputs (omit them to keep the configured defaults):
 | `commit_message` | Optional commit message |
 | `dry_run` | Preview without writes or mutations (JSON boolean) |
 | `diff` | Show a unified file diff (JSON boolean) |
-| `verbose` | Report collection progress (JSON boolean) |
-| `quiet` | Suppress progress (JSON boolean) |
+| `verbose` | Show collection, branch and commit details plus a changelog preview (JSON boolean) |
+| `quiet` | Suppress progress groups, notices and the automatic changelog preview (JSON boolean) |
 | `summary` | Append a GitHub job summary (JSON boolean) |
 
 Repository, API URL, workspace and PR details come from the runner environment
@@ -214,6 +214,13 @@ jobs:
           release_version: ${{ inputs.release_version }}
           # Optional
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Optional: extra diagnostic details and a grouped changelog preview.
+          # Leave false for concise progress. Do not enable together with quiet.
+          verbose: 'false'
+          # Optional: hide progress groups and notices; keep warnings and errors.
+          quiet: 'false'
+          # Optional: display the rendered changelog in the job summary.
+          summary: 'true'
 ```
 
 **Note:** To **Enable Commenting, Disable Committing, Group Changelog Items, Use Commit Messages** and
@@ -247,6 +254,57 @@ The output can be used in other steps of the action. For example:
 Set `summary: true` on the Action to write rendered Markdown to the job summary.
 See [output details](#outputs-and-exit-statuses) for the returned values and their
 encoding.
+
+#### Choosing log output
+
+The grouped progress and verbose changelog preview below are unreleased. They
+require the next Python package release and an updated Action package pin;
+`v2.0.1` supports verbose collection messages and job summaries.
+
+Neither `verbose` nor `quiet` is needed for a normal run. They provide two optional
+ways to adjust how much the Action prints:
+
+| Mode | When to use it | Action log output |
+| --- | --- | --- |
+| Default (omit both) | Everyday runs | Concise grouped progress and results for generation, commits, comments and PRs |
+| `verbose: 'true'` | Troubleshooting or inspecting a release | Default output plus collection source and count, repository, branch preparation, commit author and file details, and a grouped changelog preview |
+| `quiet: 'true'` | Keeping routine CI logs small | Warnings and errors only; progress groups, notices and the automatic preview are suppressed |
+
+`verbose` and `quiet` are mutually exclusive; enabling both is an error. They only
+control log output: generated files, commits, comments, Action outputs and the
+optional job summary behave the same in every mode. Explicit `dry_run` and `diff`
+previews are still shown in quiet mode.
+
+Use one of these examples in your workflow after the checkout step.
+
+For normal runs, keep the default logs and enable the rendered job summary:
+
+```yaml
+- name: Generate changelog
+  uses: saadmk11/changelog-ci@v2.0.1
+  with:
+    summary: 'true'
+```
+
+To include extra details and a changelog preview in the log:
+
+```yaml
+- name: Generate changelog with detailed logs
+  uses: saadmk11/changelog-ci@v2.0.1
+  with:
+    verbose: 'true'
+    summary: 'true'
+```
+
+To keep logs quiet while retaining the rendered job summary:
+
+```yaml
+- name: Generate changelog quietly
+  uses: saadmk11/changelog-ci@v2.0.1
+  with:
+    quiet: 'true'
+    summary: 'true'
+```
 
 ## Configuration
 
@@ -500,6 +558,20 @@ gh-changelog-ci generate --repository owner/repo --release-version 2.0.1 --stdou
 gh-changelog-ci generate --repository owner/repo --release-version 2.0.1 \
   --changelog-type commit_message --changelog-filename CHANGELOG.rst
 ```
+
+The CLI also supports optional progress controls. Use `--verbose` for extra
+diagnostics or `--quiet` to suppress progress; do not combine them:
+
+```sh
+# Show collection progress as well as the normal result.
+gh-changelog-ci generate --repository owner/repo --release-version 2.0.1 --verbose
+
+# Show warnings and errors, with no progress messages.
+gh-changelog-ci generate --repository owner/repo --release-version 2.0.1 --quiet
+```
+
+These flags do not change the generated changelog. `--stdout`, `--dry-run` and
+`--diff` still print their requested content when `--quiet` is enabled.
 
 `gh-changelog-ci --version` reports the installed package version. `python -m gh_changelog_ci --help` provides the same commands.
 

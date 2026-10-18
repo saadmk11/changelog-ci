@@ -1,13 +1,14 @@
 """Generate changelogs and run Git and GitHub updates."""
 
 import time
+from contextlib import nullcontext
 from urllib.parse import urlsplit
 
 from ..errors import APIError, ChangelogError, ConfigurationError
 from ..files import file_diff, output_path, prepend_content, write_atomic
 from ..generate import generate
 from ..github import GitHub
-from ..models import GenerationRequest, Settings
+from ..models import GenerationRequest, OutputMode, Settings
 from ..reporting import Reporter
 from . import require_github_actions
 from .context import load_context, release_version
@@ -86,20 +87,44 @@ def run(
         git.branch(base)
         git.branch(branch)
         if not settings.dry_run and event.is_pull_request:
-            git.prepare(base, branch, new=False)
+            with (
+                reporter.group("Prepare changelog branch")
+                if settings.verbose
+                else nullcontext()
+            ):
+                if settings.verbose:
+                    reporter.notice(f"Checking out pull request branch {branch}.")
+                git.prepare(base, branch, new=False)
     else:
         base = event.base
-    result = generate(
-        GenerationRequest(
-            settings=settings, repository=event.repository, version=version, legacy=True
-        ),
-        github,
-    )
+    with reporter.group("Generate changelog"):
+        reporter.notice(f"Generating changelog for version {version}.")
+        if settings.verbose:
+            reporter.notice(f"Repository: {event.repository}.")
+        result = generate(
+            GenerationRequest(
+                settings=settings,
+                repository=event.repository,
+                version=version,
+                legacy=True,
+            ),
+            github,
+        )
+        if settings.verbose:
+            count = len(result.changes)
+            reporter.notice(f"Collected {count} change{'s' if count != 1 else ''}.")
     if not result.section:
         reporter.notice("No changes found.")
         return
     if git and base and branch and not settings.dry_run and not event.is_pull_request:
-        git.prepare(base, branch, new=True)
+        with (
+            reporter.group("Prepare changelog branch")
+            if settings.verbose
+            else nullcontext()
+        ):
+            if settings.verbose:
+                reporter.notice(f"Creating branch {branch} from {base}.")
+            git.prepare(base, branch, new=True)
     path = output_path(
         settings.workspace,
         settings.changelog_filename,
@@ -116,6 +141,12 @@ def run(
     }
     if settings.diff:
         reporter.content(file_diff(settings.changelog_filename, old, new))
+    elif (
+        settings.output_mode == OutputMode.GITHUB
+        and settings.verbose
+        and not settings.dry_run
+    ):
+        reporter.content(result.section)
     if settings.dry_run:
         if not settings.diff:
             reporter.content(result.section)
@@ -137,41 +168,73 @@ def run(
             else "Dry run: no supported mutations for this event."
         )
     else:
-        if git and branch and changed:
-            write_atomic(path, new)
-            committed = git.commit(branch, settings.commit_message or title)
+        if git and branch:
+            committed = False
+            with reporter.group("Commit and push changelog"):
+                if settings.verbose:
+                    reporter.notice(
+                        f"Commit author: {settings.committer_username} "
+                        f"<{settings.committer_email}>."
+                    )
+                    reporter.notice(f"Changelog file: {settings.changelog_filename}.")
+                    reporter.notice(f"Push branch: {branch}.")
+                if changed:
+                    if settings.verbose:
+                        reporter.notice(f"Updating {settings.changelog_filename}.")
+                    write_atomic(path, new)
+                    committed = git.commit(branch, settings.commit_message or title)
+                if committed:
+                    reporter.notice("Changelog committed and pushed.")
+                else:
+                    reporter.notice("Changelog is already up to date; nothing to push.")
             if committed and create_pr and base:
-                try:
-                    created = create_pull_request(
-                        github,
-                        event.repository,
-                        settings.new_pull_request_title or title,
-                        branch,
-                        base,
-                        result.markdown,
-                    )
-                    values.update(
-                        {
-                            "pull-request-number": str(created.number),
-                            "pull-request-url": created.html_url,
-                        }
-                    )
-                except APIError as exc:
-                    if not legacy or exc.status is None or exc.status in {401, 403}:
-                        raise
-                    reporter.warning(str(exc))
+                with reporter.group("Create pull request"):
+                    if settings.verbose:
+                        reporter.notice(
+                            f"Opening a pull request from {branch} to {base}."
+                        )
+                    try:
+                        created = create_pull_request(
+                            github,
+                            event.repository,
+                            settings.new_pull_request_title or title,
+                            branch,
+                            base,
+                            result.markdown,
+                        )
+                        values.update(
+                            {
+                                "pull-request-number": str(created.number),
+                                "pull-request-url": created.html_url,
+                            }
+                        )
+                        reporter.notice(f"Pull request opened at {created.html_url}.")
+                    except APIError as exc:
+                        if not legacy or exc.status is None or exc.status in {401, 403}:
+                            raise
+                        reporter.warning(str(exc))
         if settings.comment_changelog:
             if not event.is_pull_request:
                 reporter.warning("Comments are only supported for pull_request events.")
             elif not settings.github_token:
                 reporter.warning("A GitHub token is required to comment.")
             elif event.number:
-                try:
-                    comment(github, event.repository, event.number, result.markdown)
-                except APIError as exc:
-                    if not legacy or exc.status is None or exc.status in {401, 403}:
-                        raise
-                    reporter.warning(str(exc))
+                with reporter.group("Comment changelog"):
+                    if settings.verbose:
+                        reporter.notice(
+                            f"Adding changelog to pull request #{event.number}."
+                        )
+                    try:
+                        comment(github, event.repository, event.number, result.markdown)
+                        reporter.notice(
+                            f"Changelog comment added to pull request #{event.number}."
+                        )
+                    except APIError as exc:
+                        if not legacy or exc.status is None or exc.status in {401, 403}:
+                            raise
+                        reporter.warning(str(exc))
     reporter.outputs(
         values, summary=result.markdown if settings.summary else "", legacy=legacy
     )
+    if not settings.dry_run:
+        reporter.notice("Changelog CI complete.")

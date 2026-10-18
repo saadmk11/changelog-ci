@@ -392,14 +392,16 @@ DiffOption = Annotated[
 VerboseOption = Annotated[
     bool | None,
     typer.Option(
-        "--verbose", help="Report collection progress.", rich_help_panel="Output"
+        "--verbose", help="Show additional progress details.", rich_help_panel="Output"
     ),
 ]
 
 QuietOption = Annotated[
     bool | None,
     typer.Option(
-        "--quiet", help="Suppress progress messages.", rich_help_panel="Output"
+        "--quiet",
+        help="Suppress progress and automatic previews.",
+        rich_help_panel="Output",
     ),
 ]
 

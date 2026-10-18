@@ -79,10 +79,10 @@ inputs:
     description: Show a unified file diff (JSON boolean)
     required: false
   verbose:
-    description: Report collection progress (JSON boolean)
+    description: Show collection, branch and commit details plus a changelog preview (JSON boolean)
     required: false
   quiet:
-    description: Suppress progress (JSON boolean)
+    description: Suppress progress groups, notices and the automatic preview (JSON boolean)
     required: false
   summary:
     description: Append a GitHub job summary (JSON boolean)
