@@ -18,7 +18,7 @@ def validate_release(tag: str) -> str:
             "and match package metadata."
         )
     action = (root / "action.yaml").read_text()
-    requirements = re.findall(r"changelog-ci\[actions\]==([0-9.]+)", action)
+    requirements = re.findall(r"gh-changelog-ci\[actions\]==([0-9.]+)", action)
     if requirements != [version]:
         raise ValueError("Composite must pin exactly the released package version.")
     return version

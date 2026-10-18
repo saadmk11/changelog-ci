@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import tomllib
 from contextlib import suppress
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -148,11 +149,12 @@ def prepare(root: Path, directory: Path, scenario: str = "comment") -> None:
         }
     (directory / "event.json").write_text(json.dumps(event))
     meta = yaml.safe_load((root / "action.yaml").read_text())
-    wheel = next((root / "dist").glob("changelog_ci-*-py3-none-any.whl"))
+    version = tomllib.loads((root / "pyproject.toml").read_text())["project"]["version"]
+    wheel = root / "dist" / f"gh_changelog_ci-{version}-py3-none-any.whl"
     invoke = meta["runs"]["steps"][-1]
     # Substitute the wheel and runner context; retain the composite command.
     invoke["run"] = invoke["run"].replace(
-        "changelog-ci[actions]==2.0.0", wheel.as_uri() + "[actions]"
+        f"gh-changelog-ci[actions]=={version}", wheel.as_uri() + "[actions]"
     )
     runner_context = {
         "GITHUB_API_URL": f"https://127.0.0.1:{(directory / 'port').read_text()}",

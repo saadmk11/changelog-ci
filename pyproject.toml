@@ -3,7 +3,7 @@ requires = ["uv_build>=0.13.1,<0.14"]
 build-backend = "uv_build"
 
 [project]
-name = "changelog-ci"
+name = "gh-changelog-ci"
 version = "2.0.0"
 description = "Generate changelogs from GitHub pull requests or commits."
 readme = "README.md"
@@ -30,7 +30,7 @@ dependencies = [
 actions = ["github-action-utils>=1.1.0,<2"]
 
 [project.scripts]
-changelog-ci = "changelog_ci.cli:app"
+gh-changelog-ci = "gh_changelog_ci.cli:app"
 
 [project.urls]
 Homepage = "https://github.com/saadmk11/changelog-ci"
@@ -84,7 +84,7 @@ filterwarnings = ["error"]
 markers = ["actions: requires the optional actions integration"]
 
 [tool.coverage.run]
-source = ["changelog_ci"]
+source = ["gh_changelog_ci"]
 branch = true
 
 [tool.coverage.report]

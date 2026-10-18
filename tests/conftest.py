@@ -5,7 +5,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from changelog_ci.github import GitHub
+from gh_changelog_ci.github import GitHub
 from tests.github import pull_request, response
 
 
@@ -49,6 +49,6 @@ def cli_api(
     def factory(api_url: str, token: str | None = None) -> GitHub:
         return GitHub(api_url, token, transport=httpx.MockTransport(handle))
 
-    monkeypatch.setattr("changelog_ci.cli.GitHub", factory)
+    monkeypatch.setattr("gh_changelog_ci.cli.GitHub", factory)
     monkeypatch.chdir(tmp_path)
     return requests

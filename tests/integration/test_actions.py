@@ -9,13 +9,18 @@ import pytest
 from pydantic import BaseModel, SecretStr, TypeAdapter
 from typer.testing import CliRunner
 
-from changelog_ci.actions.context import RunnerContext, load_context, release_version
-from changelog_ci.actions.runner import run
-from changelog_ci.cli import app
-from changelog_ci.errors import APIError, ChangelogError, ConfigurationError, GitError
-from changelog_ci.github import GitHub
-from changelog_ci.models import Settings
-from changelog_ci.reporting import TerminalReporter
+from gh_changelog_ci.actions.context import RunnerContext, load_context, release_version
+from gh_changelog_ci.actions.runner import run
+from gh_changelog_ci.cli import app
+from gh_changelog_ci.errors import (
+    APIError,
+    ChangelogError,
+    ConfigurationError,
+    GitError,
+)
+from gh_changelog_ci.github import GitHub
+from gh_changelog_ci.models import Settings
+from gh_changelog_ci.reporting import TerminalReporter
 from tests.git import command
 from tests.github import pull_request_event, response
 
@@ -486,7 +491,7 @@ def test_default_branch_name_and_message(
     repository: tuple[Path, Path], github: GitHub, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     workspace, remote = repository
-    monkeypatch.setattr("changelog_ci.actions.runner.time.time", lambda: 1234567890)
+    monkeypatch.setattr("gh_changelog_ci.actions.runner.time.time", lambda: 1234567890)
     run(
         Settings(
             release_version="v2.0.0",
@@ -683,7 +688,7 @@ def test_collection_exit_status_boundary(
     def factory(api_url: str, token: str | None = None) -> GitHub:
         return GitHub(api_url, token, transport=httpx.MockTransport(handle))
 
-    monkeypatch.setattr("changelog_ci.cli.GitHub", factory)
+    monkeypatch.setattr("gh_changelog_ci.cli.GitHub", factory)
     monkeypatch.chdir(tmp_path)
     if legacy:
         monkeypatch.setenv("_CHANGELOG_CI_COMPOSITE", "true")

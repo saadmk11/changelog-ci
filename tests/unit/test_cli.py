@@ -9,7 +9,7 @@ import httpx
 import pytest
 from typer.testing import CliRunner
 
-from changelog_ci.cli import app
+from gh_changelog_ci.cli import app
 from tests.github import pull_request
 
 runner = CliRunner()
@@ -37,18 +37,18 @@ def test_help(args: list[str], expected: tuple[str, ...]) -> None:
 def test_version() -> None:
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0, result.output
-    assert result.stdout == f"{version('changelog-ci')}\n"
+    assert result.stdout == f"{version('gh-changelog-ci')}\n"
     assert result.stderr == ""
 
 
 def test_python_module() -> None:
     result = subprocess.run(
-        [sys.executable, "-m", "changelog_ci", "--version"],
+        [sys.executable, "-m", "gh_changelog_ci", "--version"],
         text=True,
         capture_output=True,
         check=True,
     )
-    assert result.stdout.strip() == version("changelog-ci")
+    assert result.stdout.strip() == version("gh-changelog-ci")
 
 
 def test_stdout_and_no_workflow_environment(
@@ -364,7 +364,7 @@ def test_missing_actions_dependency_does_not_prevent_help(
     monkeypatch.setattr(importlib.util, "find_spec", lambda name: None)
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
     result = runner.invoke(app, ["actions"])
-    assert result.exit_code == 2 and "changelog-ci[actions]" in result.output
+    assert result.exit_code == 2 and "gh-changelog-ci[actions]" in result.output
     help_result = runner.invoke(app, ["actions", "--help"])
     assert help_result.exit_code == 0, help_result.output
     assert "--comment-changelog" in help_result.stdout
@@ -373,10 +373,10 @@ def test_missing_actions_dependency_does_not_prevent_help(
 def test_api_failure_exit_and_token_redaction(
     cli_api: list[httpx.Request], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from changelog_ci.github import GitHub
+    from gh_changelog_ci.github import GitHub
 
     def fail(self: GitHub, repository: str) -> None:
-        from changelog_ci.errors import APIError
+        from gh_changelog_ci.errors import APIError
 
         raise APIError("read", 403)
 

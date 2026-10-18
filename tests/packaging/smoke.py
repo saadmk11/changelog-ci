@@ -10,8 +10,8 @@ from unittest.mock import patch
 import httpx
 from typer.testing import CliRunner
 
-from changelog_ci.cli import app
-from changelog_ci.github import GitHub
+from gh_changelog_ci.cli import app
+from gh_changelog_ci.github import GitHub
 
 
 def response(request: httpx.Request) -> httpx.Response:
@@ -48,7 +48,7 @@ def client(api_url: str, token: str | None = None) -> GitHub:
 def generation() -> None:
     """Verify generation runs without loading workflow code or invoking Git."""
     with (
-        patch("changelog_ci.cli.GitHub", client),
+        patch("gh_changelog_ci.cli.GitHub", client),
         patch("subprocess.run", side_effect=AssertionError("Generation invoked Git")),
     ):
         result = CliRunner().invoke(
@@ -69,13 +69,13 @@ def generation() -> None:
     )
     assert result.stderr == ""
     assert "github_action_utils" not in sys.modules
-    assert not any(name.startswith("changelog_ci.actions") for name in sys.modules)
+    assert not any(name.startswith("gh_changelog_ci.actions") for name in sys.modules)
 
 
 def base() -> None:
     """Verify a base installation can generate changelogs."""
     assert importlib.util.find_spec("github_action_utils") is None
-    assert importlib.resources.files("changelog_ci").joinpath("py.typed").is_file()
+    assert importlib.resources.files("gh_changelog_ci").joinpath("py.typed").is_file()
     generation()
 
 
@@ -88,7 +88,7 @@ def actions() -> None:
     assert "requires a GitHub Actions runner" in result.output
     assert "github_action_utils" not in sys.modules
     with patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}):
-        importlib.import_module("changelog_ci.actions.reporting")
+        importlib.import_module("gh_changelog_ci.actions.reporting")
         result = CliRunner().invoke(app, ["actions"])
     assert result.exit_code == 2, result.output
     assert "GITHUB_EVENT_NAME" in result.output

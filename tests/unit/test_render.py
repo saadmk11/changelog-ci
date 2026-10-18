@@ -3,9 +3,9 @@ from pathlib import Path
 import pytest
 from pydantic import BaseModel, TypeAdapter
 
-from changelog_ci.config import validate
-from changelog_ci.models import Change, Settings
-from changelog_ci.render import render
+from gh_changelog_ci.config import validate
+from gh_changelog_ci.models import Change, Settings
+from gh_changelog_ci.render import render
 
 
 class Entry(BaseModel):

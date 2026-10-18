@@ -135,7 +135,7 @@ runs:
       export UV_TOOL_DIR="${RUNNER_TEMP}/changelog-ci/tools"
       "$CHANGELOG_CI_UV" --no-config tool run --isolated --no-env-file \
         --managed-python --python 3.15 --default-index https://pypi.org/simple \
-        --from 'changelog-ci[actions]==2.0.0' changelog-ci actions --output-mode github
+        --from 'gh-changelog-ci[actions]==2.0.0' gh-changelog-ci actions --output-mode github
 outputs:
   changelog:
     description: Generated section, retaining legacy percent escaping

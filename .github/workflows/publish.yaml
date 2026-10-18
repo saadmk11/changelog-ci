@@ -75,8 +75,8 @@ jobs:
           version="${RELEASE_TAG#v}"
           for attempt in 1 2 3 4 5; do
             if uv --no-config tool run --isolated --no-cache --python 3.15 \
-              --default-index https://pypi.org/simple --from "changelog-ci[actions]==$version" \
-              changelog-ci actions --help; then
+              --default-index https://pypi.org/simple --from "gh-changelog-ci[actions]==$version" \
+              gh-changelog-ci actions --help; then
               exit 0
             fi
             sleep 15

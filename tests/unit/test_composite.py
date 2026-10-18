@@ -1,17 +1,18 @@
 import re
-from importlib.metadata import version
+from importlib.metadata import distribution
 from pathlib import Path
 
+import pytest
 import yaml
 from pydantic import BaseModel, ConfigDict, SecretStr
 from typer.core import TyperGroup
 from typer.main import get_command
 
-from changelog_ci.cli import app
-from changelog_ci.config import ACTION_FIELDS, resolve_actions
-from changelog_ci.models import Settings
-from changelog_ci.reporting import TerminalReporter
-from tests.packaging.release import validate_release
+from gh_changelog_ci.cli import app
+from gh_changelog_ci.config import ACTION_FIELDS, resolve_actions
+from gh_changelog_ci.models import Settings
+from gh_changelog_ci.reporting import TerminalReporter
+from tests.packaging import release
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -116,6 +117,44 @@ def test_cli_shared_option_declarations_cannot_drift() -> None:
     }.isdisjoint(Settings.model_fields.keys() | generate.keys() | actions.keys())
 
 
-def test_release_version_is_consistent() -> None:
-    expected = version("changelog-ci")
-    assert validate_release(f"v{expected}") == expected
+def test_release_metadata_is_consistent() -> None:
+    package = distribution("gh-changelog-ci")
+    expected = package.version
+    assert release.validate_release(f"v{expected}") == expected
+    assert {
+        entry.name: entry.value
+        for entry in package.entry_points
+        if entry.group == "console_scripts"
+    } == {"gh-changelog-ci": "gh_changelog_ci.cli:app"}
+
+
+@pytest.mark.parametrize(
+    "tag,package_version,action_version",
+    (
+        pytest.param("2.0.0", "2.0.0", "2.0.0", id="missing-tag-prefix"),
+        pytest.param("vv2.0.0", "2.0.0", "2.0.0", id="duplicate-tag-prefix"),
+        pytest.param("v2.0.0\n", "2.0.0", "2.0.0", id="multiline-tag"),
+        pytest.param("v2.0.1", "2.0.0", "2.0.0", id="mismatched-tag"),
+        pytest.param("v2.0.0", "v2.0.0", "2.0.0", id="prefixed-package-version"),
+        pytest.param("v2.0.0", "2.0.0", "v2.0.0", id="prefixed-action-version"),
+        pytest.param("v2.0.0", "2.0.0", "2.0.1", id="mismatched-action-version"),
+    ),
+)
+def test_invalid_release_metadata(
+    tag: str,
+    package_version: str,
+    action_version: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        release, "__file__", str(tmp_path / "tests/packaging/release.py")
+    )
+    (tmp_path / "pyproject.toml").write_text(
+        f'[project]\nversion = "{package_version}"\n'
+    )
+    (tmp_path / "action.yaml").write_text(
+        f"runs:\n  steps:\n    - run: gh-changelog-ci[actions]=={action_version}\n"
+    )
+    with pytest.raises(ValueError):
+        release.validate_release(tag)
