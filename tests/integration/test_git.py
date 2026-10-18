@@ -202,8 +202,8 @@ def test_non_fast_forward_push_does_not_overwrite_remote(
 
 
 def test_sanitizes_only_branch_component() -> None:
-    assert branch_component("v2.0.0 (2026/10/16)") == "v2.0.0-2026-10-16"
-    assert branch_component("v2.0.0") == "v2.0.0"
+    assert branch_component("v2.0.1 (2026/10/16)") == "v2.0.1-2026-10-16"
+    assert branch_component("v2.0.1") == "v2.0.1"
     assert branch_component("???") == "release"
 
 

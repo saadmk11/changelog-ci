@@ -76,7 +76,7 @@ def test_existing_action_label_configuration_needs_no_issue_access(
     )
     assert result.exit_code == 0, result.output
     assert result.stdout == (
-        "# Version: v2.0.0\n\n\n#### Fixes\n\n"
+        "# Version: v2.0.1\n\n\n#### Fixes\n\n"
         "* [#1](https://github.com/o/r/pull/1): Change 1\n"
     )
     assert [(r.method, r.url.path) for r in cli_api] == [
@@ -193,7 +193,7 @@ def test_context_uses_runner_payload(pr_event: Path) -> None:
     assert load_context(Settings(repository="o/r")) == RunnerContext(
         repository="o/r",
         is_pull_request=True,
-        title="Release v2.0.0",
+        title="Release v2.0.1",
         number=5,
         head="release",
         base="main",
@@ -205,7 +205,7 @@ def test_context_uses_runner_payload(pr_event: Path) -> None:
     "ref,expected",
     [
         ("refs/heads/releases/2.0", "releases/2.0"),
-        ("refs/tags/v2.0.0", "main"),
+        ("refs/tags/v2.0.1", "main"),
         ("", "main"),
     ],
 )
@@ -263,7 +263,7 @@ def test_removed_context_inputs_cannot_redirect_comments(
     posts = [request for request in cli_api if request.method == "POST"]
     assert len(posts) == 1
     assert posts[0].url.path == "/repos/o/r/issues/9/comments"
-    assert json.loads(posts[0].content)["body"].startswith("# Version: v2.0.0\n")
+    assert json.loads(posts[0].content)["body"].startswith("# Version: v2.0.1\n")
 
 
 @pytest.mark.parametrize("filename", ["CHANGELOG.rst", "releases/CHANGELOG.rst"])
@@ -285,7 +285,7 @@ def test_comment_only_without_git(
     assert len(posts) == 1
     assert posts[0].url.path == "/repos/o/r/issues/9/comments"
     expected = {
-        "body": "# Version: v2.0.0\n\n* [#1](https://github.com/o/r/pull/1): Change 1\n"
+        "body": "# Version: v2.0.1\n\n* [#1](https://github.com/o/r/pull/1): Change 1\n"
     }
     assert json.loads(posts[0].content) == expected
     assert not list(tmp_path.iterdir())
@@ -315,7 +315,7 @@ def test_actions_dry_run_suppresses_comment_and_files(
     assert result.exit_code == 0, result.output
     assert "would append a PR comment" in result.stderr
     assert result.stdout == (
-        "# Version: v2.0.0\n\n* [#1](https://github.com/o/r/pull/1): Change 1\n"
+        "# Version: v2.0.1\n\n* [#1](https://github.com/o/r/pull/1): Change 1\n"
     )
     assert all(request.method == "GET" for request in cli_api)
     assert not list(tmp_path.iterdir())
@@ -339,7 +339,7 @@ def test_comment_failure_mapping(
     capsys: pytest.CaptureFixture[str],
     pr_event: Path,
 ) -> None:
-    pr_event.write_text(json.dumps(pull_request_event(title="Release 2.0.0", number=1)))
+    pr_event.write_text(json.dumps(pull_request_event(title="Release 2.0.1", number=1)))
     posts: list[httpx.Request] = []
 
     def handle(request: httpx.Request) -> httpx.Response:
@@ -521,7 +521,7 @@ def test_missing_pr_head_repository_never_falls_back_to_base_for_commits(
         posts = [request for request in cli_api if request.method == "POST"]
         assert len(posts) == 1
         assert posts[0].url.path == "/repos/o/r/issues/9/comments"
-        assert json.loads(posts[0].content)["body"].startswith("# Version: v2.0.0\n")
+        assert json.loads(posts[0].content)["body"].startswith("# Version: v2.0.1\n")
     assert command(workspace, "show-ref") == before
     assert command(remote, "show-ref") == remote_before
     assert (workspace / "CHANGELOG.md").read_text() == "old\n"
@@ -549,7 +549,7 @@ def test_non_pr_commit_push_and_pr_options(
         return response(request)
 
     settings = Settings(
-        release_version="v2.0.0",
+        release_version="v2.0.1",
         changelog_filename="Change log.rst",
         github_token=SecretStr("secret"),
         repository="o/r",
@@ -568,7 +568,7 @@ def test_non_pr_commit_push_and_pr_options(
         == "Add release notes"
     )
     assert command(remote, "show", "release-notes:Change log.rst").startswith(
-        "Version: v2.0.0\n"
+        "Version: v2.0.1\n"
     )
     posts = [r for r in requests if r.method == "POST"]
     if create is False:
@@ -578,7 +578,7 @@ def test_non_pr_commit_push_and_pr_options(
         payload = json.loads(posts[0].content)
         assert payload["title"] == "Review these changes"
         assert payload["head"] == "release-notes" and payload["base"] == "main"
-        assert payload["body"].startswith("# Version: v2.0.0\n")
+        assert payload["body"].startswith("# Version: v2.0.1\n")
 
 
 def test_default_branch_name_and_message(
@@ -588,7 +588,7 @@ def test_default_branch_name_and_message(
     monkeypatch.setattr("gh_changelog_ci.actions.runner.time.time", lambda: 1234567890)
     run(
         Settings(
-            release_version="v2.0.0",
+            release_version="v2.0.1",
             github_token=SecretStr("secret"),
             repository="o/r",
             workspace=workspace,
@@ -597,8 +597,8 @@ def test_default_branch_name_and_message(
         TerminalReporter(),
     )
     assert (
-        command(remote, "log", "-1", "changelog-ci-v2.0.0-1234567890", "--format=%s")
-        == "[Changelog CI] Add Changelog for Version v2.0.0"
+        command(remote, "log", "-1", "changelog-ci-v2.0.1-1234567890", "--format=%s")
+        == "[Changelog CI] Add Changelog for Version v2.0.1"
     )
 
 
@@ -613,13 +613,13 @@ def test_commit_dry_run_has_no_git_or_file_mutations(
         [
             "actions",
             "--release-version",
-            "v2.0.0",
+            "v2.0.1",
             "--dry-run",
             "--diff",
         ],
     )
     assert result.exit_code == 0, result.output
-    assert "+# Version: v2.0.0" in result.stdout
+    assert "+# Version: v2.0.1" in result.stdout
     assert command(workspace, "show-ref") == before
     assert command(remote, "show-ref") == remote_before
     assert command(remote, "show", "main:CHANGELOG.md") == "old"
@@ -644,13 +644,13 @@ def test_config_file_dry_run_cannot_mutate(
             "--config-file",
             str(config),
             "--release-version",
-            "2.0.0",
+            "2.0.1",
             "--github-token",
             "secret",
         ],
     )
     assert result.exit_code == 0, result.output
-    assert result.stdout.startswith("# Version: 2.0.0\n")
+    assert result.stdout.startswith("# Version: 2.0.1\n")
     assert "Dry run: would" in result.stderr
     assert command(workspace, "show-ref") == before
     assert command(remote, "show-ref") == remote_before
@@ -677,7 +677,7 @@ def test_dispatch_creates_pr_against_selected_branch(
         [
             "actions",
             "--release-version",
-            "2.0.0",
+            "2.0.1",
             "--new-branch",
             "notes",
             "--github-token",
@@ -690,7 +690,7 @@ def test_dispatch_creates_pr_against_selected_branch(
         command(remote, "show", "releases/2.0:CHANGELOG.md") == "release branch notes"
     )
     content = command(remote, "show", "notes:CHANGELOG.md")
-    assert content.startswith("# Version: 2.0.0\n")
+    assert content.startswith("# Version: 2.0.1\n")
     assert content.endswith("release branch notes")
     posts = [request for request in cli_api if request.method == "POST"]
     assert len(posts) == 1
@@ -720,7 +720,7 @@ def test_empty_run_does_not_create_branch(repository: tuple[Path, Path]) -> None
     ) as github:
         run(
             Settings(
-                release_version="v2.0.0",
+                release_version="v2.0.1",
                 github_token=SecretStr("secret"),
                 repository="o/r",
                 workspace=workspace,
@@ -811,7 +811,7 @@ def test_missing_mutation_context_fails_before_any_operation(
     args = [
         "actions",
         "--release-version",
-        "2.0.0",
+        "2.0.1",
     ]
     if missing != "token":
         args += ["--github-token", "secret", "--output-mode", "github"]
@@ -849,7 +849,7 @@ def test_fork_destination_uses_checkout_credentials(
             {
                 "number": 9,
                 "pull_request": {
-                    "title": "Release v2.0.0",
+                    "title": "Release v2.0.1",
                     "head": {"ref": "release", "repo": {"full_name": "fork/r"}},
                     "base": {"ref": "main", "repo": {"full_name": "o/r"}},
                 },
@@ -879,7 +879,7 @@ def test_fork_destination_uses_checkout_credentials(
     posts = [request for request in requests if request.method == "POST"]
     if writable:
         assert command(remote, "show", "release:CHANGELOG.md").startswith(
-            "# Version: v2.0.0"
+            "# Version: v2.0.1"
         )
         assert len(posts) == 1 and posts[0].url.path == "/repos/o/r/issues/9/comments"
     else:
@@ -902,7 +902,7 @@ def test_new_pr_failure_status_does_not_retry_or_change_base(
         return response(request)
 
     settings = Settings(
-        release_version="2.0.0",
+        release_version="2.0.1",
         github_token=SecretStr("secret"),
         repository="o/r",
         workspace=workspace,
@@ -917,7 +917,7 @@ def test_new_pr_failure_status_does_not_retry_or_change_base(
             with pytest.raises(APIError):
                 run(settings, github, TerminalReporter(), legacy=legacy)
     assert len(posts) == 1
-    assert command(remote, "show", "notes:CHANGELOG.md").startswith("# Version: 2.0.0")
+    assert command(remote, "show", "notes:CHANGELOG.md").startswith("# Version: 2.0.1")
     assert command(remote, "show", "main:CHANGELOG.md") == "old"
 
 
@@ -983,7 +983,7 @@ def test_no_pull_request_when_git_filter_leaves_no_changes(
         [
             "actions",
             "--release-version",
-            "2.0.0",
+            "2.0.1",
             "--new-branch",
             "notes",
             "--github-token",
@@ -993,7 +993,7 @@ def test_no_pull_request_when_git_filter_leaves_no_changes(
     assert result.exit_code == 0, result.output
     assert all(request.method == "GET" for request in cli_api)
     assert command(workspace, "branch", "--show-current") == "notes"
-    assert (workspace / "CHANGELOG.md").read_text().startswith("# Version: 2.0.0\n")
+    assert (workspace / "CHANGELOG.md").read_text().startswith("# Version: 2.0.1\n")
     assert "refs/heads/notes" not in command(remote, "show-ref", "--heads")
     assert command(remote, "show", "main:CHANGELOG.md") == "old"
 
@@ -1007,7 +1007,7 @@ def test_non_pr_comment_dry_run_reports_no_mutations(
         [
             "actions",
             "--release-version",
-            "2.0.0",
+            "2.0.1",
             "--no-commit-changelog",
             "--comment-changelog",
             "--dry-run",

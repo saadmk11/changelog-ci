@@ -54,7 +54,7 @@ jobs:
           CHANGELOG: ${{ steps.candidate.outputs.changelog }}
           CHANGED: ${{ steps.candidate.outputs.changed }}
           CHANGELOG_FILE: ${{ steps.candidate.outputs.changelog-file }}
-          EXPECTED_VERSION: ${{ matrix.scenario == 'dispatch' && '1.0.0' || 'v2.0.0' }}
+          EXPECTED_VERSION: ${{ matrix.scenario == 'dispatch' && '1.0.0' || 'v2.0.1' }}
         run: |
           uv run --locked --group test python -m tests.integration.composite verify .candidate-action
           uv run --locked --group test python -c 'import os; assert "Version: " + os.environ["EXPECTED_VERSION"] + "%0A" in os.environ["CHANGELOG"]; assert os.environ["CHANGED"] == "true"; assert os.environ["CHANGELOG_FILE"] == "CHANGELOG.md"'

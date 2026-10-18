@@ -28,7 +28,7 @@ The workflow can be configured to perform **any (or all)** of the following acti
 
 | | GitHub Action | Python package |
 | --- | --- | --- |
-| Run with | `uses: saadmk11/changelog-ci@v2.0.0` | `pip install gh-changelog-ci` or `uvx gh-changelog-ci` |
+| Run with | `uses: saadmk11/changelog-ci@v2.0.1` | `pip install gh-changelog-ci` or `uvx gh-changelog-ci` |
 | Changelog text | Use the `changelog` output | `gh-changelog-ci generate` |
 | Commit, comment or open a PR | Configure the Action inputs | Install `gh-changelog-ci[actions]` and run `gh-changelog-ci actions` |
 
@@ -105,7 +105,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run Changelog CI
-        uses: saadmk11/changelog-ci@v2.0.0
+        uses: saadmk11/changelog-ci@v2.0.1
 ```
 
 ### Workflow input options
@@ -191,7 +191,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run Changelog CI
-        uses: saadmk11/changelog-ci@v2.0.0
+        uses: saadmk11/changelog-ci@v2.0.1
         with:
           # Optional, you can provide any name for your changelog file,
           # We currently support Markdown (.md) and reStructuredText (.rst) files
@@ -234,7 +234,7 @@ The output can be used in other steps of the action. For example:
 
 ```yaml
 - name: changelog-ci
-  uses: saadmk11/changelog-ci@v2.0.0
+  uses: saadmk11/changelog-ci@v2.0.1
   id: changelog-ci
 
 - name: Get Changelog Output
@@ -495,9 +495,9 @@ pip install 'gh-changelog-ci[actions]'
 ```
 
 ```sh
-uvx gh-changelog-ci generate --repository owner/repo --release-version 2.0.0
-gh-changelog-ci generate --repository owner/repo --release-version 2.0.0 --stdout
-gh-changelog-ci generate --repository owner/repo --release-version 2.0.0 \
+uvx gh-changelog-ci generate --repository owner/repo --release-version 2.0.1
+gh-changelog-ci generate --repository owner/repo --release-version 2.0.1 --stdout
+gh-changelog-ci generate --repository owner/repo --release-version 2.0.1 \
   --changelog-type commit_message --changelog-filename CHANGELOG.rst
 ```
 
