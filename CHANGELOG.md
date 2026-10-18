@@ -1,3 +1,8 @@
+# Version: 2.0.2
+
+* [#126](https://github.com/saadmk11/changelog-ci/pull/126): Restore grouped action reporting and verbosity controls
+
+
 # Version: 2.0.1
 
 * [#124](https://github.com/saadmk11/changelog-ci/pull/124): Add grouping by linked issue types
