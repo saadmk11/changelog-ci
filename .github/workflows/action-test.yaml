@@ -1,0 +1,75 @@
+name: Action compatibility
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: action-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  candidate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        scenario: [comment, pr, dispatch]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: 0.13.1
+          python-version: '3.15'
+          enable-cache: true
+      - name: Build the candidate and start mocked GitHub
+        shell: bash
+        env:
+          SCENARIO: ${{ matrix.scenario }}
+        run: |
+          uv build --no-sources
+          uv run --locked --group test python -m tests.integration.composite prepare .candidate-action "$SCENARIO"
+      - name: Run the composite with legacy inputs
+        id: candidate
+        uses: ./.candidate-action
+        with:
+          config_file: ${{ matrix.scenario == 'comment' && 'legacy.json' || '' }}
+          release_version: '1.0.0'
+          github_token: test-token
+        env:
+          UV_DEFAULT_INDEX: https://invalid.example/simple
+          UV_EXTRA_INDEX_URL: https://invalid.example/simple
+          PYTHONPATH: does-not-exist
+      - name: Verify output consumers and mocked mutation
+        shell: bash
+        env:
+          CHANGELOG: ${{ steps.candidate.outputs.changelog }}
+          CHANGED: ${{ steps.candidate.outputs.changed }}
+          CHANGELOG_FILE: ${{ steps.candidate.outputs.changelog-file }}
+          EXPECTED_VERSION: ${{ matrix.scenario == 'dispatch' && '1.0.0' || 'v2.0.0' }}
+        run: |
+          uv run --locked --group test python -m tests.integration.composite verify .candidate-action
+          uv run --locked --group test python -c 'import os; assert "Version: " + os.environ["EXPECTED_VERSION"] + "%0A" in os.environ["CHANGELOG"]; assert os.environ["CHANGED"] == "true"; assert os.environ["CHANGELOG_FILE"] == "CHANGELOG.md"'
+      - name: Stop mocked GitHub
+        if: always()
+        shell: bash
+        run: uv run --locked --group test python -m tests.integration.composite stop .candidate-action
+
+  compatibility:
+    name: Zero-change compatibility
+    if: always()
+    needs: candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - env:
+          RESULT: ${{ needs.candidate.result }}
+        run: test "$RESULT" = success

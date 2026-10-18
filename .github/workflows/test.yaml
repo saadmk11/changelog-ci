@@ -2,40 +2,66 @@ name: Test
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [master]
   pull_request:
-    branches: [ "master" ]
+    branches: [master]
+  workflow_call:
 
 permissions:
   contents: read
 
+concurrency:
+  group: test-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
-
-    runs-on: ubuntu-latest
-
+  python:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python: ['3.11', '3.12', '3.13', '3.14', '3.15']
+        include:
+          - {os: macos-latest, python: '3.11'}
+          - {os: macos-latest, python: '3.15'}
+          - {os: windows-latest, python: '3.11'}
+          - {os: windows-latest, python: '3.15'}
     steps:
-    - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: 0.13.1
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+      - name: Test base and actions installations separately
+        shell: bash
+        env:
+          PYTHON_VERSION: ${{ matrix.python }}
+        run: |
+          environment="py${PYTHON_VERSION/./}"
+          uv run --locked --group dev --python "$PYTHON_VERSION" tox run -e "$environment,$environment-actions"
 
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v7.0.0
-      with:
-        python-version: "3.12"
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: 0.13.1
+          python-version: '3.15'
+          enable-cache: true
+      - run: uv run --locked --group dev tox run -e lint,type,package,minimum,latest
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-test.txt
-
-    - name: Check Formatting with Black
-      run: black --diff --check $(git ls-files '*.py')
-
-    - name: Check Typing with Mypy
-      run: mypy --strict --install-types --non-interactive scripts/*.py
-
-    - name: Check Import Sorting with Isort
-      run: isort **/*.py -c --diff --profile black
-
-    - name: Run Tests
-      run: python -m unittest
+  test:
+    if: always()
+    needs: [python, quality]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - env:
+          PYTHON_RESULT: ${{ needs.python.result }}
+          QUALITY_RESULT: ${{ needs.quality.result }}
+        run: test "$PYTHON_RESULT" = success && test "$QUALITY_RESULT" = success

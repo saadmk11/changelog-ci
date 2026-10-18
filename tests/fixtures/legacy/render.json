@@ -1,0 +1,738 @@
+[
+  {
+    "options": {
+      "changelog_type": "pull_request",
+      "changelog_filename": "CHANGELOG.md",
+      "exclude_labels": [
+        "skip"
+      ],
+      "include_unlabeled_changes": false,
+      "group_config": []
+    },
+    "entries": [
+      {
+        "title": "Fix café 🐛",
+        "number": 1,
+        "url": "https://github.com/owner/repo/pull/1",
+        "labels": [
+          "bug",
+          "docs"
+        ]
+      },
+      {
+        "title": "Update docs",
+        "number": 2,
+        "url": "https://github.com/owner/repo/pull/2",
+        "labels": [
+          "docs"
+        ]
+      },
+      {
+        "title": "Skipped change",
+        "number": 3,
+        "url": "https://github.com/owner/repo/pull/3",
+        "labels": [
+          "skip"
+        ]
+      },
+      {
+        "title": "Other label",
+        "number": 4,
+        "url": "https://github.com/owner/repo/pull/4",
+        "labels": [
+          "enhancement"
+        ]
+      },
+      {
+        "title": "No label\nsecond line",
+        "number": 5,
+        "url": "https://github.com/owner/repo/pull/5",
+        "labels": []
+      }
+    ],
+    "version": "v2.0.0",
+    "expected": "# Version: v2.0.0\n\n* [#1](https://github.com/owner/repo/pull/1): Fix café 🐛\n* [#2](https://github.com/owner/repo/pull/2): Update docs\n* [#3](https://github.com/owner/repo/pull/3): Skipped change\n* [#4](https://github.com/owner/repo/pull/4): Other label\n* [#5](https://github.com/owner/repo/pull/5): No label\nsecond line\n"
+  },
+  {
+    "options": {
+      "changelog_type": "pull_request",
+      "changelog_filename": "CHANGELOG.rst",
+      "exclude_labels": [
+        "skip"
+      ],
+      "include_unlabeled_changes": false,
+      "group_config": []
+    },
+    "entries": [
+      {
+        "title": "Fix café 🐛",
+        "number": 1,
+        "url": "https://github.com/owner/repo/pull/1",
+        "labels": [
+          "bug",
+          "docs"
+        ]
+      },
+      {
+        "title": "Update docs",
+        "number": 2,
+        "url": "https://github.com/owner/repo/pull/2",
+        "labels": [
+          "docs"
+        ]
+      },
+      {
+        "title": "Skipped change",
+        "number": 3,
+        "url": "https://github.com/owner/repo/pull/3",
+        "labels": [
+          "skip"
+        ]
+      },
+      {
+        "title": "Other label",
+        "number": 4,
+        "url": "https://github.com/owner/repo/pull/4",
+        "labels": [
+          "enhancement"
+        ]
+      },
+      {
+        "title": "No label\nsecond line",
+        "number": 5,
+        "url": "https://github.com/owner/repo/pull/5",
+        "labels": []
+      }
+    ],
+    "version": "v2.0.0",
+    "expected": "Version: v2.0.0\n===============\n\n* `#1 <https://github.com/owner/repo/pull/1>`__: Fix café 🐛\n* `#2 <https://github.com/owner/repo/pull/2>`__: Update docs\n* `#3 <https://github.com/owner/repo/pull/3>`__: Skipped change\n* `#4 <https://github.com/owner/repo/pull/4>`__: Other label\n* `#5 <https://github.com/owner/repo/pull/5>`__: No label\nsecond line\n"
+  },
+  {
+    "options": {
+      "changelog_type": "pull_request",
+      "changelog_filename": "CHANGELOG.md",
+      "exclude_labels": [
+        "skip"
+      ],
+      "include_unlabeled_changes": true,
+      "group_config": []
+    },
+    "entries": [
+      {
+        "title": "Fix café 🐛",
+        "number": 1,
+        "url": "https://github.com/owner/repo/pull/1",
+        "labels": [
+          "bug",
+          "docs"
+        ]
+      },
+      {
+        "title": "Update docs",
+        "number": 2,
+        "url": "https://github.com/owner/repo/pull/2",
+        "labels": [
+          "docs"
+        ]
+      },
+      {
+        "title": "Skipped change",
+        "number": 3,
+        "url": "https://github.com/owner/repo/pull/3",
+        "labels": [
+          "skip"
+        ]
+      },
+      {
+        "title": "Other label",
+        "number": 4,
+        "url": "https://github.com/owner/repo/pull/4",
+        "labels": [
+          "enhancement"
+        ]
+      },
+      {
+        "title": "No label\nsecond line",
+        "number": 5,
+        "url": "https://github.com/owner/repo/pull/5",
+        "labels": []
+      }
+    ],
+    "version": "v2.0.0",
+    "expected": "# Version: v2.0.0\n\n* [#1](https://github.com/owner/repo/pull/1): Fix café 🐛\n* [#2](https://github.com/owner/repo/pull/2): Update docs\n* [#3](https://github.com/owner/repo/pull/3): Skipped change\n* [#4](https://github.com/owner/repo/pull/4): Other label\n* [#5](https://github.com/owner/repo/pull/5): No label\nsecond line\n"
+  },
+  {
+    "options": {
+      "changelog_type": "pull_request",
+      "changelog_filename": "CHANGELOG.rst",
+      "exclude_labels": [
+        "skip"
+      ],
+      "include_unlabeled_changes": true,
+      "group_config": []
+    },
+    "entries": [
+      {
+        "title": "Fix café 🐛",
+        "number": 1,
+        "url": "https://github.com/owner/repo/pull/1",
+        "labels": [
+          "bug",
+          "docs"
+        ]
+      },
+      {
+        "title": "Update docs",
+        "number": 2,
+        "url": "https://github.com/owner/repo/pull/2",
+        "labels": [
+          "docs"
+        ]
+      },
+      {
+        "title": "Skipped change",
+        "number": 3,
+        "url": "https://github.com/owner/repo/pull/3",
+        "labels": [
+          "skip"
+        ]
+      },
+      {
+        "title": "Other label",
+        "number": 4,
+        "url": "https://github.com/owner/repo/pull/4",
+        "labels": [
+          "enhancement"
+        ]
+      },
+      {
+        "title": "No label\nsecond line",
+        "number": 5,
+        "url": "https://github.com/owner/repo/pull/5",
+        "labels": []
+      }
+    ],
+    "version": "v2.0.0",
+    "expected": "Version: v2.0.0\n===============\n\n* `#1 <https://github.com/owner/repo/pull/1>`__: Fix café 🐛\n* `#2 <https://github.com/owner/repo/pull/2>`__: Update docs\n* `#3 <https://github.com/owner/repo/pull/3>`__: Skipped change\n* `#4 <https://github.com/owner/repo/pull/4>`__: Other label\n* `#5 <https://github.com/owner/repo/pull/5>`__: No label\nsecond line\n"
+  },
+  {
+    "options": {
+      "changelog_type": "pull_request",
+      "changelog_filename": "CHANGELOG.md",
+      "exclude_labels": [
+        "skip"
+      ],
+      "include_unlabeled_changes": false,
+      "group_config": [
+        {
+          "title": "Fixes",
+          "labels": [
+            "bug"
+          ]
+        },
+        {
+          "title": "Docs",
+          "labels": [
+            "docs"
+          ]
+        }
+      ]
+    },
+    "entries": [
+      {
+        "title": "Fix café 🐛",
+        "number": 1,
+        "url": "https://github.com/owner/repo/pull/1",
+        "labels": [
+          "bug",
+          "docs"
+        ]
+      },
+      {
+        "title": "Update docs",
+        "number": 2,
+        "url": "https://github.com/owner/repo/pull/2",
+        "labels": [
+          "docs"
+        ]
+      },
+      {
+        "title": "Skipped change",
+        "number": 3,
+        "url": "https://github.com/owner/repo/pull/3",
+        "labels": [
+          "skip"
+        ]
+      },
+      {
+        "title": "Other label",
+        "number": 4,
+        "url": "https://github.com/owner/repo/pull/4",
+        "labels": [
+          "enhancement"
+        ]
+      },
+      {
+        "title": "No label\nsecond line",
+        "number": 5,
+        "url": "https://github.com/owner/repo/pull/5",
+        "labels": []
+      }
+    ],
+    "version": "v2.0.0",
+    "expected": "# Version: v2.0.0\n\n\n#### Fixes\n\n* [#1](https://github.com/owner/repo/pull/1): Fix café 🐛\n\n#### Docs\n\n* [#2](https://github.com/owner/repo/pull/2): Update docs\n"
+  },
+  {
+    "options": {
+      "changelog_type": "pull_request",
+      "changelog_filename": "CHANGELOG.rst",
+      "exclude_labels": [
+        "skip"
+      ],
+      "include_unlabeled_changes": false,
+      "group_config": [
+        {
+          "title": "Fixes",
+          "labels": [
+            "bug"
+          ]
+        },
+        {
+          "title": "Docs",
+          "labels": [
+            "docs"
+          ]
+        }
+      ]
+    },
+    "entries": [
+      {
+        "title": "Fix café 🐛",
+        "number": 1,
+        "url": "https://github.com/owner/repo/pull/1",
+        "labels": [
+          "bug",
+          "docs"
+        ]
+      },
+      {
+        "title": "Update docs",
+        "number": 2,
+        "url": "https://github.com/owner/repo/pull/2",
+        "labels": [
+          "docs"
+        ]
+      },
+      {
+        "title": "Skipped change",
+        "number": 3,
+        "url": "https://github.com/owner/repo/pull/3",
+        "labels": [
+          "skip"
+        ]
+      },
+      {
+        "title": "Other label",
+        "number": 4,
+        "url": "https://github.com/owner/repo/pull/4",
+        "labels": [
+          "enhancement"
+        ]
+      },
+      {
+        "title": "No label\nsecond line",
+        "number": 5,
+        "url": "https://github.com/owner/repo/pull/5",
+        "labels": []
+      }
+    ],
+    "version": "v2.0.0",
+    "expected": "Version: v2.0.0\n===============\n\n\nFixes\n -----\n\n* `#1 <https://github.com/owner/repo/pull/1>`__: Fix café 🐛\n\nDocs\n ----\n\n* `#2 <https://github.com/owner/repo/pull/2>`__: Update docs\n"
+  },
+  {
+    "options": {
+      "changelog_type": "pull_request",
+      "changelog_filename": "CHANGELOG.md",
+      "exclude_labels": [
+        "skip"
+      ],
+      "include_unlabeled_changes": true,
+      "group_config": [
+        {
+          "title": "Fixes",
+          "labels": [
+            "bug"
+          ]
+        },
+        {
+          "title": "Docs",
+          "labels": [
+            "docs"
+          ]
+        }
+      ]
+    },
+    "entries": [
+      {
+        "title": "Fix café 🐛",
+        "number": 1,
+        "url": "https://github.com/owner/repo/pull/1",
+        "labels": [
+          "bug",
+          "docs"
+        ]
+      },
+      {
+        "title": "Update docs",
+        "number": 2,
+        "url": "https://github.com/owner/repo/pull/2",
+        "labels": [
+          "docs"
+        ]
+      },
+      {
+        "title": "Skipped change",
+        "number": 3,
+        "url": "https://github.com/owner/repo/pull/3",
+        "labels": [
+          "skip"
+        ]
+      },
+      {
+        "title": "Other label",
+        "number": 4,
+        "url": "https://github.com/owner/repo/pull/4",
+        "labels": [
+          "enhancement"
+        ]
+      },
+      {
+        "title": "No label\nsecond line",
+        "number": 5,
+        "url": "https://github.com/owner/repo/pull/5",
+        "labels": []
+      }
+    ],
+    "version": "v2.0.0",
+    "expected": "# Version: v2.0.0\n\n\n#### Fixes\n\n* [#1](https://github.com/owner/repo/pull/1): Fix café 🐛\n\n#### Docs\n\n* [#2](https://github.com/owner/repo/pull/2): Update docs\n\n#### Other Changes\n\n* [#4](https://github.com/owner/repo/pull/4): Other label\n* [#5](https://github.com/owner/repo/pull/5): No label\nsecond line\n"
+  },
+  {
+    "options": {
+      "changelog_type": "pull_request",
+      "changelog_filename": "CHANGELOG.rst",
+      "exclude_labels": [
+        "skip"
+      ],
+      "include_unlabeled_changes": true,
+      "group_config": [
+        {
+          "title": "Fixes",
+          "labels": [
+            "bug"
+          ]
+        },
+        {
+          "title": "Docs",
+          "labels": [
+            "docs"
+          ]
+        }
+      ]
+    },
+    "entries": [
+      {
+        "title": "Fix café 🐛",
+        "number": 1,
+        "url": "https://github.com/owner/repo/pull/1",
+        "labels": [
+          "bug",
+          "docs"
+        ]
+      },
+      {
+        "title": "Update docs",
+        "number": 2,
+        "url": "https://github.com/owner/repo/pull/2",
+        "labels": [
+          "docs"
+        ]
+      },
+      {
+        "title": "Skipped change",
+        "number": 3,
+        "url": "https://github.com/owner/repo/pull/3",
+        "labels": [
+          "skip"
+        ]
+      },
+      {
+        "title": "Other label",
+        "number": 4,
+        "url": "https://github.com/owner/repo/pull/4",
+        "labels": [
+          "enhancement"
+        ]
+      },
+      {
+        "title": "No label\nsecond line",
+        "number": 5,
+        "url": "https://github.com/owner/repo/pull/5",
+        "labels": []
+      }
+    ],
+    "version": "v2.0.0",
+    "expected": "Version: v2.0.0\n===============\n\n\nFixes\n -----\n\n* `#1 <https://github.com/owner/repo/pull/1>`__: Fix café 🐛\n\nDocs\n ----\n\n* `#2 <https://github.com/owner/repo/pull/2>`__: Update docs\n\nOther Changes\n-------------\n\n* `#4 <https://github.com/owner/repo/pull/4>`__: Other label\n* `#5 <https://github.com/owner/repo/pull/5>`__: No label\nsecond line\n"
+  },
+  {
+    "options": {
+      "changelog_type": "commit_message",
+      "changelog_filename": "CHANGELOG.md",
+      "exclude_labels": [
+        "skip"
+      ],
+      "include_unlabeled_changes": false,
+      "group_config": []
+    },
+    "entries": [
+      {
+        "sha": "abcdef0123456789",
+        "url": "https://github.com/owner/repo/commit/abcdef0123456789",
+        "message": "Fix café\n\nMore details 🐛"
+      },
+      {
+        "sha": "1234567890abcdef",
+        "url": "https://github.com/owner/repo/commit/1234567890abcdef",
+        "message": "::warning::literal text"
+      }
+    ],
+    "version": "v2.0.0",
+    "expected": "# Version: v2.0.0\n\n* [abcdef0](https://github.com/owner/repo/commit/abcdef0123456789): Fix café\n\nMore details 🐛\n* [1234567](https://github.com/owner/repo/commit/1234567890abcdef): ::warning::literal text\n"
+  },
+  {
+    "options": {
+      "changelog_type": "commit_message",
+      "changelog_filename": "CHANGELOG.rst",
+      "exclude_labels": [
+        "skip"
+      ],
+      "include_unlabeled_changes": false,
+      "group_config": []
+    },
+    "entries": [
+      {
+        "sha": "abcdef0123456789",
+        "url": "https://github.com/owner/repo/commit/abcdef0123456789",
+        "message": "Fix café\n\nMore details 🐛"
+      },
+      {
+        "sha": "1234567890abcdef",
+        "url": "https://github.com/owner/repo/commit/1234567890abcdef",
+        "message": "::warning::literal text"
+      }
+    ],
+    "version": "v2.0.0",
+    "expected": "Version: v2.0.0\n===============\n\n* `abcdef0 <https://github.com/owner/repo/commit/abcdef0123456789>`__: Fix café\n\nMore details 🐛\n* `1234567 <https://github.com/owner/repo/commit/1234567890abcdef>`__: ::warning::literal text\n"
+  },
+  {
+    "options": {
+      "changelog_type": "commit_message",
+      "changelog_filename": "CHANGELOG.md",
+      "exclude_labels": [
+        "skip"
+      ],
+      "include_unlabeled_changes": true,
+      "group_config": []
+    },
+    "entries": [
+      {
+        "sha": "abcdef0123456789",
+        "url": "https://github.com/owner/repo/commit/abcdef0123456789",
+        "message": "Fix café\n\nMore details 🐛"
+      },
+      {
+        "sha": "1234567890abcdef",
+        "url": "https://github.com/owner/repo/commit/1234567890abcdef",
+        "message": "::warning::literal text"
+      }
+    ],
+    "version": "v2.0.0",
+    "expected": "# Version: v2.0.0\n\n* [abcdef0](https://github.com/owner/repo/commit/abcdef0123456789): Fix café\n\nMore details 🐛\n* [1234567](https://github.com/owner/repo/commit/1234567890abcdef): ::warning::literal text\n"
+  },
+  {
+    "options": {
+      "changelog_type": "commit_message",
+      "changelog_filename": "CHANGELOG.rst",
+      "exclude_labels": [
+        "skip"
+      ],
+      "include_unlabeled_changes": true,
+      "group_config": []
+    },
+    "entries": [
+      {
+        "sha": "abcdef0123456789",
+        "url": "https://github.com/owner/repo/commit/abcdef0123456789",
+        "message": "Fix café\n\nMore details 🐛"
+      },
+      {
+        "sha": "1234567890abcdef",
+        "url": "https://github.com/owner/repo/commit/1234567890abcdef",
+        "message": "::warning::literal text"
+      }
+    ],
+    "version": "v2.0.0",
+    "expected": "Version: v2.0.0\n===============\n\n* `abcdef0 <https://github.com/owner/repo/commit/abcdef0123456789>`__: Fix café\n\nMore details 🐛\n* `1234567 <https://github.com/owner/repo/commit/1234567890abcdef>`__: ::warning::literal text\n"
+  },
+  {
+    "options": {
+      "changelog_type": "commit_message",
+      "changelog_filename": "CHANGELOG.md",
+      "exclude_labels": [
+        "skip"
+      ],
+      "include_unlabeled_changes": false,
+      "group_config": [
+        {
+          "title": "Fixes",
+          "labels": [
+            "bug"
+          ]
+        },
+        {
+          "title": "Docs",
+          "labels": [
+            "docs"
+          ]
+        }
+      ]
+    },
+    "entries": [
+      {
+        "sha": "abcdef0123456789",
+        "url": "https://github.com/owner/repo/commit/abcdef0123456789",
+        "message": "Fix café\n\nMore details 🐛"
+      },
+      {
+        "sha": "1234567890abcdef",
+        "url": "https://github.com/owner/repo/commit/1234567890abcdef",
+        "message": "::warning::literal text"
+      }
+    ],
+    "version": "v2.0.0",
+    "expected": "# Version: v2.0.0\n\n* [abcdef0](https://github.com/owner/repo/commit/abcdef0123456789): Fix café\n\nMore details 🐛\n* [1234567](https://github.com/owner/repo/commit/1234567890abcdef): ::warning::literal text\n"
+  },
+  {
+    "options": {
+      "changelog_type": "commit_message",
+      "changelog_filename": "CHANGELOG.rst",
+      "exclude_labels": [
+        "skip"
+      ],
+      "include_unlabeled_changes": false,
+      "group_config": [
+        {
+          "title": "Fixes",
+          "labels": [
+            "bug"
+          ]
+        },
+        {
+          "title": "Docs",
+          "labels": [
+            "docs"
+          ]
+        }
+      ]
+    },
+    "entries": [
+      {
+        "sha": "abcdef0123456789",
+        "url": "https://github.com/owner/repo/commit/abcdef0123456789",
+        "message": "Fix café\n\nMore details 🐛"
+      },
+      {
+        "sha": "1234567890abcdef",
+        "url": "https://github.com/owner/repo/commit/1234567890abcdef",
+        "message": "::warning::literal text"
+      }
+    ],
+    "version": "v2.0.0",
+    "expected": "Version: v2.0.0\n===============\n\n* `abcdef0 <https://github.com/owner/repo/commit/abcdef0123456789>`__: Fix café\n\nMore details 🐛\n* `1234567 <https://github.com/owner/repo/commit/1234567890abcdef>`__: ::warning::literal text\n"
+  },
+  {
+    "options": {
+      "changelog_type": "commit_message",
+      "changelog_filename": "CHANGELOG.md",
+      "exclude_labels": [
+        "skip"
+      ],
+      "include_unlabeled_changes": true,
+      "group_config": [
+        {
+          "title": "Fixes",
+          "labels": [
+            "bug"
+          ]
+        },
+        {
+          "title": "Docs",
+          "labels": [
+            "docs"
+          ]
+        }
+      ]
+    },
+    "entries": [
+      {
+        "sha": "abcdef0123456789",
+        "url": "https://github.com/owner/repo/commit/abcdef0123456789",
+        "message": "Fix café\n\nMore details 🐛"
+      },
+      {
+        "sha": "1234567890abcdef",
+        "url": "https://github.com/owner/repo/commit/1234567890abcdef",
+        "message": "::warning::literal text"
+      }
+    ],
+    "version": "v2.0.0",
+    "expected": "# Version: v2.0.0\n\n* [abcdef0](https://github.com/owner/repo/commit/abcdef0123456789): Fix café\n\nMore details 🐛\n* [1234567](https://github.com/owner/repo/commit/1234567890abcdef): ::warning::literal text\n"
+  },
+  {
+    "options": {
+      "changelog_type": "commit_message",
+      "changelog_filename": "CHANGELOG.rst",
+      "exclude_labels": [
+        "skip"
+      ],
+      "include_unlabeled_changes": true,
+      "group_config": [
+        {
+          "title": "Fixes",
+          "labels": [
+            "bug"
+          ]
+        },
+        {
+          "title": "Docs",
+          "labels": [
+            "docs"
+          ]
+        }
+      ]
+    },
+    "entries": [
+      {
+        "sha": "abcdef0123456789",
+        "url": "https://github.com/owner/repo/commit/abcdef0123456789",
+        "message": "Fix café\n\nMore details 🐛"
+      },
+      {
+        "sha": "1234567890abcdef",
+        "url": "https://github.com/owner/repo/commit/1234567890abcdef",
+        "message": "::warning::literal text"
+      }
+    ],
+    "version": "v2.0.0",
+    "expected": "Version: v2.0.0\n===============\n\n* `abcdef0 <https://github.com/owner/repo/commit/abcdef0123456789>`__: Fix café\n\nMore details 🐛\n* `1234567 <https://github.com/owner/repo/commit/1234567890abcdef>`__: ::warning::literal text\n"
+  }
+]
