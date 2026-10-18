@@ -131,13 +131,13 @@ def test_release_metadata_is_consistent() -> None:
 @pytest.mark.parametrize(
     "tag,package_version,action_version",
     (
-        pytest.param("2.0.1", "2.0.1", "2.0.1", id="missing-tag-prefix"),
-        pytest.param("vv2.0.1", "2.0.1", "2.0.1", id="duplicate-tag-prefix"),
-        pytest.param("v2.0.1\n", "2.0.1", "2.0.1", id="multiline-tag"),
-        pytest.param("v2.0.2", "2.0.1", "2.0.1", id="mismatched-tag"),
-        pytest.param("v2.0.1", "v2.0.1", "2.0.1", id="prefixed-package-version"),
-        pytest.param("v2.0.1", "2.0.1", "v2.0.1", id="prefixed-action-version"),
-        pytest.param("v2.0.1", "2.0.1", "2.0.2", id="mismatched-action-version"),
+        pytest.param("2.0.2", "2.0.2", "2.0.2", id="missing-tag-prefix"),
+        pytest.param("vv2.0.2", "2.0.2", "2.0.2", id="duplicate-tag-prefix"),
+        pytest.param("v2.0.2\n", "2.0.2", "2.0.2", id="multiline-tag"),
+        pytest.param("v2.0.3", "2.0.2", "2.0.2", id="mismatched-tag"),
+        pytest.param("v2.0.2", "v2.0.2", "2.0.2", id="prefixed-package-version"),
+        pytest.param("v2.0.2", "2.0.2", "v2.0.2", id="prefixed-action-version"),
+        pytest.param("v2.0.2", "2.0.2", "2.0.3", id="mismatched-action-version"),
     ),
 )
 def test_invalid_release_metadata(

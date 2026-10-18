@@ -143,7 +143,7 @@ def prepare(root: Path, directory: Path, scenario: str = "comment") -> None:
     if scenario != "dispatch":
         event["number"] = 9
         event["pull_request"] = {
-            "title": "Release v2.0.1",
+            "title": "Release v2.0.2",
             "head": {"ref": "release", "repo": {"full_name": "owner/repo"}},
             "base": {"ref": "main", "repo": {"full_name": "owner/repo"}},
         }
@@ -231,7 +231,7 @@ def verify(directory: Path) -> None:
         assert not (directory / "mutation.json").exists()
     if scenario in {"comment", "dispatch"}:
         body = json.loads((directory / "mutation.json").read_text())["body"]
-        version = "1.0.0" if scenario == "dispatch" else "v2.0.1"
+        version = "1.0.0" if scenario == "dispatch" else "v2.0.2"
         assert body.startswith(f"# Version: {version}\n\n")
         assert "Fix café 🐛" in body and "\n::error::literal text" in body
     if scenario != "comment":
@@ -296,7 +296,7 @@ def exercise(root: Path, directory: Path) -> None:
         )
         output = Path(env["GITHUB_OUTPUT"]).read_text(encoding="utf-8")
         version = (
-            "1.0.0" if (directory / "scenario").read_text() == "dispatch" else "v2.0.1"
+            "1.0.0" if (directory / "scenario").read_text() == "dispatch" else "v2.0.2"
         )
         values: dict[str, str] = {}
         lines = iter(output.splitlines())
