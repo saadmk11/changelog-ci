@@ -151,6 +151,15 @@ creates a changelog branch and opens a PR against the dispatched branch by
 default. Tag dispatches use the repository's default branch. The PR body contains
 the changelog. Commenting applies to existing PRs on `pull_request` events.
 
+To add fields to GitHub's **Run workflow** form, declare them under
+`on.workflow_dispatch.inputs` in your workflow and pass their values to the
+Action through `with`. Inputs defined in `action.yaml` do not automatically
+appear in the form. Only declare the values you want users to enter manually;
+other Action inputs can use defaults or configuration-file values.
+
+The example below adds a required `release_version` field for manual runs.
+PR runs continue to select the version from the PR title.
+
 #### Workflow with All Options:
 
 ```yaml
@@ -201,7 +210,7 @@ jobs:
           # In this example `release_version` is fetched from `workflow_dispatch` events input.
           # You can use any other method to fetch the release version
           # such as environment variable or from output of another action
-          release_version: ${{ github.event.inputs.release_version }}
+          release_version: ${{ inputs.release_version }}
           # Optional
           github_token: ${{ secrets.GITHUB_TOKEN }}
 ```
