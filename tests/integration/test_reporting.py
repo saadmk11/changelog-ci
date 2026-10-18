@@ -8,6 +8,7 @@ from typer.testing import CliRunner
 
 from gh_changelog_ci.cli import app
 from gh_changelog_ci.errors import ChangelogError, ConfigurationError
+from tests.git import command
 
 pytestmark = [
     pytest.mark.actions,
@@ -47,15 +48,18 @@ def test_multiline_output_unicode_delimiters_and_commands(
 
 
 @pytest.mark.parametrize("level", ["notice", "warning", "error"])
+@pytest.mark.parametrize("quiet", [False, True])
 def test_diagnostics_redact_secrets_and_escape_commands(
-    capsys: pytest.CaptureFixture[str], level: str
+    capsys: pytest.CaptureFixture[str], level: str, quiet: bool
 ) -> None:
     from gh_changelog_ci.actions.reporting import GitHubReporter
 
-    reporter = GitHubReporter("secret")
+    reporter = GitHubReporter("secret", quiet=quiet)
     capsys.readouterr()
     getattr(reporter, level)("secret\n::error::injected")
-    assert capsys.readouterr().out == f"::{level} ::***%0A::error::injected\n"
+    assert capsys.readouterr().out == (
+        "" if quiet and level == "notice" else f"::{level} ::***%0A::error::injected\n"
+    )
 
 
 def test_preview_redacts_secrets_and_resumes_workflow_commands(
@@ -75,6 +79,200 @@ def test_preview_redacts_secrets_and_resumes_workflow_commands(
         r"::endgroup::\n",
         output,
     )
+
+
+@pytest.mark.parametrize("quiet", [False, True])
+def test_progress_groups_escape_titles_and_close_on_failure(
+    quiet: bool, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from gh_changelog_ci.actions.reporting import GitHubReporter
+
+    reporter = GitHubReporter("secret", quiet=quiet)
+    capsys.readouterr()
+    with pytest.raises(RuntimeError), reporter.group("secret\n::error::injected"):
+        reporter.notice("Working.")
+        raise RuntimeError
+    output = capsys.readouterr().out
+    assert output == (
+        ""
+        if quiet
+        else "::group ::***%0A::error::injected\n::notice ::Working.\n::endgroup::\n"
+    )
+
+
+@pytest.mark.parametrize("mode", ["default", "quiet", "verbose"])
+@pytest.mark.parametrize("event", ["pull_request", "workflow_dispatch"])
+def test_successful_action_reports_progress_preview_and_results(
+    mode: str,
+    event: str,
+    pr_event: Path,
+    repository: tuple[Path, Path],
+    cli_api: list[httpx.Request],
+    cli_changes: list[dict[str, object]],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace, remote = repository
+    output = tmp_path / "output"
+    summary = tmp_path / "summary"
+    cli_changes[0]["title"] = "Fix secret\n::error::injected"
+    for key, value in {
+        "GITHUB_EVENT_NAME": event,
+        "GITHUB_OUTPUT": str(output),
+        "GITHUB_STEP_SUMMARY": str(summary),
+        "_CHANGELOG_CI_COMPOSITE": "true",
+    }.items():
+        monkeypatch.setenv(key, value)
+    args = [
+        "actions",
+        "--output-mode",
+        "github",
+        "--github-token",
+        "secret",
+        "--summary",
+    ]
+    if event == "pull_request":
+        branch = "main"
+        args.append("--comment-changelog")
+    else:
+        branch = "release-notes"
+        args += ["--release-version", "v2.0.1", "--new-branch", branch]
+    if mode != "default":
+        args.append(f"--{mode}")
+    result = CliRunner().invoke(app, args)
+    assert result.exit_code == 0, result.output
+    assert result.stderr == ""
+    log = result.stdout.removeprefix("::add-mask ::secret\n")
+    expected = (
+        "# Version: v2.0.1\n\n"
+        "* [#1](https://github.com/o/r/pull/1): Fix ***\n::error::injected\n"
+    )
+    assert summary.read_text() == expected
+    assert "Fix secret" in command(remote, "show", f"{branch}:CHANGELOG.md")
+    assert "true" in output.read_text()
+    assert "secret" not in log
+    posts = [request.url.path for request in cli_api if request.method == "POST"]
+    if event == "pull_request":
+        assert posts == ["/repos/o/r/issues/9/comments"]
+        success = "Changelog comment added to pull request #9."
+    else:
+        assert posts == ["/repos/o/r/pulls"]
+        success = "Pull request opened at https://github.com/o/r/pull/9."
+    if mode == "quiet":
+        assert log == ""
+    else:
+        assert "::group ::Generate changelog\n" in log
+        assert "Generating changelog for version v2.0.1." in log
+        assert "::group ::Commit and push changelog\n" in log
+        assert "Changelog committed and pushed." in log
+        details = [
+            "Collecting pull_request changes.",
+            "Repository: o/r.",
+            "Collected 1 change.",
+            "::group ::Prepare changelog branch\n",
+            "Commit author:",
+            "Changelog file: CHANGELOG.md.",
+            f"Push branch: {branch}.",
+            "Updating CHANGELOG.md.",
+            "::group ::Changelog preview\n",
+        ]
+        details += (
+            [
+                "Checking out pull request branch main.",
+                "Adding changelog to pull request",
+            ]
+            if event == "pull_request"
+            else [
+                f"Creating branch {branch} from main.",
+                f"Opening a pull request from {branch} to main.",
+            ]
+        )
+        for detail in details:
+            assert (detail in log) == (mode == "verbose"), detail
+        assert success in log
+        assert log.endswith("::notice ::Changelog CI complete.\n")
+        assert log.count("::group ") == log.count("::endgroup::")
+        if mode == "verbose":
+            assert re.search(
+                r"::stop-commands::([0-9a-f]{32})\n"
+                + re.escape(expected)
+                + r"\n::\1::\n",
+                log,
+            )
+
+
+def test_failed_comment_closes_progress_group_without_success_message(
+    pr_event: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from gh_changelog_ci.github import GitHub
+    from tests.github import response
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(403)
+        return response(request)
+
+    def factory(api_url: str, token: str | None = None) -> GitHub:
+        return GitHub(api_url, token, transport=httpx.MockTransport(handle))
+
+    monkeypatch.setattr("gh_changelog_ci.cli.GitHub", factory)
+    monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "output"))
+    result = CliRunner().invoke(
+        app,
+        [
+            "actions",
+            "--output-mode",
+            "github",
+            "--github-token",
+            "secret",
+            "--no-commit-changelog",
+            "--comment-changelog",
+        ],
+    )
+    assert result.exit_code == 1, result.output
+    assert "Changelog comment added" not in result.stdout
+    assert "Changelog CI complete." not in result.stdout
+    assert result.stdout.count("::group ") == result.stdout.count("::endgroup::")
+    assert "::endgroup::\n::error ::" in result.stdout
+    assert not (tmp_path / "output").exists()
+
+
+@pytest.mark.parametrize("preview", ["--dry-run", "--diff"])
+@pytest.mark.parametrize("mode", ["default", "quiet", "verbose"])
+def test_action_prints_only_one_explicit_preview(
+    preview: str,
+    mode: str,
+    pr_event: Path,
+    cli_api: list[httpx.Request],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "output"))
+    args = [
+        "actions",
+        "--output-mode",
+        "github",
+        "--github-token",
+        "secret",
+        "--no-commit-changelog",
+        "--comment-changelog",
+        preview,
+    ]
+    if mode != "default":
+        args.append(f"--{mode}")
+    result = CliRunner().invoke(app, args)
+    assert result.exit_code == 0, result.output
+    assert result.stdout.count("::group ::Changelog preview\n") == 1
+    assert result.stdout.count("Change 1") == 1
+    if mode == "quiet":
+        assert "::notice" not in result.stdout
+    assert ("Changelog CI complete." in result.stdout) == (
+        preview == "--diff" and mode != "quiet"
+    )
+    assert not (tmp_path / "CHANGELOG.md").exists()
+    assert sum(request.method == "POST" for request in cli_api) == (preview == "--diff")
 
 
 @pytest.mark.parametrize(
@@ -190,7 +388,7 @@ def test_reporter_requires_runner_before_masking(
 
 
 @pytest.mark.parametrize(
-    "operation", ["notice", "warning", "error", "content", "outputs"]
+    "operation", ["group", "notice", "warning", "error", "content", "outputs"]
 )
 def test_reporter_cannot_be_reused_outside_runner(
     operation: str,
@@ -204,7 +402,10 @@ def test_reporter_cannot_be_reused_outside_runner(
     reporter = GitHubReporter()
     monkeypatch.delenv("GITHUB_ACTIONS")
     with pytest.raises(ConfigurationError, match="requires a GitHub Actions runner"):
-        if operation == "outputs":
+        if operation == "group":
+            with reporter.group("message"):
+                pytest.fail("Group entered outside a runner")
+        elif operation == "outputs":
             reporter.outputs({"changelog": "section"})
         else:
             getattr(reporter, operation)("message")

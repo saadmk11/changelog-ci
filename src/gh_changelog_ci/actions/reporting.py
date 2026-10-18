@@ -2,6 +2,8 @@
 
 import os
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 import github_action_utils as gha
@@ -30,6 +32,19 @@ class GitHubReporter:
     def redacted(self, text: str) -> str:
         """Redact the configured token."""
         return text.replace(self.token, "***") if self.token else text
+
+    @contextmanager
+    def group(self, title: str) -> Iterator[None]:
+        """Show collapsible workflow progress unless quiet."""
+        require_github_actions()
+        if self.quiet:
+            yield
+        else:
+            gha.start_group(escape(self.redacted(title)))
+            try:
+                yield
+            finally:
+                gha.end_group()
 
     def notice(self, message: str) -> None:
         """Write a workflow notice."""
