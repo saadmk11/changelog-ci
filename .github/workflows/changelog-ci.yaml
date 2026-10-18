@@ -17,4 +17,4 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run Changelog CI
-        uses: saadmk11/changelog-ci@v2.0.0
+        uses: saadmk11/changelog-ci@master
