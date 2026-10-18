@@ -1,3 +1,8 @@
+# Version: 2.0.1
+
+* [#124](https://github.com/saadmk11/changelog-ci/pull/124): Add grouping by linked issue types
+
+
 # Version: 2.0.0
 
 * [#120](https://github.com/saadmk11/changelog-ci/pull/120): Replace the Docker action with a composite action supporting Linux, macOS and Windows. Add standalone changelog generation, dry runs, diffs, standard output, job summaries and additional Action outputs.
