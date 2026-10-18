@@ -58,13 +58,13 @@ def generation() -> None:
                 "--repository",
                 "o/r",
                 "--release-version",
-                "2.0.0",
+                "2.0.1",
                 "--stdout",
             ],
         )
     assert result.exit_code == 0, result.output
     assert result.stdout == (
-        "# Version: 2.0.0\n\n"
+        "# Version: 2.0.1\n\n"
         "* [#1](https://github.com/o/r/pull/1): Installed package works\n"
     )
     assert result.stderr == ""

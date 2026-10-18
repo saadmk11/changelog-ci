@@ -6,7 +6,7 @@ import httpx
 
 def pull_request_event(
     *,
-    title: str = "Release v2.0.0",
+    title: str = "Release v2.0.1",
     number: int = 9,
     head: str = "main",
     head_repository: str | None = "o/r",

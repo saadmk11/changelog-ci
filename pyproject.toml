@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "gh-changelog-ci"
-version = "2.0.0"
+version = "2.0.1"
 description = "Generate changelogs from GitHub pull requests or commits."
 readme = "README.md"
 requires-python = ">=3.11"
