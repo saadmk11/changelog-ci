@@ -178,87 +178,6 @@ wheels = [
 ]
 
 [[package]]
-name = "changelog-ci"
-version = "2.0.0"
-source = { editable = "." }
-default-groups = []
-dependencies = [
-    { name = "httpx" },
-    { name = "pydantic" },
-    { name = "pyyaml" },
-    { name = "typer" },
-]
-
-[package.optional-dependencies]
-actions = [
-    { name = "github-action-utils" },
-]
-
-[package.dev-dependencies]
-build = [
-    { name = "twine" },
-    { name = "uv" },
-]
-dev = [
-    { name = "mypy" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "ruff" },
-    { name = "tox" },
-    { name = "tox-uv" },
-    { name = "twine" },
-    { name = "types-pyyaml" },
-    { name = "uv" },
-]
-lint = [
-    { name = "ruff" },
-]
-test = [
-    { name = "pytest" },
-    { name = "pytest-cov" },
-]
-typing = [
-    { name = "mypy" },
-    { name = "types-pyyaml" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "github-action-utils", marker = "extra == 'actions'", specifier = ">=1.1.0,<2" },
-    { name = "httpx", specifier = ">=0.28.1,<0.29" },
-    { name = "pydantic", specifier = ">=2.14.1,<3" },
-    { name = "pyyaml", specifier = ">=6.0.3,<7" },
-    { name = "typer", specifier = ">=0.27.3,<0.28" },
-]
-provides-extras = ["actions"]
-
-[package.metadata.requires-dev]
-build = [
-    { name = "twine", specifier = ">=6" },
-    { name = "uv", specifier = "==0.13.1" },
-]
-dev = [
-    { name = "mypy", specifier = ">=1.18" },
-    { name = "pytest", specifier = ">=9.1.1" },
-    { name = "pytest-cov", specifier = ">=7" },
-    { name = "ruff", specifier = ">=0.14" },
-    { name = "tox", specifier = ">=4.66" },
-    { name = "tox-uv", specifier = ">=1.37" },
-    { name = "twine", specifier = ">=6" },
-    { name = "types-pyyaml", specifier = ">=6" },
-    { name = "uv", specifier = "==0.13.1" },
-]
-lint = [{ name = "ruff", specifier = ">=0.14" }]
-test = [
-    { name = "pytest", specifier = ">=9.1.1" },
-    { name = "pytest-cov", specifier = ">=7" },
-]
-typing = [
-    { name = "mypy", specifier = ">=1.18" },
-    { name = "types-pyyaml", specifier = ">=6" },
-]
-
-[[package]]
 name = "charset-normalizer"
 version = "3.5.2"
 source = { registry = "https://pypi.org/simple" }
@@ -609,6 +528,87 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f4/a9/1af41b37c3279712b22cdc63aac78a52432202b6fe1f9666a2a3d2831fb4/filelock-4.2.0.tar.gz", hash = "sha256:7a60906c75227cf04d0c273afadc8219400f11aeb13cc69591d4f6cdc6c8036e", size = 569667, upload-time = "2026-10-14T20:57:13.11Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8e/a3/9bc26acff301fe1aaea1cc3d82a1d57e0a34df3e1cadbfa91ac2dbcdde5c/filelock-4.2.0-py3-none-any.whl", hash = "sha256:2ff5690882e8cdb00ef31fb3d01a3094c29f30985426c59495afb1733f3b7238", size = 135032, upload-time = "2026-10-14T20:57:11.349Z" },
+]
+
+[[package]]
+name = "gh-changelog-ci"
+version = "2.0.0"
+source = { editable = "." }
+default-groups = []
+dependencies = [
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "typer" },
+]
+
+[package.optional-dependencies]
+actions = [
+    { name = "github-action-utils" },
+]
+
+[package.dev-dependencies]
+build = [
+    { name = "twine" },
+    { name = "uv" },
+]
+dev = [
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
+    { name = "tox" },
+    { name = "tox-uv" },
+    { name = "twine" },
+    { name = "types-pyyaml" },
+    { name = "uv" },
+]
+lint = [
+    { name = "ruff" },
+]
+test = [
+    { name = "pytest" },
+    { name = "pytest-cov" },
+]
+typing = [
+    { name = "mypy" },
+    { name = "types-pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "github-action-utils", marker = "extra == 'actions'", specifier = ">=1.1.0,<2" },
+    { name = "httpx", specifier = ">=0.28.1,<0.29" },
+    { name = "pydantic", specifier = ">=2.14.1,<3" },
+    { name = "pyyaml", specifier = ">=6.0.3,<7" },
+    { name = "typer", specifier = ">=0.27.3,<0.28" },
+]
+provides-extras = ["actions"]
+
+[package.metadata.requires-dev]
+build = [
+    { name = "twine", specifier = ">=6" },
+    { name = "uv", specifier = "==0.13.1" },
+]
+dev = [
+    { name = "mypy", specifier = ">=1.18" },
+    { name = "pytest", specifier = ">=9.1.1" },
+    { name = "pytest-cov", specifier = ">=7" },
+    { name = "ruff", specifier = ">=0.14" },
+    { name = "tox", specifier = ">=4.66" },
+    { name = "tox-uv", specifier = ">=1.37" },
+    { name = "twine", specifier = ">=6" },
+    { name = "types-pyyaml", specifier = ">=6" },
+    { name = "uv", specifier = "==0.13.1" },
+]
+lint = [{ name = "ruff", specifier = ">=0.14" }]
+test = [
+    { name = "pytest", specifier = ">=9.1.1" },
+    { name = "pytest-cov", specifier = ">=7" },
+]
+typing = [
+    { name = "mypy", specifier = ">=1.18" },
+    { name = "types-pyyaml", specifier = ">=6" },
 ]
 
 [[package]]

@@ -3,8 +3,8 @@ from datetime import UTC, datetime
 import httpx
 import pytest
 
-from changelog_ci.errors import APIError, ChangelogError
-from changelog_ci.github import GitHub
+from gh_changelog_ci.errors import APIError, ChangelogError
+from gh_changelog_ci.github import GitHub
 from tests.github import pull_request
 
 CUTOFF = datetime(2026, 1, 2, tzinfo=UTC)

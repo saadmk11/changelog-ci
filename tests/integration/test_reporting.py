@@ -6,8 +6,8 @@ import httpx
 import pytest
 from typer.testing import CliRunner
 
-from changelog_ci.cli import app
-from changelog_ci.errors import ChangelogError, ConfigurationError
+from gh_changelog_ci.cli import app
+from gh_changelog_ci.errors import ChangelogError, ConfigurationError
 
 pytestmark = [
     pytest.mark.actions,
@@ -22,7 +22,7 @@ pytestmark = [
 def test_multiline_output_unicode_delimiters_and_commands(
     legacy: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from changelog_ci.actions.reporting import GitHubReporter
+    from gh_changelog_ci.actions.reporting import GitHubReporter
 
     path = tmp_path / "output"
     monkeypatch.setenv("GITHUB_OUTPUT", str(path))
@@ -50,7 +50,7 @@ def test_multiline_output_unicode_delimiters_and_commands(
 def test_diagnostics_redact_secrets_and_escape_commands(
     capsys: pytest.CaptureFixture[str], level: str
 ) -> None:
-    from changelog_ci.actions.reporting import GitHubReporter
+    from gh_changelog_ci.actions.reporting import GitHubReporter
 
     reporter = GitHubReporter("secret")
     capsys.readouterr()
@@ -61,7 +61,7 @@ def test_diagnostics_redact_secrets_and_escape_commands(
 def test_preview_redacts_secrets_and_resumes_workflow_commands(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    from changelog_ci.actions.reporting import GitHubReporter
+    from gh_changelog_ci.actions.reporting import GitHubReporter
 
     reporter = GitHubReporter("secret")
     capsys.readouterr()
@@ -87,7 +87,7 @@ def test_preview_redacts_secrets_and_resumes_workflow_commands(
 def test_output_limit_is_checked_before_writing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, value: str, legacy: bool
 ) -> None:
-    from changelog_ci.actions.reporting import GitHubReporter
+    from gh_changelog_ci.actions.reporting import GitHubReporter
 
     output = tmp_path / "output"
     monkeypatch.setenv("GITHUB_OUTPUT", str(output))
@@ -99,7 +99,7 @@ def test_output_limit_is_checked_before_writing(
 def test_summary_limit_warns_without_losing_outputs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from changelog_ci.actions.reporting import GitHubReporter
+    from gh_changelog_ci.actions.reporting import GitHubReporter
 
     output = tmp_path / "output"
     summary = tmp_path / "summary"
@@ -117,7 +117,7 @@ def test_summary_limit_warns_without_losing_outputs(
 
 
 def test_missing_output_file_environment() -> None:
-    from changelog_ci.actions.reporting import GitHubReporter
+    from gh_changelog_ci.actions.reporting import GitHubReporter
 
     with pytest.raises(ChangelogError, match="GITHUB_OUTPUT"):
         GitHubReporter().outputs({"changed": "false"})
@@ -166,7 +166,7 @@ def test_generate_writes_github_outputs_and_summary_only_on_runner(
 def test_legacy_escaping_applies_only_to_changelog(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from changelog_ci.actions.reporting import GitHubReporter
+    from gh_changelog_ci.actions.reporting import GitHubReporter
 
     output = tmp_path / "output"
     monkeypatch.setenv("GITHUB_OUTPUT", str(output))
@@ -181,7 +181,7 @@ def test_legacy_escaping_applies_only_to_changelog(
 def test_reporter_requires_runner_before_masking(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from changelog_ci.actions.reporting import GitHubReporter
+    from gh_changelog_ci.actions.reporting import GitHubReporter
 
     monkeypatch.delenv("GITHUB_ACTIONS")
     with pytest.raises(ConfigurationError, match="requires a GitHub Actions runner"):
@@ -198,7 +198,7 @@ def test_reporter_cannot_be_reused_outside_runner(
     capsys: pytest.CaptureFixture[str],
     tmp_path: Path,
 ) -> None:
-    from changelog_ci.actions.reporting import GitHubReporter
+    from gh_changelog_ci.actions.reporting import GitHubReporter
 
     monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "output"))
     reporter = GitHubReporter()

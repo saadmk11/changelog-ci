@@ -51,7 +51,7 @@ def require_actions() -> None:
     """Require the actions extra."""
     if importlib.util.find_spec("github_action_utils") is None:
         raise ConfigurationError(
-            "Install the optional integration: pip install 'changelog-ci[actions]'."
+            "Install the optional integration: pip install 'gh-changelog-ci[actions]'."
         )
 
 

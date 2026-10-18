@@ -16,19 +16,20 @@ def check() -> None:
     root = Path(__file__).resolve().parents[2]
     metadata = tomllib.loads((root / "pyproject.toml").read_text())["project"]
     version = metadata["version"]
+    assert not version.startswith("v")
     artifacts = [
-        root / "dist" / f"changelog_ci-{version}-py3-none-any.whl",
-        root / "dist" / f"changelog_ci-{version}.tar.gz",
+        root / "dist" / f"gh_changelog_ci-{version}-py3-none-any.whl",
+        root / "dist" / f"gh_changelog_ci-{version}.tar.gz",
     ]
     with zipfile.ZipFile(artifacts[0]) as wheel:
         names = wheel.namelist()
-        assert "changelog_ci/py.typed" in names
+        assert "gh_changelog_ci/py.typed" in names
         assert any(name.endswith("/LICENSE") for name in names)
         assert not any(name.startswith(("scripts/", "tests/")) for name in names)
         info = email.message_from_bytes(
-            wheel.read(f"changelog_ci-{version}.dist-info/METADATA")
+            wheel.read(f"gh_changelog_ci-{version}.dist-info/METADATA")
         )
-        assert info["Name"] == "changelog-ci" and info["Version"] == version
+        assert info["Name"] == "gh-changelog-ci" and info["Version"] == version
         assert info["Requires-Python"] == ">=3.11"
         assert info["License-Expression"] == "MIT"
         assert "What is Changelog CI?" in str(info.get_payload())
@@ -40,7 +41,12 @@ def check() -> None:
         )
     with tarfile.open(artifacts[1]) as sdist:
         names = sdist.getnames()
-        prefix = f"changelog_ci-{version}/"
+        prefix = f"gh_changelog_ci-{version}/"
+        package_info = sdist.extractfile(prefix + "PKG-INFO")
+        assert package_info is not None
+        with package_info:
+            info = email.message_from_bytes(package_info.read())
+        assert info["Name"] == "gh-changelog-ci" and info["Version"] == version
         assert not any(name.startswith(prefix + "scripts/") for name in names)
         for obsolete in (
             "Dockerfile",
@@ -55,7 +61,7 @@ def check() -> None:
             "README.md",
             "LICENSE",
             "pyproject.toml",
-            "src/changelog_ci/py.typed",
+            "src/gh_changelog_ci/py.typed",
         ):
             assert any(name.endswith("/" + file) for name in names)
     subprocess.run(
@@ -84,7 +90,9 @@ def check() -> None:
                 cwd=outside,
             )
             console = environment / (
-                "Scripts/changelog-ci.exe" if os.name == "nt" else "bin/changelog-ci"
+                "Scripts/gh-changelog-ci.exe"
+                if os.name == "nt"
+                else "bin/gh-changelog-ci"
             )
             result = subprocess.run(
                 [str(console), "--version"],
@@ -99,7 +107,7 @@ def check() -> None:
                 (("generate",), "--repository"),
             ):
                 help_result = subprocess.run(
-                    [str(python), "-I", "-m", "changelog_ci", *args, "--help"],
+                    [str(python), "-I", "-m", "gh_changelog_ci", *args, "--help"],
                     check=True,
                     cwd=outside,
                     capture_output=True,

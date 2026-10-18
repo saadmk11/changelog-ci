@@ -4,15 +4,15 @@ from pathlib import Path
 import pytest
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from changelog_ci.config import (
+from gh_changelog_ci.config import (
     LEGACY_FIELDS,
     legacy_settings,
     resolve_actions,
     resolve_standalone,
 )
-from changelog_ci.errors import ConfigurationError
-from changelog_ci.models import Group, Settings
-from changelog_ci.reporting import TerminalReporter
+from gh_changelog_ci.errors import ConfigurationError
+from gh_changelog_ci.models import Group, Settings
+from gh_changelog_ci.reporting import TerminalReporter
 
 
 class LegacyConfig(BaseModel):

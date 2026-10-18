@@ -7,16 +7,16 @@ import httpx
 import pytest
 from typer.testing import CliRunner
 
-from changelog_ci.actions.context import load_context
-from changelog_ci.actions.git import Git
-from changelog_ci.actions.github import comment, create_pull_request
-from changelog_ci.actions.runner import run
-from changelog_ci.cli import app
-from changelog_ci.config import resolve_actions
-from changelog_ci.errors import ConfigurationError
-from changelog_ci.github import GitHub
-from changelog_ci.models import Settings
-from changelog_ci.reporting import TerminalReporter
+from gh_changelog_ci.actions.context import load_context
+from gh_changelog_ci.actions.git import Git
+from gh_changelog_ci.actions.github import comment, create_pull_request
+from gh_changelog_ci.actions.runner import run
+from gh_changelog_ci.cli import app
+from gh_changelog_ci.config import resolve_actions
+from gh_changelog_ci.errors import ConfigurationError
+from gh_changelog_ci.github import GitHub
+from gh_changelog_ci.models import Settings
+from gh_changelog_ci.reporting import TerminalReporter
 
 
 def unexpected(*args: object, **kwargs: object) -> NoReturn:
@@ -33,8 +33,8 @@ def test_local_actions_stop_before_dependency_and_configuration_loading(
     if flag is not None:
         monkeypatch.setenv("GITHUB_ACTIONS", flag)
     monkeypatch.setenv("_CHANGELOG_CI_COMPOSITE", "true")
-    monkeypatch.setattr("changelog_ci.cli.require_actions", unexpected)
-    monkeypatch.setattr("changelog_ci.cli.resolve_actions", unexpected)
+    monkeypatch.setattr("gh_changelog_ci.cli.require_actions", unexpected)
+    monkeypatch.setattr("gh_changelog_ci.cli.resolve_actions", unexpected)
     result = CliRunner().invoke(
         app, ["actions", "--config-file", "missing.json", "--dry-run"]
     )
@@ -56,7 +56,7 @@ def test_workflow_operations_reject_direct_local_calls(
     monkeypatch.setenv("GITHUB_EVENT_NAME", "pull_request")
     monkeypatch.setenv("GITHUB_EVENT_PATH", str(tmp_path / "event.json"))
     monkeypatch.setattr(Path, "read_bytes", unexpected)
-    monkeypatch.setattr("changelog_ci.config.load_file", unexpected)
+    monkeypatch.setattr("gh_changelog_ci.config.load_file", unexpected)
     monkeypatch.setattr(GitHub, "request", unexpected)
     monkeypatch.setattr(subprocess, "run", unexpected)
     with pytest.raises(ConfigurationError, match="requires a GitHub Actions runner"):
@@ -88,8 +88,8 @@ def test_generate_never_runs_workflow_operations(
     if on_runner:
         monkeypatch.setenv("GITHUB_ACTIONS", "true")
     monkeypatch.setenv("GITHUB_EVENT_PATH", str(tmp_path / "missing-event.json"))
-    monkeypatch.setattr("changelog_ci.actions.context.load_context", unexpected)
-    monkeypatch.setattr("changelog_ci.actions.runner.run", unexpected)
+    monkeypatch.setattr("gh_changelog_ci.actions.context.load_context", unexpected)
+    monkeypatch.setattr("gh_changelog_ci.actions.runner.run", unexpected)
     monkeypatch.setattr(subprocess, "run", unexpected)
     config = tmp_path / "settings.json"
     config.write_text(
@@ -133,7 +133,7 @@ def test_local_generation_cannot_enable_workflow_reporting(
 ) -> None:
     monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "output"))
     monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(tmp_path / "summary"))
-    monkeypatch.setattr("changelog_ci.cli.require_actions", unexpected)
+    monkeypatch.setattr("gh_changelog_ci.cli.require_actions", unexpected)
     result = CliRunner().invoke(
         app,
         [

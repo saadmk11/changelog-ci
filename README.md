@@ -28,9 +28,9 @@ The workflow can be configured to perform **any (or all)** of the following acti
 
 | | GitHub Action | Python package |
 | --- | --- | --- |
-| Run with | `uses: saadmk11/changelog-ci@v2.0.0` | `pip install changelog-ci` or `uvx changelog-ci` |
-| Changelog text | Use the `changelog` output | `changelog-ci generate` |
-| Commit, comment or open a PR | Configure the Action inputs | Install `changelog-ci[actions]` and run `changelog-ci actions` |
+| Run with | `uses: saadmk11/changelog-ci@v2.0.0` | `pip install gh-changelog-ci` or `uvx gh-changelog-ci` |
+| Changelog text | Use the `changelog` output | `gh-changelog-ci generate` |
+| Commit, comment or open a PR | Configure the Action inputs | Install `gh-changelog-ci[actions]` and run `gh-changelog-ci actions` |
 
 The Python package supports CPython 3.11–3.15. The Action installs its own
 isolated CPython 3.15 environment.
@@ -433,24 +433,24 @@ and append another comment.
 Install the package with pip or uv:
 
 ```sh
-pip install changelog-ci
-uv tool install changelog-ci
+pip install gh-changelog-ci
+uv tool install gh-changelog-ci
 ```
 
 For package invocation of the integration inside GitHub Actions, install the extra:
 
 ```sh
-pip install 'changelog-ci[actions]'
+pip install 'gh-changelog-ci[actions]'
 ```
 
 ```sh
-uvx changelog-ci generate --repository owner/repo --release-version 2.0.0
-changelog-ci generate --repository owner/repo --release-version 2.0.0 --stdout
-changelog-ci generate --repository owner/repo --release-version 2.0.0 \
+uvx gh-changelog-ci generate --repository owner/repo --release-version 2.0.0
+gh-changelog-ci generate --repository owner/repo --release-version 2.0.0 --stdout
+gh-changelog-ci generate --repository owner/repo --release-version 2.0.0 \
   --changelog-type commit_message --changelog-filename CHANGELOG.rst
 ```
 
-`changelog-ci --version` reports the installed package version. `python -m changelog_ci --help` provides the same commands.
+`gh-changelog-ci --version` reports the installed package version. `python -m gh_changelog_ci --help` provides the same commands.
 
 `generate` collects and renders changes and normally prepends them to the file.
 It never stages, commits, pushes, comments or creates PRs. `--stdout` prints only
@@ -562,7 +562,7 @@ interpreters and fails if a required version is unavailable. Base environments
 exclude the actions extra. `minimum` and `latest` recreate their environments
 and resolve dependencies independently of the lockfile.
 
-Code lives in `src/changelog_ci`; Git and GitHub mutations are under `actions/`.
+Code lives in `src/gh_changelog_ci`; Git and GitHub mutations are under `actions/`.
 Both commands use the same immutable `Settings` model. Runner event facts are
 held separately in an immutable context and are loaded only inside GitHub Actions.
 Run Ruff and strict mypy on production code and tests. Add regression tests for
@@ -577,7 +577,7 @@ three platforms. Its API and Git destinations are local test services.
 ## Releasing
 
 Configure the protected `pypi` environment and a matching PyPI Trusted Publisher
-for `changelog-ci`. Use a separate TestPyPI environment and publisher for a
+for `gh-changelog-ci`. Use a separate TestPyPI environment and publisher for a
 publishing rehearsal.
 
 1. Set the version in `pyproject.toml` and the exact package requirement in

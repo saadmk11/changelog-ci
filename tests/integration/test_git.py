@@ -2,10 +2,10 @@ from pathlib import Path
 
 import pytest
 
-from changelog_ci.actions.git import Git, branch_component
-from changelog_ci.errors import ConfigurationError, GitError
-from changelog_ci.files import write_atomic
-from changelog_ci.models import Settings
+from gh_changelog_ci.actions.git import Git, branch_component
+from gh_changelog_ci.errors import ConfigurationError, GitError
+from gh_changelog_ci.files import write_atomic
+from gh_changelog_ci.models import Settings
 from tests.git import command
 
 pytestmark = pytest.mark.actions

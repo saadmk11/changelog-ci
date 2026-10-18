@@ -1,9 +1,9 @@
 import httpx
 import pytest
 
-from changelog_ci.actions.github import comment, create_pull_request
-from changelog_ci.errors import APIError, ChangelogError
-from changelog_ci.github import GitHub
+from gh_changelog_ci.actions.github import comment, create_pull_request
+from gh_changelog_ci.errors import APIError, ChangelogError
+from gh_changelog_ci.github import GitHub
 
 pytestmark = pytest.mark.actions
 

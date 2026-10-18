@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from changelog_ci.errors import ChangelogError, ConfigurationError
-from changelog_ci.files import output_path, prepend_content, write_atomic
+from gh_changelog_ci.errors import ChangelogError, ConfigurationError
+from gh_changelog_ci.files import output_path, prepend_content, write_atomic
 
 
 @pytest.mark.parametrize(

@@ -2,4 +2,4 @@
 
 from importlib.metadata import version
 
-__version__ = version("changelog-ci")
+__version__ = version("gh-changelog-ci")
