@@ -2,6 +2,11 @@ name: Changelog CI
 
 on:
   workflow_dispatch:
+    inputs:
+      release_version:
+        description: Release version or label for the changelog
+        required: true
+        type: string
   pull_request:
     types: [ opened ]
 
@@ -18,3 +23,5 @@ jobs:
 
       - name: Run Changelog CI
         uses: saadmk11/changelog-ci@master
+        with:
+          release_version: ${{ inputs.release_version }}
