@@ -11,7 +11,7 @@ from gh_changelog_ci.config import (
     resolve_standalone,
 )
 from gh_changelog_ci.errors import ConfigurationError
-from gh_changelog_ci.models import Group, Settings
+from gh_changelog_ci.models import Group, GroupBy, Settings
 from gh_changelog_ci.reporting import TerminalReporter
 
 
@@ -34,7 +34,12 @@ def test_recorded_legacy_configuration(case: LegacyConfig) -> None:
     groups = expected["group_config"]
     assert isinstance(groups, list)
     expected["group_config"] = [
-        {key: value for key, value in group.items() if key in {"title", "labels"}}
+        {
+            **{
+                key: value for key, value in group.items() if key in {"title", "labels"}
+            },
+            "issue_types": [],
+        }
         for group in groups
     ]
     labels = expected["exclude_labels"]
@@ -65,6 +70,7 @@ def test_defaults() -> None:
     assert settings.committer_username == "github-actions[bot]"
     assert settings.committer_email == "github-actions[bot]@users.noreply.github.com"
     assert settings.github_token is None
+    assert settings.group_by == GroupBy.LABELS
 
 
 @pytest.mark.parametrize(
@@ -77,6 +83,10 @@ def test_defaults() -> None:
         ("pull_request_title_regex", 3),
         ("changelog_filename", "bad.txt"),
         ("group_config", [{}]),
+        ("group_by", "invalid"),
+        ("group_config", [{"title": "Fixes"}]),
+        ("group_config", [{"title": "Fixes", "issue_types": []}]),
+        ("group_config", [{"title": "Fixes", "issue_types": [1]}]),
         ("group_config", [{"title": "Fixes", "labels": [1]}]),
         ("exclude_labels", [1]),
         ("unknown", "token-secret"),
@@ -423,3 +433,58 @@ def test_action_repository_settings_are_runner_owned(
 def test_runner_facts_are_not_configuration(field: str) -> None:
     with pytest.raises(ConfigurationError, match="Unknown configuration"):
         resolve_standalone({field: "untrusted"}, {})
+
+
+@pytest.mark.parametrize(
+    "extension,content",
+    [
+        (
+            "json",
+            '{"group_by":"issue_type",'
+            '"group_config":[{"title":"Fixes","issue_types":["Bug"]}]}',
+        ),
+        (
+            "yaml",
+            "group_by: issue_type\ngroup_config:\n"
+            "  - title: Fixes\n    issue_types: [Bug]\n",
+        ),
+    ],
+)
+def test_issue_type_configuration_and_overrides(
+    extension: str, content: str, tmp_path: Path, runner_env: dict[str, str]
+) -> None:
+    config = tmp_path / f"settings.{extension}"
+    config.write_text(content)
+    explicit = {"config_file": config}
+    standalone = resolve_standalone(explicit, {})
+    action = resolve_actions(explicit, runner_env, TerminalReporter())
+    assert standalone == action
+    assert standalone.group_by == GroupBy.ISSUE_TYPE
+    assert standalone.group_config == (Group(title="Fixes", issue_types=("Bug",)),)
+    assert (
+        resolve_standalone(explicit, {"CHANGELOG_CI_GROUP_BY": "labels"}).group_by
+        == GroupBy.LABELS
+    )
+    assert (
+        resolve_actions(
+            explicit, {**runner_env, "INPUT_GROUP_BY": "labels"}, TerminalReporter()
+        ).group_by
+        == GroupBy.LABELS
+    )
+    assert (
+        resolve_standalone(
+            {**explicit, "group_by": "issue_type"},
+            {"CHANGELOG_CI_GROUP_BY": "labels"},
+        ).group_by
+        == GroupBy.ISSUE_TYPE
+    )
+
+
+def test_issue_type_toml_configuration(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.changelog-ci]\ngroup_by = "issue_type"\n'
+        '[[tool.changelog-ci.group_config]]\ntitle = "Fixes"\nissue_types = ["Bug"]\n'
+    )
+    settings = resolve_standalone({"workspace": tmp_path}, {})
+    assert settings.group_by == GroupBy.ISSUE_TYPE
+    assert settings.group_config[0].issue_types == ("Bug",)

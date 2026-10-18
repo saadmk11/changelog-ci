@@ -45,8 +45,11 @@ inputs:
   version_regex:
     description: Release version regular expression
     required: false
+  group_by:
+    description: Group pull requests by labels or issue_type
+    required: false
   group_config:
-    description: Ordered JSON array of objects with title and labels
+    description: Ordered JSON array of objects with title and labels or issue_types
     required: false
   exclude_labels:
     description: JSON array of labels to exclude
@@ -110,6 +113,7 @@ runs:
       INPUT_COMMENT_CHANGELOG: ${{ inputs.comment_changelog }}
       INPUT_PULL_REQUEST_TITLE_REGEX: ${{ inputs.pull_request_title_regex }}
       INPUT_VERSION_REGEX: ${{ inputs.version_regex }}
+      INPUT_GROUP_BY: ${{ inputs.group_by }}
       INPUT_GROUP_CONFIG: ${{ inputs.group_config }}
       INPUT_EXCLUDE_LABELS: ${{ inputs.exclude_labels }}
       INPUT_INCLUDE_UNLABELED_CHANGES: ${{ inputs.include_unlabeled_changes }}

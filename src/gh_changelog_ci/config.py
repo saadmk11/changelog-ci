@@ -10,7 +10,7 @@ import yaml
 from pydantic import TypeAdapter, ValidationError
 
 from .errors import ConfigurationError
-from .models import Group, OutputMode, Settings, Source
+from .models import Group, GroupBy, OutputMode, Settings, Source
 
 ALIASES = {
     "git_committer_username": "committer_username",
@@ -53,6 +53,7 @@ BOOL_FIELDS = frozenset(
 )
 LIST_FIELDS = frozenset({"group_config", "exclude_labels"})
 ACTION_FIELDS = LEGACY_FIELDS | {
+    "group_by",
     "create_pull_request",
     "new_branch",
     "new_pull_request_title",
@@ -111,12 +112,16 @@ def normalize(values: Mapping[str, object]) -> dict[str, object]:
     try:
         if isinstance(result.get("changelog_type"), str):
             result["changelog_type"] = Source(str(result["changelog_type"]))
+        if isinstance(result.get("group_by"), str):
+            result["group_by"] = GroupBy(str(result["group_by"]))
         if isinstance(result.get("output_mode"), str):
             result["output_mode"] = OutputMode(str(result["output_mode"]))
         if isinstance(result.get("workspace"), str):
             result["workspace"] = Path(str(result["workspace"]))
     except ValueError as exc:
-        raise ConfigurationError("Invalid changelog type or output mode.") from exc
+        raise ConfigurationError(
+            "Invalid changelog type, group_by or output mode."
+        ) from exc
     return result
 
 
@@ -203,7 +208,11 @@ def legacy_settings(values: Mapping[str, object], reporter: Warnings) -> Setting
             groups: list[object] = []
             for item in value:
                 if isinstance(item, dict):
-                    group = {k: v for k, v in item.items() if k in {"title", "labels"}}
+                    group = {
+                        k: v
+                        for k, v in item.items()
+                        if k in {"title", "labels", "issue_types"}
+                    }
                     try:
                         validated = Group.model_validate(group)
                     except ValidationError:

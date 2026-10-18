@@ -8,6 +8,7 @@ from urllib.parse import urljoin, urlsplit
 
 import httpx
 from pydantic import (
+    AliasPath,
     AwareDatetime,
     ConfigDict,
     Field,
@@ -15,10 +16,23 @@ from pydantic import (
     ValidationError,
 )
 
-from .errors import APIError, ChangelogError
+from .errors import APIError, ChangelogError, ConfigurationError
 from .models import Change, Model
 
 T = TypeVar("T")
+
+ISSUE_TYPES_QUERY = """
+query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      closingIssuesReferences(first: 100, after: $cursor) {
+        nodes { issueType { name } }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  }
+}
+"""
 
 
 class Payload(Model):
@@ -37,6 +51,44 @@ class Label(Payload):
     """A GitHub label."""
 
     name: str
+
+
+class IssueType(Payload):
+    """The name of a GitHub issue type."""
+
+    name: str
+
+
+class LinkedIssue(Payload):
+    """The optional type of an issue linked to a pull request."""
+
+    issue_type: IssueType | None = Field(alias="issueType")
+
+
+class PageInfo(Payload):
+    """Cursor pagination for a GraphQL connection."""
+
+    has_next_page: bool = Field(alias="hasNextPage")
+    end_cursor: str | None = Field(alias="endCursor")
+
+
+class LinkedIssues(Payload):
+    """One page of issues linked to a pull request."""
+
+    nodes: tuple[LinkedIssue, ...]
+    page_info: PageInfo = Field(alias="pageInfo")
+
+
+class IssueTypesResponse(Payload):
+    """GraphQL data and errors, including errors returned with HTTP 200."""
+
+    issues: LinkedIssues | None = Field(
+        default=None,
+        validation_alias=AliasPath(
+            "data", "repository", "pullRequest", "closingIssuesReferences"
+        ),
+    )
+    errors: tuple[dict[str, object], ...] = ()
 
 
 class PullRequest(Payload):
@@ -208,9 +260,15 @@ class GitHub:
         return url
 
     def pull_requests(
-        self, repository: str, since: datetime | None, cutoff: datetime
+        self,
+        repository: str,
+        since: datetime | None,
+        cutoff: datetime,
+        *,
+        include_issue_types: bool = False,
+        exclude_labels: tuple[str, ...] = (),
     ) -> tuple[Change, ...]:
-        """Split capped/incomplete searches and deduplicate inclusive boundaries."""
+        """Collect merged PRs, excluding labels before optional issue type lookups."""
         start = since or datetime(1970, 1, 1, tzinfo=UTC)
         if start > cutoff:
             return ()
@@ -276,9 +334,72 @@ class GitHub:
                 title=item.title,
                 url=item.html_url,
                 labels=tuple(label.name for label in item.labels),
+                issue_types=(
+                    self.issue_types(repository, item.number)
+                    if include_issue_types
+                    else ()
+                ),
             )
             for item in ordered
+            if not any(label.name in exclude_labels for label in item.labels)
         )
+
+    def issue_types(self, repository: str, number: int) -> tuple[str, ...]:
+        """Read all linked issue types, preserving their order without duplicates."""
+        if "Authorization" not in self.client.headers:
+            raise ConfigurationError(
+                "Grouping by issue type requires a GitHub token "
+                "with read access to linked issues."
+            )
+        owner, name = repository.split("/")
+        endpoint = (
+            f"{self.api_url.removesuffix('/v3')}/graphql"
+            if self.api_url.endswith("/api/v3")
+            else f"{self.api_url}/graphql"
+        )
+        cursor: str | None = None
+        seen: set[str] = set()
+        names: dict[str, None] = {}
+        while True:
+            try:
+                response = self.request(
+                    "POST",
+                    endpoint,
+                    payload={
+                        "query": ISSUE_TYPES_QUERY,
+                        "variables": {
+                            "owner": owner,
+                            "name": name,
+                            "number": number,
+                            "cursor": cursor,
+                        },
+                    },
+                )
+            except APIError as exc:
+                # Issue type lookup failures must fail composite runs.
+                status = f" (HTTP {exc.status})" if exc.status else ""
+                raise ChangelogError(
+                    f"GitHub could not read linked issue types{status}."
+                ) from exc
+            result = decode(response, TypeAdapter(IssueTypesResponse))
+            if result.errors:
+                # GraphQL can return partial data alongside permission/schema errors.
+                raise ChangelogError(
+                    "GitHub could not read linked issue types; check token access "
+                    "and issue type support on your GitHub server."
+                )
+            if result.issues is None:
+                raise ChangelogError("GitHub returned unavailable linked issue data.")
+            issues = result.issues
+            for issue in issues.nodes:
+                if issue.issue_type:
+                    names.setdefault(issue.issue_type.name, None)
+            if not issues.page_info.has_next_page:
+                return tuple(names)
+            cursor = issues.page_info.end_cursor
+            if not cursor or cursor in seen:
+                raise ChangelogError("GitHub returned invalid linked issue pagination.")
+            seen.add(cursor)
 
     def commits(
         self, repository: str, since: datetime | None, cutoff: datetime

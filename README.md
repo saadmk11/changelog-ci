@@ -131,7 +131,8 @@ Additional optional inputs (omit them to keep the configured defaults):
 | `comment_changelog` | Whether to comment on the release PR (JSON boolean) |
 | `pull_request_title_regex` | Release pull request title regular expression |
 | `version_regex` | Release version regular expression |
-| `group_config` | Ordered JSON array of objects with title and labels |
+| `group_by` | `labels` or `issue_type` from linked issues |
+| `group_config` | Ordered JSON array of objects with title and labels or issue_types |
 | `exclude_labels` | JSON array of labels to exclude |
 | `include_unlabeled_changes` | Include changes unmatched by groups (JSON boolean) |
 | `unlabeled_group_title` | Heading for changes unmatched by groups |
@@ -286,10 +287,59 @@ These are the options that can be provided on the `config_file`.
 | `comment_changelog` | Append a comment on a release PR | `false` |
 | `pull_request_title_regex` | Identify release PR titles | `^(?i:release)` |
 | `version_regex` | Extract a version from the title; fall back to `release_version` | [SemVer pattern](https://regex101.com/r/Qayx0q/1/) |
-| `group_config` | Ordered objects with a `title` and `labels` array | Empty |
+| `group_by` | Group PRs by their `labels` or linked `issue_type` | `labels` |
+| `group_config` | Ordered objects with a `title` and `labels` or `issue_types` array | Empty |
 | `include_unlabeled_changes` | Include PRs not assigned to any configured group | `true` |
 | `unlabeled_group_title` | Heading for unmatched PRs | `Other Changes` |
 | `exclude_labels` | Labels to exclude; see the compatibility rule below | Empty |
+
+#### Grouping by linked issue types
+
+For `changelog_type: pull_request`, set `group_by: issue_type` and match GitHub
+issue type names using each group's `issue_types` array:
+
+```json
+{
+  "changelog_type": "pull_request",
+  "group_by": "issue_type",
+  "group_config": [
+    {"title": "Bug Fixes", "issue_types": ["Bug"]},
+    {"title": "New Features", "issue_types": ["Feature"]},
+    {"title": "Maintenance", "issue_types": ["Task"]}
+  ]
+}
+```
+
+Issue type names are case-sensitive and may include custom types. Changelog CI
+reads the types of issues returned by GitHub's
+[`closingIssuesReferences`](https://docs.github.com/en/graphql/reference/pulls#pullrequest).
+This includes manual Development links and closing keywords such as `Fixes #123`
+in the PR description. GitHub recognizes closing keywords only for PRs targeting
+the default branch; ordinary issue mentions do not create these links. See
+[linking a PR to an issue](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue).
+The changelog still lists PR titles and links. When several linked issues have
+different types, the PR appears once, in the first matching configured group.
+PRs with no linked issue, no issue type, or no matching type follow
+`include_unlabeled_changes` and `unlabeled_group_title`, just like unmatched PRs
+in label mode. `exclude_labels` continues to exclude PRs by their labels.
+
+This mode requires an authenticated GitHub GraphQL API with issue type support
+and a token that can read the PR and its linked issues, including any linked
+issues in other repositories. For this mode, add `issues: read` to your workflow's
+existing `permissions` when using `GITHUB_TOKEN`. A repository's token cannot
+read private issues in other repositories; use a PAT or GitHub App token with
+access to those repositories when needed. Only issues visible to the token can
+be used for grouping. Lookup errors stop generation instead of treating the PR
+as untyped.
+
+The same settings work in YAML, standalone `[tool.changelog-ci]` TOML, and Action
+inputs (`group_config` uses a JSON array). The CLI also accepts
+`--group-by issue_type --group-config '{"title":"Bug Fixes","issue_types":["Bug"]}'`,
+and the standalone environment equivalent is `CHANGELOG_CI_GROUP_BY=issue_type`.
+Existing configurations and workflow permissions continue to work unchanged;
+label grouping remains the default. Issue type lookups run only for pull request
+changelogs with `group_by: issue_type` and a nonempty `group_config`, after
+excluding PRs that match `exclude_labels`.
 
 #### Example Configuration File
 
@@ -417,7 +467,8 @@ strictly. Warnings do not echo the supplied values.
 Tokens are stored as secrets and validation errors never print them.
 
 Groups retain their configured order. A PR appears in its first matching group.
-“Unlabeled” includes changes whose labels do not match any configured group.
+“Unlabeled” includes changes whose labels or linked issue types do not match any
+configured group, depending on `group_by`.
 The Action applies label exclusions when groups are configured; `generate`
 applies them with or without groups. Commit-source generation omits messages
 starting with `Merge pull request #` or `Merge branch` and does not group commits.

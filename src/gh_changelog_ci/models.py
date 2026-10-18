@@ -30,6 +30,13 @@ class OutputMode(StrEnum):
     GITHUB = "github"
 
 
+class GroupBy(StrEnum):
+    """Metadata used to assign pull requests to groups."""
+
+    LABELS = "labels"
+    ISSUE_TYPE = "issue_type"
+
+
 class Model(BaseModel):
     """Immutable application data with strict field validation."""
 
@@ -43,16 +50,24 @@ class Model(BaseModel):
 
 
 class Group(Model):
-    """An ordered label group."""
+    """An ordered group matched by labels or linked issue types."""
 
     title: str = Field(min_length=1)
-    labels: tuple[str, ...] = Field(min_length=1)
+    labels: tuple[str, ...] = ()
+    issue_types: tuple[str, ...] = ()
 
-    @field_validator("labels", mode="before")
+    @field_validator("labels", "issue_types", mode="before")
     @classmethod
-    def immutable_labels(cls, value: object) -> object:
-        """Convert JSON label arrays to tuples."""
+    def immutable_matchers(cls, value: object) -> object:
+        """Convert JSON matcher arrays to tuples."""
         return tuple(value) if isinstance(value, list) else value
+
+    @model_validator(mode="after")
+    def has_matchers(self) -> "Group":
+        """Require at least one label or issue type to match."""
+        if not self.labels and not self.issue_types:
+            raise ValueError("a group requires labels or issue_types")
+        return self
 
 
 class Settings(Model):
@@ -69,6 +84,7 @@ class Settings(Model):
         r"0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?"
     )
     changelog_type: Source = Source.PULL_REQUEST
+    group_by: GroupBy = GroupBy.LABELS
     group_config: tuple[Group, ...] = ()
     exclude_labels: tuple[str, ...] = ()
     include_unlabeled_changes: bool = True
@@ -193,6 +209,7 @@ class Change(Model):
     title: str
     url: str
     labels: tuple[str, ...] = ()
+    issue_types: tuple[str, ...] = ()
 
 
 class GenerationRequest(Model):

@@ -1,11 +1,12 @@
+import json
 from datetime import UTC, datetime
 
 import httpx
 import pytest
 
-from gh_changelog_ci.errors import APIError, ChangelogError
+from gh_changelog_ci.errors import APIError, ChangelogError, ConfigurationError
 from gh_changelog_ci.github import GitHub
-from tests.github import pull_request
+from tests.github import linked_issues, pull_request
 
 CUTOFF = datetime(2026, 1, 2, tzinfo=UTC)
 SINCE = datetime(2026, 1, 1, tzinfo=UTC)
@@ -450,3 +451,190 @@ def test_pagination_accepts_equivalent_https_default_ports(api_url: str) -> None
     assert all(
         request.headers["Authorization"] == "Bearer secret" for request in requests
     )
+
+
+@pytest.mark.parametrize(
+    "api_url,endpoint",
+    [
+        ("https://api.github.com", "https://api.github.com/graphql"),
+        ("https://ghe.example/api/v3/", "https://ghe.example/api/graphql"),
+    ],
+)
+def test_linked_issue_types_paginate_and_deduplicate(
+    api_url: str, endpoint: str
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        payload = json.loads(request.content)
+        assert payload["variables"] == {
+            "owner": "o",
+            "name": "r",
+            "number": 7,
+            "cursor": None if len(requests) == 1 else "next",
+        }
+        assert "closingIssuesReferences(first: 100, after: $cursor)" in payload["query"]
+        assert "issueType { name }" in payload["query"]
+        return httpx.Response(
+            200,
+            json=linked_issues("Bug", None, has_next_page=True, end_cursor="next")
+            if len(requests) == 1
+            else linked_issues("Bug", "Feature"),
+        )
+
+    with GitHub(api_url, "secret", transport=httpx.MockTransport(handle)) as github:
+        assert github.issue_types("o/r", 7) == ("Bug", "Feature")
+    assert len(requests) == 2
+    assert all(str(request.url) == endpoint for request in requests)
+    assert all(request.method == "POST" for request in requests)
+    assert all(
+        request.headers["Authorization"] == "Bearer secret" for request in requests
+    )
+
+
+@pytest.mark.parametrize("types", [(), (None,), (None, None)])
+def test_linked_issues_without_types(types: tuple[None, ...]) -> None:
+    with GitHub(
+        "https://api.github.com",
+        "secret",
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, json=linked_issues(*types))
+        ),
+    ) as github:
+        assert github.issue_types("o/r", 1) == ()
+
+
+def test_pull_requests_collect_their_own_issue_types_and_keep_labels() -> None:
+    requests: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.path == "/graphql":
+            number = json.loads(request.content)["variables"]["number"]
+            return httpx.Response(
+                200, json=linked_issues("Bug" if number == 1 else "Feature")
+            )
+        return httpx.Response(
+            200,
+            json={
+                "total_count": 2,
+                "incomplete_results": False,
+                "items": [pull_request(2, labels=("skip",)), pull_request(1)],
+            },
+        )
+
+    with GitHub(
+        "https://api.github.com", "secret", transport=httpx.MockTransport(handle)
+    ) as github:
+        changes = github.pull_requests("o/r", SINCE, CUTOFF, include_issue_types=True)
+    assert [(c.identifier, c.issue_types, c.labels) for c in changes] == [
+        ("#1", ("Bug",), ()),
+        ("#2", ("Feature",), ("skip",)),
+    ]
+    assert len(requests) == 3
+
+
+def test_linked_issue_types_require_authentication() -> None:
+    def unexpected(request: httpx.Request) -> httpx.Response:
+        pytest.fail("Unauthenticated issue type requests must fail before requesting")
+
+    with (
+        GitHub(
+            "https://api.github.com", transport=httpx.MockTransport(unexpected)
+        ) as github,
+        pytest.raises(ConfigurationError, match="requires a GitHub token"),
+    ):
+        github.issue_types("o/r", 1)
+
+
+@pytest.mark.parametrize("partial_data", [False, True])
+def test_graphql_errors_do_not_render_partial_issue_types(partial_data: bool) -> None:
+    payload: dict[str, object] = (
+        linked_issues("Bug") if partial_data else {"data": None}
+    )
+    payload["errors"] = [{"message": "token-secret", "type": "FORBIDDEN"}]
+    with (
+        GitHub(
+            "https://api.github.com",
+            "token-secret",
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, json=payload)
+            ),
+        ) as github,
+        pytest.raises(
+            ChangelogError, match="could not read linked issue types"
+        ) as error,
+    ):
+        github.issue_types("o/r", 1)
+    assert "token-secret" not in str(error.value)
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {"data": {"repository": None}},
+        {"data": {"repository": {"pullRequest": None}}},
+        {"data": {"repository": {"pullRequest": {}}}},
+        {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "closingIssuesReferences": {
+                            "nodes": [{"issueType": {"name": 123}}],
+                            "pageInfo": {"hasNextPage": False, "endCursor": None},
+                        }
+                    }
+                }
+            }
+        },
+    ],
+)
+def test_invalid_or_unavailable_linked_issue_data_fails(payload: object) -> None:
+    with (
+        GitHub(
+            "https://api.github.com",
+            "secret",
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, json=payload)
+            ),
+        ) as github,
+        pytest.raises(ChangelogError),
+    ):
+        github.issue_types("o/r", 1)
+
+
+@pytest.mark.parametrize("cursor", [None, "", "repeat"])
+def test_linked_issue_pagination_rejects_missing_or_repeated_cursors(
+    cursor: str | None,
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200, json=linked_issues("Bug", has_next_page=True, end_cursor=cursor)
+        )
+
+    with (
+        GitHub(
+            "https://api.github.com", "secret", transport=httpx.MockTransport(handle)
+        ) as github,
+        pytest.raises(ChangelogError, match="invalid linked issue pagination"),
+    ):
+        github.issue_types("o/r", 1)
+    assert len(requests) == (2 if cursor else 1)
+
+
+@pytest.mark.parametrize("status", [401, 403, 404, 429, 500])
+def test_linked_issue_http_failures_are_not_untyped_issues(status: int) -> None:
+    with (
+        GitHub(
+            "https://api.github.com",
+            "secret",
+            transport=httpx.MockTransport(lambda request: httpx.Response(status)),
+        ) as github,
+        pytest.raises(ChangelogError, match=f"linked issue types \\(HTTP {status}\\)"),
+    ):
+        github.issue_types("o/r", 1)
