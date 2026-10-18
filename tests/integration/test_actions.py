@@ -22,7 +22,7 @@ from gh_changelog_ci.github import GitHub
 from gh_changelog_ci.models import Settings
 from gh_changelog_ci.reporting import TerminalReporter
 from tests.git import command
-from tests.github import pull_request_event, response
+from tests.github import linked_issues, pull_request_event, response
 
 pytestmark = [
     pytest.mark.actions,
@@ -46,6 +46,100 @@ class Outcome(BaseModel):
 OUTCOMES = TypeAdapter(list[Outcome]).validate_json(
     (Path(__file__).parents[1] / "fixtures/legacy/outcomes.json").read_bytes()
 )
+
+
+def test_existing_action_label_configuration_needs_no_issue_access(
+    tmp_path: Path,
+    pr_event: Path,
+    cli_changes: list[dict[str, object]],
+    cli_api: list[httpx.Request],
+) -> None:
+    cli_changes[0]["labels"] = [{"name": "bug"}]
+    config = tmp_path / "settings.json"
+    config.write_text(
+        json.dumps(
+            {
+                "commit_changelog": False,
+                "comment_changelog": True,
+                "group_config": [{"title": "Fixes", "labels": ["bug"]}],
+            }
+        )
+    )
+    result = CliRunner().invoke(
+        app,
+        [
+            "actions",
+            "--config-file",
+            str(config),
+            "--dry-run",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert result.stdout == (
+        "# Version: v2.0.0\n\n\n#### Fixes\n\n"
+        "* [#1](https://github.com/o/r/pull/1): Change 1\n"
+    )
+    assert [(r.method, r.url.path) for r in cli_api] == [
+        ("GET", "/repos/o/r/releases/latest"),
+        ("GET", "/search/issues"),
+    ]
+    assert all("Authorization" not in r.headers for r in cli_api)
+    assert not (tmp_path / "CHANGELOG.md").exists()
+
+
+@pytest.mark.parametrize("issue_type_status", [200, 403, 500])
+def test_action_inputs_group_preview_by_linked_issue_types(
+    issue_type_status: int,
+    tmp_path: Path,
+    pr_event: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.path == "/graphql":
+            return httpx.Response(issue_type_status, json=linked_issues("Bug"))
+        return response(request)
+
+    def factory(api_url: str, token: str | None = None) -> GitHub:
+        return GitHub(api_url, token, transport=httpx.MockTransport(handle))
+
+    monkeypatch.setattr("gh_changelog_ci.cli.GitHub", factory)
+    output = tmp_path / "output.txt"
+    for key, value in {
+        "INPUT_GROUP_BY": "issue_type",
+        "INPUT_GROUP_CONFIG": '[{"title":"Fixes","issue_types":["Bug"]}]',
+        "INPUT_GITHUB_TOKEN": "secret",
+        "GITHUB_OUTPUT": str(output),
+        "_CHANGELOG_CI_COMPOSITE": "true",
+    }.items():
+        monkeypatch.setenv(key, value)
+    result = CliRunner().invoke(
+        app,
+        [
+            "actions",
+            "--no-commit-changelog",
+            "--comment-changelog",
+            "--dry-run",
+            "--output-mode",
+            "github",
+        ],
+    )
+    if issue_type_status == 200:
+        assert result.exit_code == 0, result.output
+        assert "#### Fixes" in output.read_text()
+        assert "Change 1" in output.read_text()
+    else:
+        assert result.exit_code == 1, result.output
+        assert f"linked issue types (HTTP {issue_type_status})" in result.output
+        assert not output.exists()
+    assert not (tmp_path / "CHANGELOG.md").exists()
+    assert [(request.method, request.url.path) for request in requests] == [
+        ("GET", "/repos/o/r/releases/latest"),
+        ("GET", "/search/issues"),
+        ("POST", "/graphql"),
+    ]
 
 
 @pytest.mark.parametrize("outcome", OUTCOMES)

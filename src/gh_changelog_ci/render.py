@@ -1,6 +1,6 @@
 """Format changelogs as Markdown or reStructuredText."""
 
-from .models import Change, Group, Settings, Source
+from .models import Change, Group, GroupBy, Settings, Source
 
 
 def render(
@@ -44,7 +44,12 @@ def render(
         items = tuple(
             c
             for c in remaining
-            if group is None or set(c.labels).intersection(group.labels)
+            if group is None
+            or (
+                set(c.issue_types).intersection(group.issue_types)
+                if settings.group_by == GroupBy.ISSUE_TYPE
+                else set(c.labels).intersection(group.labels)
+            )
         )
         remaining = tuple(c for c in remaining if c not in items)
         if items:

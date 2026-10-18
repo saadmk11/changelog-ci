@@ -10,9 +10,212 @@ import pytest
 from typer.testing import CliRunner
 
 from gh_changelog_ci.cli import app
-from tests.github import pull_request
+from gh_changelog_ci.github import GitHub
+from tests.github import linked_issues, pull_request, response
 
 runner = CliRunner()
+
+
+@pytest.mark.parametrize("grouped", [False, True])
+def test_existing_label_configuration_needs_no_token_or_graphql(
+    grouped: bool,
+    cli_changes: list[dict[str, object]],
+    cli_api: list[httpx.Request],
+    tmp_path: Path,
+) -> None:
+    cli_changes[:] = [
+        pull_request(1, labels=("bug",)),
+        pull_request(2, labels=("skip",)),
+        pull_request(3, labels=("docs",)),
+    ]
+    config = tmp_path / "settings.json"
+    config.write_text(
+        json.dumps(
+            {
+                "group_config": [{"title": "Fixes", "labels": ["bug"]}]
+                if grouped
+                else [],
+                "exclude_labels": ["skip"],
+            }
+        )
+    )
+    result = runner.invoke(
+        app,
+        [
+            "generate",
+            "--repository",
+            "o/r",
+            "--release-version",
+            "1",
+            "--config-file",
+            str(config),
+            "--stdout",
+        ],
+    )
+    first = "* [#1](https://github.com/o/r/pull/1): Change 1\n"
+    third = "* [#3](https://github.com/o/r/pull/3): Change 3\n"
+    expected = (
+        f"\n#### Fixes\n\n{first}\n#### Other Changes\n\n{third}"
+        if grouped
+        else first + third
+    )
+    assert result.exit_code == 0, result.output
+    assert result.stdout == f"# Version: 1\n\n{expected}"
+    assert [(r.method, r.url.path) for r in cli_api] == [
+        ("GET", "/repos/o/r/releases/latest"),
+        ("GET", "/search/issues"),
+    ]
+    assert all("Authorization" not in r.headers for r in cli_api)
+
+
+def test_issue_type_grouping_does_not_query_excluded_pull_requests(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.path == "/graphql":
+            number = json.loads(request.content)["variables"]["number"]
+            return httpx.Response(
+                403 if number == 2 else 200, json=linked_issues("Bug")
+            )
+        return response(
+            request,
+            changes=[pull_request(1), pull_request(2, labels=("skip",))],
+        )
+
+    def factory(api_url: str, token: str | None = None) -> GitHub:
+        return GitHub(api_url, token, transport=httpx.MockTransport(handle))
+
+    monkeypatch.setattr("gh_changelog_ci.cli.GitHub", factory)
+    result = runner.invoke(
+        app,
+        [
+            "generate",
+            "--repository",
+            "o/r",
+            "--release-version",
+            "1",
+            "--github-token",
+            "secret",
+            "--stdout",
+            "--group-by",
+            "issue_type",
+            "--group-config",
+            '{"title":"Fixes","issue_types":["Bug"]}',
+            "--exclude-label",
+            "skip",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert result.stdout == (
+        "# Version: 1\n\n\n#### Fixes\n\n"
+        "* [#1](https://github.com/o/r/pull/1): Change 1\n"
+    )
+    assert [
+        json.loads(r.content)["variables"]["number"]
+        for r in requests
+        if r.url.path == "/graphql"
+    ] == [1]
+
+
+@pytest.mark.parametrize("graphql_error", [False, True])
+def test_cli_groups_by_linked_issue_types(
+    graphql_error: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.path == "/graphql":
+            if graphql_error:
+                return httpx.Response(200, json={"errors": [{"message": "secret"}]})
+            return httpx.Response(200, json=linked_issues("Bug"))
+        return response(request, changes=[pull_request(labels=("feature",))])
+
+    def factory(api_url: str, token: str | None = None) -> GitHub:
+        return GitHub(api_url, token, transport=httpx.MockTransport(handle))
+
+    monkeypatch.setattr("gh_changelog_ci.cli.GitHub", factory)
+    path = tmp_path / "CHANGELOG.md"
+    path.write_text("Existing changelog\n")
+    result = runner.invoke(
+        app,
+        [
+            "generate",
+            "--repository",
+            "o/r",
+            "--release-version",
+            "1",
+            "--workspace",
+            str(tmp_path),
+            "--github-token",
+            "secret",
+            "--group-by",
+            "issue_type",
+            "--group-config",
+            '{"title":"Fixes","issue_types":["Bug"]}',
+        ],
+    )
+    if graphql_error:
+        assert result.exit_code == 1, result.output
+        assert "could not read linked issue types" in result.stderr
+        assert "secret" not in result.output
+        assert path.read_text() == "Existing changelog\n"
+    else:
+        assert result.exit_code == 0, result.output
+        assert path.read_text() == (
+            "# Version: 1\n\n\n#### Fixes\n\n"
+            "* [#1](https://github.com/o/r/pull/1): Change 1\n\n\n"
+            "Existing changelog\n"
+        )
+    assert [(request.method, request.url.path) for request in requests] == [
+        ("GET", "/repos/o/r/releases/latest"),
+        ("GET", "/search/issues"),
+        ("POST", "/graphql"),
+    ]
+
+
+@pytest.mark.parametrize("commit_source", [False, True])
+def test_issue_type_lookup_is_skipped_without_pr_grouping(
+    commit_source: bool, cli_api: list[httpx.Request]
+) -> None:
+    extra = (
+        [
+            "--changelog-type",
+            "commit_message",
+            "--group-config",
+            '{"title":"Fixes","issue_types":["Bug"]}',
+        ]
+        if commit_source
+        else []
+    )
+    result = runner.invoke(
+        app,
+        [
+            "generate",
+            "--repository",
+            "o/r",
+            "--release-version",
+            "1",
+            "--stdout",
+            "--group-by",
+            "issue_type",
+            *extra,
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    entry = (
+        "* [abcdef0](https://github.com/o/r/commit/abcdef01234): Fix a bug\n"
+        if commit_source
+        else "* [#1](https://github.com/o/r/pull/1): Change 1\n"
+    )
+    assert result.stdout == f"# Version: 1\n\n{entry}"
+    assert [(r.method, r.url.path) for r in cli_api] == [
+        ("GET", "/repos/o/r/releases/latest"),
+        ("GET", "/repos/o/r/commits" if commit_source else "/search/issues"),
+    ]
 
 
 @pytest.mark.parametrize(

@@ -35,6 +35,31 @@ def pull_request(number: int = 1, *, labels: tuple[str, ...] = ()) -> dict[str, 
     }
 
 
+def linked_issues(
+    *types: str | None,
+    has_next_page: bool = False,
+    end_cursor: str | None = None,
+) -> dict[str, object]:
+    return {
+        "data": {
+            "repository": {
+                "pullRequest": {
+                    "closingIssuesReferences": {
+                        "nodes": [
+                            {"issueType": {"name": name} if name else None}
+                            for name in types
+                        ],
+                        "pageInfo": {
+                            "hasNextPage": has_next_page,
+                            "endCursor": end_cursor,
+                        },
+                    }
+                }
+            }
+        }
+    }
+
+
 def response(
     request: httpx.Request, *, changes: Sequence[dict[str, object]] | None = None
 ) -> httpx.Response:

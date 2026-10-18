@@ -14,7 +14,7 @@ from .errors import APIError, ChangelogError, ConfigurationError
 from .files import file_diff, output_path, prepend_content, write_atomic
 from .generate import generate
 from .github import GitHub
-from .models import GenerationRequest, OutputMode, Settings, Source
+from .models import GenerationRequest, GroupBy, OutputMode, Settings, Source
 from .reporting import Reporter, TerminalReporter
 
 app = typer.Typer(
@@ -296,11 +296,20 @@ VersionRegexOption = Annotated[
     ),
 ]
 
+GroupByOption = Annotated[
+    GroupBy | None,
+    typer.Option(
+        "--group-by",
+        help="Group pull requests by labels or linked issue type.",
+        rich_help_panel="Configuration",
+    ),
+]
+
 GroupConfigOption = Annotated[
     list[str] | None,
     typer.Option(
         "--group-config",
-        help="Repeat JSON objects with title and labels.",
+        help="Repeat JSON objects with title and labels or issue_types.",
         rich_help_panel="Configuration",
     ),
 ]
@@ -470,6 +479,7 @@ def generate_cli(
     github_token: GithubTokenOption = None,
     changelog_type: ChangelogTypeOption = None,
     header_prefix: HeaderPrefixOption = None,
+    group_by: GroupByOption = None,
     group_config: GroupConfigOption = None,
     exclude_labels: ExcludeLabelsOption = None,
     clear_groups: ClearGroupsOption = None,
@@ -501,6 +511,7 @@ def actions_cli(
     header_prefix: HeaderPrefixOption = None,
     pull_request_title_regex: PullRequestTitleRegexOption = None,
     version_regex: VersionRegexOption = None,
+    group_by: GroupByOption = None,
     group_config: GroupConfigOption = None,
     exclude_labels: ExcludeLabelsOption = None,
     clear_groups: ClearGroupsOption = None,
