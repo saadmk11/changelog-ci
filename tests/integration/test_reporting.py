@@ -136,7 +136,7 @@ def test_successful_action_reports_progress_preview_and_results(
         args.append("--comment-changelog")
     else:
         branch = "release-notes"
-        args += ["--release-version", "v2.0.1", "--new-branch", branch]
+        args += ["--release-version", "v2.0.2", "--new-branch", branch]
     if mode != "default":
         args.append(f"--{mode}")
     result = CliRunner().invoke(app, args)
@@ -144,7 +144,7 @@ def test_successful_action_reports_progress_preview_and_results(
     assert result.stderr == ""
     log = result.stdout.removeprefix("::add-mask ::secret\n")
     expected = (
-        "# Version: v2.0.1\n\n"
+        "# Version: v2.0.2\n\n"
         "* [#1](https://github.com/o/r/pull/1): Fix ***\n::error::injected\n"
     )
     assert summary.read_text() == expected
@@ -162,7 +162,7 @@ def test_successful_action_reports_progress_preview_and_results(
         assert log == ""
     else:
         assert "::group ::Generate changelog\n" in log
-        assert "Generating changelog for version v2.0.1." in log
+        assert "Generating changelog for version v2.0.2." in log
         assert "::group ::Commit and push changelog\n" in log
         assert "Changelog committed and pushed." in log
         details = [

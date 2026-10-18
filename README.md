@@ -28,7 +28,7 @@ The workflow can be configured to perform **any (or all)** of the following acti
 
 | | GitHub Action | Python package |
 | --- | --- | --- |
-| Run with | `uses: saadmk11/changelog-ci@v2.0.1` | `pip install gh-changelog-ci` or `uvx gh-changelog-ci` |
+| Run with | `uses: saadmk11/changelog-ci@v2.0.2` | `pip install gh-changelog-ci` or `uvx gh-changelog-ci` |
 | Changelog text | Use the `changelog` output | `gh-changelog-ci generate` |
 | Commit, comment or open a PR | Configure the Action inputs | Install `gh-changelog-ci[actions]` and run `gh-changelog-ci actions` |
 
@@ -105,7 +105,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run Changelog CI
-        uses: saadmk11/changelog-ci@v2.0.1
+        uses: saadmk11/changelog-ci@v2.0.2
 ```
 
 ### Workflow input options
@@ -191,7 +191,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run Changelog CI
-        uses: saadmk11/changelog-ci@v2.0.1
+        uses: saadmk11/changelog-ci@v2.0.2
         with:
           # Optional, you can provide any name for your changelog file,
           # We currently support Markdown (.md) and reStructuredText (.rst) files
@@ -241,7 +241,7 @@ The output can be used in other steps of the action. For example:
 
 ```yaml
 - name: changelog-ci
-  uses: saadmk11/changelog-ci@v2.0.1
+  uses: saadmk11/changelog-ci@v2.0.2
   id: changelog-ci
 
 - name: Get Changelog Output
@@ -257,9 +257,7 @@ encoding.
 
 #### Choosing log output
 
-The grouped progress and verbose changelog preview below are unreleased. They
-require the next Python package release and an updated Action package pin;
-`v2.0.1` supports verbose collection messages and job summaries.
+Grouped progress and verbose changelog previews are available in `v2.0.2`.
 
 Neither `verbose` nor `quiet` is needed for a normal run. They provide two optional
 ways to adjust how much the Action prints:
@@ -281,7 +279,7 @@ For normal runs, keep the default logs and enable the rendered job summary:
 
 ```yaml
 - name: Generate changelog
-  uses: saadmk11/changelog-ci@v2.0.1
+  uses: saadmk11/changelog-ci@v2.0.2
   with:
     summary: 'true'
 ```
@@ -290,7 +288,7 @@ To include extra details and a changelog preview in the log:
 
 ```yaml
 - name: Generate changelog with detailed logs
-  uses: saadmk11/changelog-ci@v2.0.1
+  uses: saadmk11/changelog-ci@v2.0.2
   with:
     verbose: 'true'
     summary: 'true'
@@ -300,7 +298,7 @@ To keep logs quiet while retaining the rendered job summary:
 
 ```yaml
 - name: Generate changelog quietly
-  uses: saadmk11/changelog-ci@v2.0.1
+  uses: saadmk11/changelog-ci@v2.0.2
   with:
     quiet: 'true'
     summary: 'true'
@@ -553,9 +551,9 @@ pip install 'gh-changelog-ci[actions]'
 ```
 
 ```sh
-uvx gh-changelog-ci generate --repository owner/repo --release-version 2.0.1
-gh-changelog-ci generate --repository owner/repo --release-version 2.0.1 --stdout
-gh-changelog-ci generate --repository owner/repo --release-version 2.0.1 \
+uvx gh-changelog-ci generate --repository owner/repo --release-version 2.0.2
+gh-changelog-ci generate --repository owner/repo --release-version 2.0.2 --stdout
+gh-changelog-ci generate --repository owner/repo --release-version 2.0.2 \
   --changelog-type commit_message --changelog-filename CHANGELOG.rst
 ```
 
@@ -564,10 +562,10 @@ diagnostics or `--quiet` to suppress progress; do not combine them:
 
 ```sh
 # Show collection progress as well as the normal result.
-gh-changelog-ci generate --repository owner/repo --release-version 2.0.1 --verbose
+gh-changelog-ci generate --repository owner/repo --release-version 2.0.2 --verbose
 
 # Show warnings and errors, with no progress messages.
-gh-changelog-ci generate --repository owner/repo --release-version 2.0.1 --quiet
+gh-changelog-ci generate --repository owner/repo --release-version 2.0.2 --quiet
 ```
 
 These flags do not change the generated changelog. `--stdout`, `--dry-run` and

@@ -1,11 +1,11 @@
 [
   {
     "event": "pull_request",
-    "title": "Release v2.0.1",
+    "title": "Release v2.0.2",
     "version": "1.0.0",
     "commit": true,
     "comment": false,
-    "selected": "v2.0.1",
+    "selected": "v2.0.2",
     "exit_code": 0
   },
   {
@@ -19,7 +19,7 @@
   },
   {
     "event": "pull_request",
-    "title": "Fix v2.0.1",
+    "title": "Fix v2.0.2",
     "version": null,
     "commit": true,
     "comment": false,
@@ -37,11 +37,11 @@
   },
   {
     "event": "pull_request",
-    "title": "Release v2.0.1",
+    "title": "Release v2.0.2",
     "version": null,
     "commit": false,
     "comment": false,
-    "selected": "v2.0.1",
+    "selected": "v2.0.2",
     "exit_code": 1
   },
   {
