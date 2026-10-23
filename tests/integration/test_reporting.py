@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import re
 from pathlib import Path
 
@@ -18,16 +19,6 @@ pytestmark = [
         reason="actions extra required",
     ),
 ]
-
-
-def test_reporter_retains_wrapped_token(capsys: pytest.CaptureFixture[str]) -> None:
-    from gh_changelog_ci.actions.reporting import GitHubReporter
-
-    reporter = GitHubReporter(SecretStr("test-sensitive-token"))
-    assert capsys.readouterr().out == "::add-mask ::test-sensitive-token\n"
-    assert isinstance(reporter.token, SecretStr)
-    assert "test-sensitive-token" not in repr(vars(reporter))
-    assert reporter.redacted("token: test-sensitive-token") == "token: ***"
 
 
 @pytest.mark.parametrize("legacy", [False, True])
@@ -60,32 +51,32 @@ def test_multiline_output_unicode_delimiters_and_commands(
 
 @pytest.mark.parametrize("level", ["notice", "warning", "error"])
 @pytest.mark.parametrize("quiet", [False, True])
-def test_diagnostics_redact_secrets_and_escape_commands(
+def test_diagnostics_escape_commands(
     capsys: pytest.CaptureFixture[str], level: str, quiet: bool
 ) -> None:
     from gh_changelog_ci.actions.reporting import GitHubReporter
 
-    reporter = GitHubReporter(SecretStr("secret"), quiet=quiet)
-    capsys.readouterr()
-    getattr(reporter, level)("secret\n::error::injected")
+    reporter = GitHubReporter(quiet=quiet)
+    getattr(reporter, level)("message\n::error::injected")
     assert capsys.readouterr().out == (
-        "" if quiet and level == "notice" else f"::{level} ::***%0A::error::injected\n"
+        ""
+        if quiet and level == "notice"
+        else f"::{level} ::message%0A::error::injected\n"
     )
 
 
-def test_preview_redacts_secrets_and_resumes_workflow_commands(
+def test_preview_preserves_content_and_resumes_workflow_commands(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     from gh_changelog_ci.actions.reporting import GitHubReporter
 
-    reporter = GitHubReporter(SecretStr("secret"))
-    capsys.readouterr()
-    reporter.content("::warning::content\nsecret")
+    reporter = GitHubReporter()
+    reporter.content("::warning::content\noriginal")
     output = capsys.readouterr().out
     assert re.fullmatch(
         r"::group ::Changelog preview\n"
         r"::stop-commands::(?P<token>[0-9a-f]{32})\n"
-        r"::warning::content\n\*\*\*\n"
+        r"::warning::content\noriginal\n"
         r"::(?P=token)::\n"
         r"::endgroup::\n",
         output,
@@ -98,16 +89,15 @@ def test_progress_groups_escape_titles_and_close_on_failure(
 ) -> None:
     from gh_changelog_ci.actions.reporting import GitHubReporter
 
-    reporter = GitHubReporter(SecretStr("secret"), quiet=quiet)
-    capsys.readouterr()
-    with pytest.raises(RuntimeError), reporter.group("secret\n::error::injected"):
+    reporter = GitHubReporter(quiet=quiet)
+    with pytest.raises(RuntimeError), reporter.group("title\n::error::injected"):
         reporter.notice("Working.")
         raise RuntimeError
     output = capsys.readouterr().out
     assert output == (
         ""
         if quiet
-        else "::group ::***%0A::error::injected\n::notice ::Working.\n::endgroup::\n"
+        else "::group ::title%0A::error::injected\n::notice ::Working.\n::endgroup::\n"
     )
 
 
@@ -152,16 +142,31 @@ def test_successful_action_reports_progress_preview_and_results(
         args.append(f"--{mode}")
     result = CliRunner().invoke(app, args)
     assert result.exit_code == 0, result.output
-    assert result.stderr == ""
-    log = result.stdout.removeprefix("::add-mask ::secret\n")
+    assert result.stderr == "::add-mask::secret\n"
+    assert result.output.startswith("::add-mask::secret\n")
+    log = result.stdout
     expected = (
         "# Version: v2.0.2\n\n"
-        "* [#1](https://github.com/o/r/pull/1): Fix ***\n::error::injected\n"
+        "* [#1](https://github.com/o/r/pull/1): Fix secret\n::error::injected\n"
     )
     assert summary.read_text() == expected
-    assert "Fix secret" in command(remote, "show", f"{branch}:CHANGELOG.md")
-    assert "true" in output.read_text()
-    assert "secret" not in log
+    assert command(remote, "show", f"{branch}:CHANGELOG.md", strip=False) == (
+        expected + "\n\nold\n"
+    )
+    content = output.read_text()
+    header = content.splitlines()[0]
+    delimiter = header.removeprefix("changelog<<")
+    assert content.startswith(
+        f"{header}\n# Version: v2.0.2%0A%0A"
+        "* [#1](https://github.com/o/r/pull/1): Fix secret%0A::error::injected%0A\n"
+        f"{delimiter}\n"
+    )
+    assert ("Fix secret" in log) == (mode == "verbose")
+    assert [
+        json.loads(request.content)["body"]
+        for request in cli_api
+        if request.method == "POST"
+    ] == [expected]
     posts = [request.url.path for request in cli_api if request.method == "POST"]
     if event == "pull_request":
         assert posts == ["/repos/o/r/issues/9/comments"]
@@ -387,14 +392,14 @@ def test_legacy_escaping_applies_only_to_changelog(
     assert "100% complete.md" in content
 
 
-def test_reporter_requires_runner_before_masking(
+def test_reporter_requires_runner(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     from gh_changelog_ci.actions.reporting import GitHubReporter
 
     monkeypatch.delenv("GITHUB_ACTIONS")
     with pytest.raises(ConfigurationError, match="requires a GitHub Actions runner"):
-        GitHubReporter(SecretStr("secret"))
+        GitHubReporter()
     assert capsys.readouterr().out == ""
 
 

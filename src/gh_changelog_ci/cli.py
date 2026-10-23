@@ -138,6 +138,10 @@ def execute(ctx: typer.Context, *, actions: bool) -> None:
         else:
             settings = resolve_standalone(explicit, os.environ)
         token = settings.github_token
+        if token and os.environ.get("GITHUB_ACTIONS") == "true":
+            from .actions import escape
+
+            typer.echo(f"::add-mask::{escape(token.get_secret_value())}", err=True)
         reporter = TerminalReporter(quiet=settings.quiet)
         if settings.output_mode == OutputMode.GITHUB:
             from .actions import require_github_actions
@@ -150,7 +154,7 @@ def execute(ctx: typer.Context, *, actions: bool) -> None:
                 raise ConfigurationError("GitHub summary requires GITHUB_STEP_SUMMARY.")
             from .actions.reporting import GitHubReporter
 
-            reporter = GitHubReporter(token, quiet=settings.quiet)
+            reporter = GitHubReporter(quiet=settings.quiet)
         if settings.verbose:
             reporter.notice(f"Collecting {settings.changelog_type.value} changes.")
         with GitHub(settings.api_url, token) as github:

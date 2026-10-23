@@ -8,33 +8,18 @@ from pathlib import Path
 
 import github_action_utils as gha
 import typer
-from pydantic import SecretStr
 
 from ..errors import ChangelogError
-from . import require_github_actions
-
-
-def escape(text: str) -> str:
-    """Escape GitHub workflow command data."""
-    return text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+from . import escape, require_github_actions
 
 
 class GitHubReporter:
     """Report results to GitHub Actions."""
 
-    def __init__(self, token: SecretStr | None = None, *, quiet: bool = False) -> None:
-        """Mask the token and configure workflow reporting."""
+    def __init__(self, *, quiet: bool = False) -> None:
+        """Configure workflow reporting."""
         require_github_actions()
-        self.token = token
         self.quiet = quiet
-        if self.token:
-            gha.add_mask(self.token.get_secret_value())
-
-    def redacted(self, text: str) -> str:
-        """Redact the configured token."""
-        return (
-            text.replace(self.token.get_secret_value(), "***") if self.token else text
-        )
 
     @contextmanager
     def group(self, title: str) -> Iterator[None]:
@@ -43,7 +28,7 @@ class GitHubReporter:
         if self.quiet:
             yield
         else:
-            gha.start_group(escape(self.redacted(title)))
+            gha.start_group(escape(title))
             try:
                 yield
             finally:
@@ -53,17 +38,17 @@ class GitHubReporter:
         """Write a workflow notice."""
         require_github_actions()
         if not self.quiet:
-            gha.notice(escape(self.redacted(message)))
+            gha.notice(escape(message))
 
     def warning(self, message: str) -> None:
         """Write a workflow warning."""
         require_github_actions()
-        gha.warning(escape(self.redacted(message)))
+        gha.warning(escape(message))
 
     def error(self, message: str) -> None:
         """Write a workflow error."""
         require_github_actions()
-        gha.error(escape(self.redacted(message)))
+        gha.error(escape(message))
 
     def content(self, text: str) -> None:
         """Suspend command interpretation while showing untrusted content."""
@@ -71,7 +56,7 @@ class GitHubReporter:
         delimiter = uuid.uuid4().hex
         with gha.group("Changelog preview"):
             typer.echo(f"::stop-commands::{delimiter}")
-            typer.echo(self.redacted(text))
+            typer.echo(text)
             typer.echo(f"::{delimiter}::")
 
     def outputs(
@@ -79,7 +64,6 @@ class GitHubReporter:
     ) -> None:
         """Write outputs and an optional job summary."""
         require_github_actions()
-        values = {key: self.redacted(value) for key, value in values.items()}
         if (
             sum(
                 len(
@@ -106,7 +90,6 @@ class GitHubReporter:
                 with Path(output).open("a", encoding="utf-8", newline="\n") as stream:
                     stream.write(f"{key}<<{delimiter}\n{value}\n{delimiter}\n")
         if summary:
-            summary = self.redacted(summary)
             if len(summary.encode()) > 1024 * 1024:
                 self.warning(
                     "Summary omitted: it exceeds GitHub's 1 MB step-summary limit."

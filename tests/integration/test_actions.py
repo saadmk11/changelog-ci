@@ -923,7 +923,10 @@ def test_collection_exit_status_boundary(
         ],
     )
     assert result.exit_code == (0 if legacy and status == 500 else 1), result.output
-    assert "secret" not in result.output and "Traceback" not in result.output
+    mask = "::add-mask::secret\n"
+    assert result.stderr.startswith(mask)
+    diagnostics = result.output.removeprefix(mask)
+    assert "secret" not in diagnostics and "Traceback" not in diagnostics
     assert not list(tmp_path.iterdir())
 
 

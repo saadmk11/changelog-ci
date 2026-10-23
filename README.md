@@ -578,6 +578,10 @@ It never stages, commits, pushes, comments or creates PRs. `--stdout` prints onl
 the section and writes nothing. `--dry-run` previews without writes; combine it
 with `--diff` to preview a unified diff. Diagnostics go to stderr.
 
+Inside GitHub Actions, the token is registered for log masking at startup in
+either output mode. Generated files and workflow outputs retain their original
+content; changelog generation does not remove secrets from source text.
+
 `actions` requires a GitHub Actions runner and the `actions` extra, which the
 composite installs automatically. Local execution is rejected before loading
 workflow context or performing operations, even with the extra installed.
