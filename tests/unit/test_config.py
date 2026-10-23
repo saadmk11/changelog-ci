@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
-from pydantic import BaseModel, TypeAdapter, ValidationError
+from pydantic import BaseModel, SecretStr, TypeAdapter, ValidationError
 
 from gh_changelog_ci.config import (
     LEGACY_FIELDS,
@@ -285,6 +285,23 @@ def test_environment_false_empty_lists_and_context(tmp_path: Path) -> None:
     assert "secret" not in repr(settings)
     with pytest.raises(ConfigurationError):
         resolve_standalone({}, {"CHANGELOG_CI_GROUP_CONFIG": "token-secret"})
+
+
+def test_settings_keep_token_secret_in_representations_and_json() -> None:
+    value = "test-sensitive-token"
+    settings = Settings(github_token=SecretStr(value))
+    assert isinstance(settings.github_token, SecretStr)
+    assert settings.github_token.get_secret_value() == value
+    assert all(
+        value not in representation
+        for representation in (
+            str(settings),
+            repr(settings),
+            repr(settings.model_dump()),
+            settings.model_dump_json(),
+        )
+    )
+    assert json.loads(settings.model_dump_json())["github_token"] == "**********"
 
 
 @pytest.mark.parametrize(

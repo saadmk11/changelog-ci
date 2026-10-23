@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 
 import httpx
 import pytest
+from pydantic import SecretStr
 
 from gh_changelog_ci.errors import APIError, ChangelogError, ConfigurationError
 from gh_changelog_ci.github import GitHub
@@ -10,6 +11,39 @@ from tests.github import linked_issues, pull_request
 
 CUTOFF = datetime(2026, 1, 2, tzinfo=UTC)
 SINCE = datetime(2026, 1, 1, tzinfo=UTC)
+
+
+def test_authentication_uses_token_value() -> None:
+    token = SecretStr("test-sensitive-token")
+    requests: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={})
+
+    with GitHub(
+        "https://api.github.com", token, transport=httpx.MockTransport(handle)
+    ) as github:
+        github.request("GET", "repos/o/r")
+    assert len(requests) == 1
+    assert requests[0].headers["Authorization"] == "Bearer test-sensitive-token"
+    assert "test-sensitive-token" not in repr(requests[0].headers)
+
+
+@pytest.mark.parametrize("token", [None, SecretStr("")])
+def test_empty_token_does_not_set_authorization(token: SecretStr | None) -> None:
+    requests: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={})
+
+    with GitHub(
+        "https://api.github.com", token, transport=httpx.MockTransport(handle)
+    ) as github:
+        github.request("GET", "repos/o/r")
+    assert len(requests) == 1
+    assert "Authorization" not in requests[0].headers
 
 
 @pytest.mark.parametrize("status", [401, 403, 404, 429, 500])
@@ -20,7 +54,7 @@ def test_release_failures_are_not_no_release(status: int) -> None:
     with (
         GitHub(
             "https://api.github.com",
-            "token-secret",
+            SecretStr("token-secret"),
             transport=httpx.MockTransport(handle),
         ) as github,
         pytest.raises(APIError) as error,
@@ -170,7 +204,9 @@ def test_cross_origin_pagination_never_sends_token(link: str) -> None:
 
     with (
         GitHub(
-            "https://api.github.com", "secret", transport=httpx.MockTransport(handle)
+            "https://api.github.com",
+            SecretStr("secret"),
+            transport=httpx.MockTransport(handle),
         ) as github,
         pytest.raises(ChangelogError, match="origin"),
     ):
@@ -187,7 +223,9 @@ def test_redirect_is_not_followed() -> None:
 
     with (
         GitHub(
-            "https://api.github.com", "secret", transport=httpx.MockTransport(handle)
+            "https://api.github.com",
+            SecretStr("secret"),
+            transport=httpx.MockTransport(handle),
         ) as github,
         pytest.raises(APIError),
     ):
@@ -250,7 +288,9 @@ def test_malformed_pagination_fails_before_another_request(link: str) -> None:
 
     with (
         GitHub(
-            "https://api.github.com", "secret", transport=httpx.MockTransport(handle)
+            "https://api.github.com",
+            SecretStr("secret"),
+            transport=httpx.MockTransport(handle),
         ) as github,
         pytest.raises(ChangelogError, match="invalid pagination URL") as error,
     ):
@@ -445,7 +485,9 @@ def test_pagination_accepts_equivalent_https_default_ports(api_url: str) -> None
             else {},
         )
 
-    with GitHub(api_url, "secret", transport=httpx.MockTransport(handle)) as github:
+    with GitHub(
+        api_url, SecretStr("secret"), transport=httpx.MockTransport(handle)
+    ) as github:
         assert github.commits("o/r", SINCE, CUTOFF) == ()
     assert len(requests) == 2
     assert all(
@@ -483,7 +525,9 @@ def test_linked_issue_types_paginate_and_deduplicate(
             else linked_issues("Bug", "Feature"),
         )
 
-    with GitHub(api_url, "secret", transport=httpx.MockTransport(handle)) as github:
+    with GitHub(
+        api_url, SecretStr("secret"), transport=httpx.MockTransport(handle)
+    ) as github:
         assert github.issue_types("o/r", 7) == ("Bug", "Feature")
     assert len(requests) == 2
     assert all(str(request.url) == endpoint for request in requests)
@@ -497,7 +541,7 @@ def test_linked_issue_types_paginate_and_deduplicate(
 def test_linked_issues_without_types(types: tuple[None, ...]) -> None:
     with GitHub(
         "https://api.github.com",
-        "secret",
+        SecretStr("secret"),
         transport=httpx.MockTransport(
             lambda request: httpx.Response(200, json=linked_issues(*types))
         ),
@@ -525,7 +569,9 @@ def test_pull_requests_collect_their_own_issue_types_and_keep_labels() -> None:
         )
 
     with GitHub(
-        "https://api.github.com", "secret", transport=httpx.MockTransport(handle)
+        "https://api.github.com",
+        SecretStr("secret"),
+        transport=httpx.MockTransport(handle),
     ) as github:
         changes = github.pull_requests("o/r", SINCE, CUTOFF, include_issue_types=True)
     assert [(c.identifier, c.issue_types, c.labels) for c in changes] == [
@@ -557,7 +603,7 @@ def test_graphql_errors_do_not_render_partial_issue_types(partial_data: bool) ->
     with (
         GitHub(
             "https://api.github.com",
-            "token-secret",
+            SecretStr("token-secret"),
             transport=httpx.MockTransport(
                 lambda request: httpx.Response(200, json=payload)
             ),
@@ -595,7 +641,7 @@ def test_invalid_or_unavailable_linked_issue_data_fails(payload: object) -> None
     with (
         GitHub(
             "https://api.github.com",
-            "secret",
+            SecretStr("secret"),
             transport=httpx.MockTransport(
                 lambda request: httpx.Response(200, json=payload)
             ),
@@ -619,7 +665,9 @@ def test_linked_issue_pagination_rejects_missing_or_repeated_cursors(
 
     with (
         GitHub(
-            "https://api.github.com", "secret", transport=httpx.MockTransport(handle)
+            "https://api.github.com",
+            SecretStr("secret"),
+            transport=httpx.MockTransport(handle),
         ) as github,
         pytest.raises(ChangelogError, match="invalid linked issue pagination"),
     ):
@@ -632,7 +680,7 @@ def test_linked_issue_http_failures_are_not_untyped_issues(status: int) -> None:
     with (
         GitHub(
             "https://api.github.com",
-            "secret",
+            SecretStr("secret"),
             transport=httpx.MockTransport(lambda request: httpx.Response(status)),
         ) as github,
         pytest.raises(ChangelogError, match=f"linked issue types \\(HTTP {status}\\)"),

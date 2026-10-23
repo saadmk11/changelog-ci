@@ -8,6 +8,7 @@ from pathlib import Path
 
 import github_action_utils as gha
 import typer
+from pydantic import SecretStr
 
 from ..errors import ChangelogError
 from . import require_github_actions
@@ -21,17 +22,19 @@ def escape(text: str) -> str:
 class GitHubReporter:
     """Report results to GitHub Actions."""
 
-    def __init__(self, token: str | None = None, *, quiet: bool = False) -> None:
+    def __init__(self, token: SecretStr | None = None, *, quiet: bool = False) -> None:
         """Mask the token and configure workflow reporting."""
         require_github_actions()
         self.token = token
         self.quiet = quiet
-        if token:
-            gha.add_mask(token)
+        if self.token:
+            gha.add_mask(self.token.get_secret_value())
 
     def redacted(self, text: str) -> str:
         """Redact the configured token."""
-        return text.replace(self.token, "***") if self.token else text
+        return (
+            text.replace(self.token.get_secret_value(), "***") if self.token else text
+        )
 
     @contextmanager
     def group(self, title: str) -> Iterator[None]:

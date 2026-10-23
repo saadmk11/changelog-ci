@@ -4,6 +4,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from pydantic import SecretStr
 from typer.testing import CliRunner
 
 from gh_changelog_ci.cli import app
@@ -17,6 +18,16 @@ pytestmark = [
         reason="actions extra required",
     ),
 ]
+
+
+def test_reporter_retains_wrapped_token(capsys: pytest.CaptureFixture[str]) -> None:
+    from gh_changelog_ci.actions.reporting import GitHubReporter
+
+    reporter = GitHubReporter(SecretStr("test-sensitive-token"))
+    assert capsys.readouterr().out == "::add-mask ::test-sensitive-token\n"
+    assert isinstance(reporter.token, SecretStr)
+    assert "test-sensitive-token" not in repr(vars(reporter))
+    assert reporter.redacted("token: test-sensitive-token") == "token: ***"
 
 
 @pytest.mark.parametrize("legacy", [False, True])
@@ -54,7 +65,7 @@ def test_diagnostics_redact_secrets_and_escape_commands(
 ) -> None:
     from gh_changelog_ci.actions.reporting import GitHubReporter
 
-    reporter = GitHubReporter("secret", quiet=quiet)
+    reporter = GitHubReporter(SecretStr("secret"), quiet=quiet)
     capsys.readouterr()
     getattr(reporter, level)("secret\n::error::injected")
     assert capsys.readouterr().out == (
@@ -67,7 +78,7 @@ def test_preview_redacts_secrets_and_resumes_workflow_commands(
 ) -> None:
     from gh_changelog_ci.actions.reporting import GitHubReporter
 
-    reporter = GitHubReporter("secret")
+    reporter = GitHubReporter(SecretStr("secret"))
     capsys.readouterr()
     reporter.content("::warning::content\nsecret")
     output = capsys.readouterr().out
@@ -87,7 +98,7 @@ def test_progress_groups_escape_titles_and_close_on_failure(
 ) -> None:
     from gh_changelog_ci.actions.reporting import GitHubReporter
 
-    reporter = GitHubReporter("secret", quiet=quiet)
+    reporter = GitHubReporter(SecretStr("secret"), quiet=quiet)
     capsys.readouterr()
     with pytest.raises(RuntimeError), reporter.group("secret\n::error::injected"):
         reporter.notice("Working.")
@@ -214,7 +225,7 @@ def test_failed_comment_closes_progress_group_without_success_message(
             return httpx.Response(403)
         return response(request)
 
-    def factory(api_url: str, token: str | None = None) -> GitHub:
+    def factory(api_url: str, token: SecretStr | None = None) -> GitHub:
         return GitHub(api_url, token, transport=httpx.MockTransport(handle))
 
     monkeypatch.setattr("gh_changelog_ci.cli.GitHub", factory)
@@ -383,7 +394,7 @@ def test_reporter_requires_runner_before_masking(
 
     monkeypatch.delenv("GITHUB_ACTIONS")
     with pytest.raises(ConfigurationError, match="requires a GitHub Actions runner"):
-        GitHubReporter("secret")
+        GitHubReporter(SecretStr("secret"))
     assert capsys.readouterr().out == ""
 
 

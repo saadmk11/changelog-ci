@@ -137,9 +137,7 @@ def execute(ctx: typer.Context, *, actions: bool) -> None:
             settings = resolve_actions(explicit, os.environ, TerminalReporter())
         else:
             settings = resolve_standalone(explicit, os.environ)
-        token = (
-            settings.github_token.get_secret_value() if settings.github_token else None
-        )
+        token = settings.github_token
         reporter = TerminalReporter(quiet=settings.quiet)
         if settings.output_mode == OutputMode.GITHUB:
             from .actions import require_github_actions

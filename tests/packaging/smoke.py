@@ -8,6 +8,7 @@ import sys
 from unittest.mock import patch
 
 import httpx
+from pydantic import SecretStr
 from typer.testing import CliRunner
 
 from gh_changelog_ci.cli import app
@@ -40,7 +41,7 @@ def response(request: httpx.Request) -> httpx.Response:
             raise AssertionError(f"Unexpected API request: {request.url.path}")
 
 
-def client(api_url: str, token: str | None = None) -> GitHub:
+def client(api_url: str, token: SecretStr | None = None) -> GitHub:
     """Create an API client with the test transport."""
     return GitHub(api_url, token, transport=httpx.MockTransport(response))
 

@@ -628,11 +628,22 @@ Options for `actions`, available for execution inside GitHub Actions:
 | `--new-pull-request-title TEXT`, `--commit-message TEXT` | Override generated titles |
 
 Runner context supplies the event, PR and branch details. The destination must
-be a real branch. Comment-only mode needs no checkout. Git writes
-require a matching origin, a clean target changelog and no staged user changes.
-PR commits also require the head repository to be present in the event payload.
-Unrelated unstaged/untracked files are retained. Git uses checkout-provided
-credentials; an API token alone does not configure push authentication.
+be a real branch. Comment-only mode needs no checkout. Git writes require a
+matching origin and a safe, non-ignored changelog path. PR commits also require
+the head repository in the event payload.
+
+The action prepends the generated section to the changelog's working copy and
+commits only that file. The working copy takes precedence over the staged version.
+Untracked changelogs are also supported. Delete the changelog before running the
+action to keep only the new section. Missing parent directories are created when
+writing the changelog. Unrelated staged, unstaged and untracked changes are
+preserved.
+
+Branch preparation stops if switching branches would overwrite local changes.
+This includes local deletions and ignored files. Unfinished merges, rebases,
+cherry-picks and reverts, unresolved conflicts and unpushed commits on the
+destination branch are rejected. Git uses checkout-provided credentials;
+an API token alone does not configure push authentication.
 API writes require a token. Dry runs do not require write credentials. GitHub
 outputs and summaries require the corresponding runner-provided output files.
 

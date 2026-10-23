@@ -12,6 +12,7 @@ from pydantic import (
     AwareDatetime,
     ConfigDict,
     Field,
+    SecretStr,
     TypeAdapter,
     ValidationError,
 )
@@ -144,7 +145,7 @@ class GitHub:
     def __init__(
         self,
         api_url: str,
-        token: str | None = None,
+        token: SecretStr | None = None,
         *,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
@@ -156,7 +157,7 @@ class GitHub:
             "X-GitHub-Api-Version": "2022-11-28",
         }
         if token:
-            headers["Authorization"] = f"Bearer {token}"
+            headers["Authorization"] = f"Bearer {token.get_secret_value()}"
         self.client = httpx.Client(
             headers=headers,
             timeout=httpx.Timeout(30, connect=10),

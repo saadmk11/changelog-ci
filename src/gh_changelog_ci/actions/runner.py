@@ -128,7 +128,7 @@ def run(
     path = output_path(
         settings.workspace,
         settings.changelog_filename,
-        require_parent=settings.commit_changelog,
+        require_parent=False,
     )
     old, new = prepend_content(path, result.section)
     changed = old != new
@@ -181,6 +181,7 @@ def run(
                 if changed:
                     if settings.verbose:
                         reporter.notice(f"Updating {settings.changelog_filename}.")
+                    path.parent.mkdir(parents=True, exist_ok=True)
                     write_atomic(path, new)
                     committed = git.commit(branch, settings.commit_message or title)
                 if committed:

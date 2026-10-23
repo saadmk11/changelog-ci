@@ -7,6 +7,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from pydantic import SecretStr
 from typer.testing import CliRunner
 
 from gh_changelog_ci.cli import app
@@ -85,7 +86,7 @@ def test_issue_type_grouping_does_not_query_excluded_pull_requests(
             changes=[pull_request(1), pull_request(2, labels=("skip",))],
         )
 
-    def factory(api_url: str, token: str | None = None) -> GitHub:
+    def factory(api_url: str, token: SecretStr | None = None) -> GitHub:
         return GitHub(api_url, token, transport=httpx.MockTransport(handle))
 
     monkeypatch.setattr("gh_changelog_ci.cli.GitHub", factory)
@@ -134,7 +135,7 @@ def test_cli_groups_by_linked_issue_types(
             return httpx.Response(200, json=linked_issues("Bug"))
         return response(request, changes=[pull_request(labels=("feature",))])
 
-    def factory(api_url: str, token: str | None = None) -> GitHub:
+    def factory(api_url: str, token: SecretStr | None = None) -> GitHub:
         return GitHub(api_url, token, transport=httpx.MockTransport(handle))
 
     monkeypatch.setattr("gh_changelog_ci.cli.GitHub", factory)
@@ -622,3 +623,33 @@ def test_environment_token_and_enterprise_url(
     assert cli_api[0].headers["Authorization"] == "Bearer secret"
     assert cli_api[0].url.host == "ghe.example"
     assert cli_api[0].url.path == "/api/v3/repos/o/r/releases/latest"
+
+
+def test_cli_passes_wrapped_token_to_client(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tokens: list[SecretStr | None] = []
+
+    def factory(api_url: str, token: SecretStr | None = None) -> GitHub:
+        tokens.append(token)
+        return GitHub(api_url, token, transport=httpx.MockTransport(response))
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("gh_changelog_ci.cli.GitHub", factory)
+    result = runner.invoke(
+        app,
+        [
+            "generate",
+            "--repository",
+            "o/r",
+            "--release-version",
+            "1",
+            "--github-token",
+            "test-sensitive-token",
+            "--stdout",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert len(tokens) == 1
+    assert isinstance(tokens[0], SecretStr)
+    assert tokens[0].get_secret_value() == "test-sensitive-token"
