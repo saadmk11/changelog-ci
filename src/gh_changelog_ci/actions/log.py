@@ -1,6 +1,5 @@
 """GitHub workflow messages, outputs and summaries."""
 
-import os
 from collections.abc import Iterator
 from contextlib import contextmanager
 
@@ -72,7 +71,7 @@ class GitHubReporter:
                 "Changelog exceeds GitHub's 1 MB job output limit; "
                 "the file has not been truncated."
             )
-        if not os.environ.get("GITHUB_OUTPUT"):
+        if not gha.vars.github.output:
             raise ChangelogError("GitHub output requires GITHUB_OUTPUT.")
         for key, value in values.items():
             gha.set_output(key, value)
@@ -82,7 +81,7 @@ class GitHubReporter:
                 self.warning(
                     "Summary omitted: it exceeds GitHub's 1 MB step-summary limit."
                 )
-            elif os.environ.get("GITHUB_STEP_SUMMARY"):
+            elif gha.vars.github.step_summary:
                 gha.append_job_summary(summary)
             else:
                 raise ChangelogError("GitHub summary requires GITHUB_STEP_SUMMARY.")

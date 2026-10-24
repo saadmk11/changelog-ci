@@ -126,6 +126,7 @@ def generate_command(settings: Settings, github: GitHub, reporter: Reporter) -> 
 def execute(ctx: typer.Context, *, actions: bool) -> None:
     """Resolve settings and execute the selected command."""
     reporter: Reporter = TerminalReporter()
+    legacy = actions and os.environ.get("_CHANGELOG_CI_COMPOSITE") == "true"
     try:
         if actions:
             from .actions import require_github_actions
@@ -144,11 +145,12 @@ def execute(ctx: typer.Context, *, actions: bool) -> None:
 
             require_github_actions()
             require_actions()
-            if not os.environ.get("GITHUB_OUTPUT"):
-                raise ConfigurationError("GitHub output requires GITHUB_OUTPUT.")
-            if settings.summary and not os.environ.get("GITHUB_STEP_SUMMARY"):
-                raise ConfigurationError("GitHub summary requires GITHUB_STEP_SUMMARY.")
             import github_action_utils as gha
+
+            if not gha.vars.github.output:
+                raise ConfigurationError("GitHub output requires GITHUB_OUTPUT.")
+            if settings.summary and not gha.vars.github.step_summary:
+                raise ConfigurationError("GitHub summary requires GITHUB_STEP_SUMMARY.")
 
             from .actions.log import GitHubReporter
 
@@ -165,7 +167,7 @@ def execute(ctx: typer.Context, *, actions: bool) -> None:
                     settings,
                     github,
                     reporter,
-                    legacy=os.environ.get("_CHANGELOG_CI_COMPOSITE") == "true",
+                    legacy=legacy,
                 )
             else:
                 generate_command(settings, github, reporter)
@@ -173,8 +175,7 @@ def execute(ctx: typer.Context, *, actions: bool) -> None:
         reporter.error(str(exc))
         # Composite collection failures use the documented success/skip status.
         if (
-            actions
-            and os.environ.get("_CHANGELOG_CI_COMPOSITE") == "true"
+            legacy
             and isinstance(exc, APIError)
             and exc.operation == "collection"
             and exc.status is not None

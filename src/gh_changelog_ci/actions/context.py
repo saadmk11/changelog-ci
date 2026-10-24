@@ -1,6 +1,5 @@
 """Resolve pull request and repository context."""
 
-import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -60,9 +59,11 @@ class RunnerContext:
 def load_context(settings: Settings) -> RunnerContext:
     """Read and validate the runner's event payload."""
     require_github_actions()
-    if not (event_name := os.environ.get("GITHUB_EVENT_NAME")):
+    import github_action_utils as gha
+
+    if not (event_name := gha.vars.github.event_name):
         raise ConfigurationError("GitHub Actions requires GITHUB_EVENT_NAME.")
-    if not (event_path := os.environ.get("GITHUB_EVENT_PATH")):
+    if not (event_path := gha.vars.github.event_path):
         raise ConfigurationError("GitHub Actions requires GITHUB_EVENT_PATH.")
     try:
         event = TypeAdapter(Event).validate_json(
@@ -84,12 +85,12 @@ def load_context(settings: Settings) -> RunnerContext:
         raise ConfigurationError("Repository is missing from the runner context.")
     base: str | None
     if pr:
-        head = os.environ.get("GITHUB_HEAD_REF") or pr.head.ref
-        base = os.environ.get("GITHUB_BASE_REF") or pr.base.ref
+        head = gha.vars.github.head_ref or pr.head.ref
+        base = gha.vars.github.base_ref or pr.base.ref
     else:
         head = None
         base = event.repository.default_branch if event.repository else None
-        if (ref := os.environ.get("GITHUB_REF", "")).startswith("refs/heads/"):
+        if (ref := gha.vars.github.ref or "").startswith("refs/heads/"):
             base = ref.removeprefix("refs/heads/")
     if event_name == "pull_request" and pr is None:
         raise ConfigurationError("Pull request data is missing from the runner event.")
