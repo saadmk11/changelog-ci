@@ -578,9 +578,11 @@ It never stages, commits, pushes, comments or creates PRs. `--stdout` prints onl
 the section and writes nothing. `--dry-run` previews without writes; combine it
 with `--diff` to preview a unified diff. Diagnostics go to stderr.
 
-Inside GitHub Actions, the token is registered for log masking at startup in
-either output mode. Generated files and workflow outputs retain their original
-content; changelog generation does not remove secrets from source text.
+GitHub output mode registers the token for runner log masking before reporting.
+Terminal mode does not register masks or add logging commands. On a runner, use
+GitHub output mode for previews or redirect `--stdout` to a file. Generated files
+and workflow outputs retain their original content; changelog generation does
+not remove secrets from source text.
 
 `actions` requires a GitHub Actions runner and the `actions` extra, which the
 composite installs automatically. Local execution is rejected before loading
@@ -709,6 +711,13 @@ changes to configuration, rendering, Git operations and credentials.
 macOS and Windows. `action-test.yaml` installs the built wheel through a test
 copy of the composite and checks comments, release-PR commits and new PRs on all
 three platforms. Its API and Git destinations are local test services.
+
+GitHub Action pins are updated weekly by
+[`update-actions.yaml`](.github/workflows/update-actions.yaml), including pins in
+the root `action.yaml`. Updates use release commit SHAs and share one pull request
+branch. Set the `WORKFLOW_SECRET` repository secret to a fine-grained personal
+access token with read/write access to Contents, Workflows and Pull requests for
+this repository. Dependabot updates Python dependencies monthly.
 
 ## Releasing
 

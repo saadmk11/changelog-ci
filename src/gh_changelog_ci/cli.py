@@ -14,8 +14,8 @@ from .errors import APIError, ChangelogError, ConfigurationError
 from .files import file_diff, output_path, prepend_content, write_atomic
 from .generate import generate
 from .github import GitHub
+from .log import Reporter, TerminalReporter
 from .models import GenerationRequest, GroupBy, OutputMode, Settings, Source
-from .reporting import Reporter, TerminalReporter
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -138,10 +138,6 @@ def execute(ctx: typer.Context, *, actions: bool) -> None:
         else:
             settings = resolve_standalone(explicit, os.environ)
         token = settings.github_token
-        if token and os.environ.get("GITHUB_ACTIONS") == "true":
-            from .actions import escape
-
-            typer.echo(f"::add-mask::{escape(token.get_secret_value())}", err=True)
         reporter = TerminalReporter(quiet=settings.quiet)
         if settings.output_mode == OutputMode.GITHUB:
             from .actions import require_github_actions
@@ -152,8 +148,12 @@ def execute(ctx: typer.Context, *, actions: bool) -> None:
                 raise ConfigurationError("GitHub output requires GITHUB_OUTPUT.")
             if settings.summary and not os.environ.get("GITHUB_STEP_SUMMARY"):
                 raise ConfigurationError("GitHub summary requires GITHUB_STEP_SUMMARY.")
-            from .actions.reporting import GitHubReporter
+            import github_action_utils as gha
 
+            from .actions.log import GitHubReporter
+
+            if token:
+                gha.add_mask(token.get_secret_value())
             reporter = GitHubReporter(quiet=settings.quiet)
         if settings.verbose:
             reporter.notice(f"Collecting {settings.changelog_type.value} changes.")

@@ -121,11 +121,11 @@ wheels = [
 
 [[package]]
 name = "certifi"
-version = "2026.7.22"
+version = "2026.10.23"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a3/c2/24167ea9858356b47a87a50d39908bfdb72ceeefe0041586e704e5376b3a/certifi-2026.7.22.tar.gz", hash = "sha256:741e2c3b351ddf169a738da9f2c048608ff7f2c5cc02f1ebc6b118bb090d5d55", size = 138112, upload-time = "2026-07-22T03:35:12.644Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fd/11/b524cbd9bbdaca58608e4cf4053fd463417549e1959fa8d3aa18319f9555/certifi-2026.10.23.tar.gz", hash = "sha256:a9895e6e2758b371e0545e321a3a8fd1fcfd9829ada8824a936dfb16aaaf36cd", size = 136225, upload-time = "2026-10-23T11:36:16.478Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl", hash = "sha256:62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775", size = 136983, upload-time = "2026-07-22T03:35:11.276Z" },
+    { url = "https://files.pythonhosted.org/packages/32/d1/a3652fe2c19134d0d15922177821d863cbd7e842d53a21bbe7e8e3a1b5ac/certifi-2026.10.23-py3-none-any.whl", hash = "sha256:e9b54de76e530bb6cf0ccd036787103acb58fd42ba930ea8bf948ddbaa2f61d1", size = 135082, upload-time = "2026-10-23T11:36:14.763Z" },
 ]
 
 [[package]]
@@ -536,6 +536,7 @@ version = "2.0.2"
 source = { editable = "." }
 default-groups = []
 dependencies = [
+    { name = "certifi" },
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pyyaml" },
@@ -577,7 +578,8 @@ typing = [
 
 [package.metadata]
 requires-dist = [
-    { name = "github-action-utils", marker = "extra == 'actions'", specifier = ">=1.1.0,<2" },
+    { name = "certifi", specifier = ">=2026.10.19" },
+    { name = "github-action-utils", marker = "extra == 'actions'", specifier = ">=2.0.0,<3" },
     { name = "httpx", specifier = ">=0.28.1,<0.29" },
     { name = "pydantic", specifier = ">=2.14.1,<3" },
     { name = "pyyaml", specifier = ">=6.0.3,<7" },
@@ -613,11 +615,11 @@ typing = [
 
 [[package]]
 name = "github-action-utils"
-version = "1.1.0"
+version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/41/81/b70e3be8686c2011ec03eddf5a695496c9935818b18cde6a5f9553127a4e/github-action-utils-1.1.0.tar.gz", hash = "sha256:8aa40d90b89d814004160bb7e90b42cc07b55f41f66e4a4a32766d26c9ca3d61", size = 8860, upload-time = "2022-10-17T14:28:57.931Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c2/db/411ca7d35ae52a20397ac53c3e78ec1e903f1e545c84a00d5462e6b88a79/github_action_utils-2.0.0.tar.gz", hash = "sha256:4e5c3dc3df2ba976eeb3b9383bfba547ab8d7318a0f941c276ff766668b5754e", size = 105485, upload-time = "2026-10-20T07:03:27.73Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fd/c8/d2a1c4ac43c9194316b8802b08502712ef242e6f325435409688e760b03a/github_action_utils-1.1.0-py2.py3-none-any.whl", hash = "sha256:bc84bac22e8a25ebe86370b08ff2c174960e468e899ffd313cb09d19629acefb", size = 8893, upload-time = "2022-10-17T14:28:56.215Z" },
+    { url = "https://files.pythonhosted.org/packages/bf/c1/87da647964ad99b24aa0c8ac0751aa08e3c1b7e4327859e104a99f912c31/github_action_utils-2.0.0-py3-none-any.whl", hash = "sha256:1ad4fbde49f287e32b586728c90b84da222aa9a348a61bbfe159a7db60389e96", size = 21945, upload-time = "2026-10-20T07:03:26.69Z" },
 ]
 
 [[package]]

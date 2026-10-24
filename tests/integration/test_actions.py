@@ -19,8 +19,8 @@ from gh_changelog_ci.errors import (
     GitError,
 )
 from gh_changelog_ci.github import GitHub
+from gh_changelog_ci.log import TerminalReporter
 from gh_changelog_ci.models import Settings
-from gh_changelog_ci.reporting import TerminalReporter
 from tests.git import command
 from tests.github import linked_issues, pull_request_event, response
 
@@ -923,10 +923,7 @@ def test_collection_exit_status_boundary(
         ],
     )
     assert result.exit_code == (0 if legacy and status == 500 else 1), result.output
-    mask = "::add-mask::secret\n"
-    assert result.stderr.startswith(mask)
-    diagnostics = result.output.removeprefix(mask)
-    assert "secret" not in diagnostics and "Traceback" not in diagnostics
+    assert "secret" not in result.output and "Traceback" not in result.output
     assert not list(tmp_path.iterdir())
 
 

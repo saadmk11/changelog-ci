@@ -11,8 +11,8 @@ from gh_changelog_ci.config import (
     resolve_standalone,
 )
 from gh_changelog_ci.errors import ConfigurationError
+from gh_changelog_ci.log import TerminalReporter
 from gh_changelog_ci.models import Group, GroupBy, Settings
-from gh_changelog_ci.reporting import TerminalReporter
 
 
 class LegacyConfig(BaseModel):

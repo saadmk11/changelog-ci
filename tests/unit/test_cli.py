@@ -2,17 +2,16 @@ import importlib.util
 import json
 import subprocess
 import sys
+from contextlib import redirect_stderr, redirect_stdout
 from importlib.metadata import version
 from pathlib import Path
 
 import httpx
 import pytest
-import typer
 from pydantic import SecretStr
 from typer.testing import CliRunner
 
 from gh_changelog_ci.cli import app
-from gh_changelog_ci.errors import ChangelogError
 from gh_changelog_ci.github import GitHub
 from tests.github import linked_issues, pull_request, response
 
@@ -650,7 +649,7 @@ def test_environment_token_and_enterprise_url(
 
 @pytest.mark.parametrize("github_actions", [None, "false", "true"])
 @pytest.mark.parametrize("quiet", [False, True])
-def test_cli_keeps_token_wrapped_and_masks_it_only_on_runner(
+def test_terminal_output_keeps_token_wrapped_without_workflow_commands(
     github_actions: str | None,
     quiet: bool,
     tmp_path: Path,
@@ -660,7 +659,6 @@ def test_cli_keeps_token_wrapped_and_masks_it_only_on_runner(
 
     def factory(api_url: str, token: SecretStr | None = None) -> GitHub:
         tokens.append(token)
-        typer.echo("Initializing API client.", err=True)
         return GitHub(api_url, token, transport=httpx.MockTransport(response))
 
     if github_actions is not None:
@@ -686,16 +684,14 @@ def test_cli_keeps_token_wrapped_and_masks_it_only_on_runner(
     assert len(tokens) == 1
     assert isinstance(tokens[0], SecretStr)
     assert tokens[0].get_secret_value() == "test-sensitive-token"
-    mask = "::add-mask::test-sensitive-token\n" if github_actions == "true" else ""
-    assert result.stderr == mask + "Initializing API client.\n"
-    assert result.output.startswith(result.stderr)
+    assert result.stderr == ""
     assert result.stdout == (
         "# Version: 1\n\n* [#1](https://github.com/o/r/pull/1): Change 1\n"
     )
 
 
 @pytest.mark.parametrize("token", [None, ""])
-def test_cli_does_not_register_empty_tokens(
+def test_empty_cli_tokens_leave_requests_unauthenticated(
     token: str | None,
     cli_api: list[httpx.Request],
     monkeypatch: pytest.MonkeyPatch,
@@ -720,26 +716,29 @@ def test_cli_does_not_register_empty_tokens(
     assert all("Authorization" not in request.headers for request in cli_api)
 
 
-def test_mask_registration_escapes_workflow_commands(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_terminal_output_does_not_disclose_token_in_redirected_streams(
+    cli_api: list[httpx.Request],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    value = "first%\r\n::error::injected"
-
-    def factory(api_url: str, token: SecretStr | None = None) -> GitHub:
-        assert isinstance(token, SecretStr)
-        assert token.get_secret_value() == value
-        raise ChangelogError("Stopped before making requests.")
-
-    monkeypatch.chdir(tmp_path)
+    value = "test-sensitive-token"
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
     monkeypatch.setenv("CHANGELOG_CI_GITHUB_TOKEN", value)
-    monkeypatch.setattr("gh_changelog_ci.cli.GitHub", factory)
-    result = runner.invoke(
-        app, ["generate", "--repository", "o/r", "--release-version", "1"]
+    output = tmp_path / "changelog.md"
+    errors = tmp_path / "errors.log"
+    with (
+        output.open("w") as stdout,
+        errors.open("w") as stderr,
+        redirect_stdout(stdout),
+        redirect_stderr(stderr),
+    ):
+        app(
+            ["generate", "--repository", "o/r", "--release-version", "1", "--stdout"],
+            standalone_mode=False,
+        )
+    assert errors.read_text() == ""
+    assert output.read_text() == (
+        "# Version: 1\n\n* [#1](https://github.com/o/r/pull/1): Change 1\n"
     )
-    assert result.exit_code == 1, result.output
-    assert result.stdout == ""
-    assert result.stderr == (
-        "::add-mask::first%25%0D%0A::error::injected\n"
-        "Error: Stopped before making requests.\n"
-    )
+    assert len(cli_api) == 2
+    assert all(r.headers["Authorization"] == f"Bearer {value}" for r in cli_api)

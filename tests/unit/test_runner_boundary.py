@@ -15,8 +15,8 @@ from gh_changelog_ci.cli import app
 from gh_changelog_ci.config import resolve_actions
 from gh_changelog_ci.errors import ConfigurationError
 from gh_changelog_ci.github import GitHub
+from gh_changelog_ci.log import TerminalReporter
 from gh_changelog_ci.models import Settings
-from gh_changelog_ci.reporting import TerminalReporter
 
 
 def unexpected(*args: object, **kwargs: object) -> NoReturn:

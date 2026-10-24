@@ -78,6 +78,11 @@ def base() -> None:
     assert importlib.util.find_spec("github_action_utils") is None
     assert importlib.resources.files("gh_changelog_ci").joinpath("py.typed").is_file()
     generation()
+    with patch.dict(
+        os.environ,
+        {"GITHUB_ACTIONS": "true", "CHANGELOG_CI_GITHUB_TOKEN": "test-sensitive-token"},
+    ):
+        generation()
 
 
 def actions() -> None:
@@ -89,7 +94,7 @@ def actions() -> None:
     assert "requires a GitHub Actions runner" in result.output
     assert "github_action_utils" not in sys.modules
     with patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}):
-        importlib.import_module("gh_changelog_ci.actions.reporting")
+        importlib.import_module("gh_changelog_ci.actions.log")
         result = CliRunner().invoke(app, ["actions"])
     assert result.exit_code == 2, result.output
     assert "GITHUB_EVENT_NAME" in result.output

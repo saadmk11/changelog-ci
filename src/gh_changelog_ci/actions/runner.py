@@ -8,8 +8,8 @@ from ..errors import APIError, ChangelogError, ConfigurationError
 from ..files import file_diff, output_path, prepend_content, write_atomic
 from ..generate import generate
 from ..github import GitHub
+from ..log import Reporter
 from ..models import GenerationRequest, OutputMode, Settings
-from ..reporting import Reporter
 from . import require_github_actions
 from .context import load_context, release_version
 from .git import Git, branch_component

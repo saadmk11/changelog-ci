@@ -248,6 +248,7 @@ class GitHub:
         return released
 
     def _next(self, response: httpx.Response, seen: set[str]) -> str | None:
+        """Return the next pagination URL, rejecting repeated links."""
         link = response.links.get("next", {}).get("url")
         if not link:
             return None
@@ -275,6 +276,7 @@ class GitHub:
             return ()
 
         def collect(low: datetime, high: datetime, depth: int = 0) -> list[PullRequest]:
+            """Collect complete results by paging or splitting the time interval."""
             query = (
                 f"repo:{repository} is:pr is:merged "
                 f"merged:{timestamp(low)}..{timestamp(high)}"
