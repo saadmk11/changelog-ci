@@ -18,6 +18,7 @@ def render(
     result = f"{header}\n{'=' * len(header)}\n\n" if rst else f"# {header}\n\n"
 
     def lines(items: tuple[Change, ...]) -> str:
+        """Format entries as bullet points in the selected markup language."""
         return "".join(
             f"* `{c.identifier} <{c.url}>`__: {c.title}\n"
             if rst

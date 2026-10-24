@@ -1,3 +1,4 @@
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -40,7 +41,13 @@ def test_detached_checkout_commit_push_and_rerun(
 
 
 @pytest.mark.parametrize(
-    "filename", ["Change log.md", "Café 🐛.md", "-release.md", "[notes].md"]
+    "filename",
+    [
+        "Change log.md",
+        "Café 🐛.md",
+        "-release.md",
+        "[notes].md",
+    ],
 )
 def test_preserves_unstaged_untracked_and_creates_new_branch(
     repository: tuple[Path, Path],
@@ -61,26 +68,288 @@ def test_preserves_unstaged_untracked_and_creates_new_branch(
     assert command(workspace, "diff", "--cached", "--name-only") == ""
 
 
-@pytest.mark.parametrize("state", ["staged", "dirty", "untracked"])
-def test_refuses_existing_work(repository: tuple[Path, Path], state: str) -> None:
-    workspace, _ = repository
-    if state == "staged":
-        (workspace / "other.txt").write_text("staged work")
-        command(workspace, "add", "--", "other.txt")
-    elif state == "dirty":
-        (workspace / "CHANGELOG.md").write_text("local changelog")
-    else:
-        (workspace / "new.md").write_text("untracked changelog")
-    git = Git(
+@pytest.mark.parametrize(
+    "state,expected_codes,expected_content",
+    [
+        ("clean", (), "old\n"),
+        ("modified", (" M",), "local changelog\n"),
+        ("deleted", (" D",), None),
+        ("staged", ("M ",), "local changelog\n"),
+        ("staged-deletion", ("D ",), None),
+        ("staged-then-deleted", ("MD",), None),
+        ("staged-then-reverted", ("MM",), "old\n"),
+        ("recreated-after-staged-deletion", ("D ", "??"), "recreated changelog\n"),
+        ("partially-staged", ("MM",), "working changelog\n"),
+        ("untracked", ("??",), "local changelog\n"),
+        ("staged-new", ("A ",), "local changelog\n"),
+        ("renamed", ("D ",), None),
+    ],
+)
+def test_commits_only_changelog_with_existing_work(
+    repository: tuple[Path, Path],
+    state: str,
+    expected_codes: tuple[str, ...],
+    expected_content: str | None,
+) -> None:
+    workspace, remote = repository
+    (workspace / "removed.txt").write_text("tracked file")
+    command(workspace, "add", "--", "removed.txt")
+    command(workspace, "commit", "-m", "Track removable file")
+    command(workspace, "push", "origin", "main")
+    filename = "new.md" if state in {"untracked", "staged-new"} else "CHANGELOG.md"
+    path = workspace / filename
+    if state in {
+        "modified",
+        "staged",
+        "partially-staged",
+        "untracked",
+        "staged-new",
+        "staged-then-deleted",
+        "staged-then-reverted",
+    }:
+        path.write_text("local changelog\n")
+    if state in {
+        "staged",
+        "partially-staged",
+        "staged-new",
+        "staged-then-deleted",
+        "staged-then-reverted",
+    }:
+        command(workspace, "add", "--", filename)
+    if state == "partially-staged":
+        path.write_text("working changelog\n")
+    elif state == "staged-then-reverted":
+        path.write_text("old\n")
+    if state in {"deleted", "staged-then-deleted"}:
+        path.unlink()
+    elif state in {"staged-deletion", "recreated-after-staged-deletion"}:
+        command(workspace, "rm", "--", filename)
+        if state == "recreated-after-staged-deletion":
+            path.write_text("recreated changelog\n")
+    elif state == "renamed":
+        command(workspace, "mv", "--", filename, "renamed.md")
+    assert (path.read_text() if path.exists() else None) == expected_content
+    assert command(
         workspace,
-        Settings(
-            changelog_filename="new.md" if state == "untracked" else "CHANGELOG.md"
-        ),
+        "status",
+        "--porcelain",
+        "-z",
+        "--no-renames",
+        "--",
+        filename,
+        strip=False,
+    ) == "".join(f"{code} {filename}\0" for code in expected_codes)
+    (workspace / "other.txt").write_text("staged work")
+    command(workspace, "add", "--", "other.txt")
+    (workspace / "other.txt").write_text("unstaged work")
+    (workspace / "added.txt").write_text("staged addition")
+    command(workspace, "add", "--", "added.txt")
+    command(workspace, "rm", "--", "removed.txt")
+    (workspace / "untracked.txt").write_text("untracked work")
+    unrelated = ["other.txt", "added.txt", "removed.txt", "renamed.md"]
+    index_before = command(
+        workspace, "ls-files", "--stage", "-z", "--", *unrelated, strip=False
     )
-    before = command(workspace, "status", "--porcelain")
-    with pytest.raises(ConfigurationError):
-        git.validate("o/r")
-    assert command(workspace, "status", "--porcelain") == before
+    git = Git(workspace, Settings(changelog_filename=filename))
+    git.validate("o/r")
+    git.prepare("main", "notes", new=True)
+    assert (path.read_text() if path.exists() else None) == expected_content
+    new = "new section\n" + ("\n\n" + expected_content if expected_content else "")
+    write_atomic(git.path, new.encode())
+    assert git.commit("notes", "Update changelog")
+    changed = command(remote, "diff", "--no-renames", "--name-only", "notes^", "notes")
+    assert changed == filename
+    assert git.path.read_text() == new
+    assert command(remote, "show", f"notes:{filename}", strip=False) == new
+    assert command(remote, "show", "main:CHANGELOG.md") == "old"
+    assert (
+        command(workspace, "ls-files", "--stage", "-z", "--", *unrelated, strip=False)
+        == index_before
+    )
+    assert (workspace / "other.txt").read_text() == "unstaged work"
+    assert (workspace / "added.txt").read_text() == "staged addition"
+    assert not (workspace / "removed.txt").exists()
+    assert (workspace / "untracked.txt").read_text() == "untracked work"
+    head = command(workspace, "rev-parse", "HEAD")
+    assert not git.commit("notes", "No changelog changes")
+    assert command(workspace, "rev-parse", "HEAD") == head
+    assert (
+        command(workspace, "ls-files", "--stage", "-z", "--", *unrelated, strip=False)
+        == index_before
+    )
+
+
+@pytest.mark.parametrize("new", [False, True])
+def test_allows_non_overlapping_remote_changes(
+    repository: tuple[Path, Path], tmp_path: Path, new: bool
+) -> None:
+    workspace, remote = repository
+    other = tmp_path / "other"
+    command(tmp_path, "clone", remote.as_uri(), str(other))
+    (other / "new.txt").write_text("remote addition\n")
+    command(other, "add", "--", "new.txt")
+    command(other, "commit", "-m", "Add unrelated file")
+    command(other, "push")
+    (workspace / "CHANGELOG.md").write_text("local notes\n")
+    (workspace / "other.txt").write_text("staged work\n")
+    command(workspace, "add", "--", "other.txt")
+    (workspace / "other.txt").write_text("unstaged work\n")
+    before = command(
+        workspace, "ls-files", "--stage", "-z", "--", "other.txt", strip=False
+    )
+    branch = "notes" if new else "main"
+    git = Git(workspace, Settings())
+    git.prepare("main", branch, new=new)
+    assert (workspace / "new.txt").read_text() == "remote addition\n"
+    assert git.path.read_text() == "local notes\n"
+    assert (workspace / "other.txt").read_text() == "unstaged work\n"
+    assert (
+        command(workspace, "ls-files", "--stage", "-z", "--", "other.txt", strip=False)
+        == before
+    )
+    write_atomic(git.path, b"new section\n\nlocal notes\n")
+    assert git.commit(branch, "Update changelog")
+    assert command(
+        remote, "diff", "--name-only", "-z", f"{branch}^", branch, strip=False
+    ) == ("CHANGELOG.md\0")
+
+
+@pytest.mark.parametrize("new", [False, True])
+@pytest.mark.parametrize("state", ["modified", "deleted", "staged", "staged-deletion"])
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "CHANGELOG.md",
+        "other.txt",
+    ],
+)
+def test_refuses_switching_local_changes_to_a_different_base(
+    repository: tuple[Path, Path], state: str, new: bool, filename: str
+) -> None:
+    workspace, remote = repository
+    if not (workspace / filename).exists():
+        (workspace / filename).write_text("old\n")
+        command(workspace, "add", "--", filename)
+        command(workspace, "commit", "-m", "Track file")
+        command(workspace, "push", "origin", "main")
+    command(workspace, "checkout", "-b", "release")
+    path = workspace / filename
+    path.write_text("release notes\n")
+    command(workspace, "commit", "-am", "Release notes")
+    command(workspace, "push", "origin", "release")
+    command(workspace, "checkout", "main")
+    if state in {"modified", "staged"}:
+        path.write_text("local changelog\n")
+        if state == "staged":
+            command(workspace, "add", "--", filename)
+    elif state == "deleted":
+        path.unlink()
+    else:
+        command(workspace, "rm", "--", filename)
+    before = path.read_bytes() if path.exists() else None
+    index_before = command(workspace, "ls-files", "--stage", "-z")
+    refs_before = command(workspace, "show-ref")
+    remote_before = command(remote, "show-ref")
+    git = Git(workspace, Settings())
+    git.validate("o/r")
+    with pytest.raises(ConfigurationError, match="local changes"):
+        git.prepare("release", "notes" if new else "release", new=new)
+    assert (path.read_bytes() if path.exists() else None) == before
+    assert command(workspace, "branch", "--show-current") == "main"
+    assert command(workspace, "ls-files", "--stage", "-z") == index_before
+    assert command(workspace, "show-ref") == refs_before
+    assert command(remote, "show-ref") == remote_before
+
+
+def test_checks_intermediate_local_branch_before_switching(
+    repository: tuple[Path, Path],
+) -> None:
+    workspace, remote = repository
+    command(workspace, "checkout", "-b", "release")
+    path = workspace / "CHANGELOG.md"
+    path.write_text("intermediate version\n")
+    command(workspace, "commit", "-am", "Intermediate changelog")
+    intermediate = command(workspace, "rev-parse", "HEAD")
+    path.write_text("old\n")
+    command(workspace, "commit", "-am", "Restore changelog")
+    command(workspace, "push", "origin", "release")
+    command(workspace, "checkout", "main")
+    command(workspace, "branch", "-f", "release", intermediate)
+    path.unlink()
+    before = command(workspace, "show-ref")
+    remote_before = command(remote, "show-ref")
+    with pytest.raises(ConfigurationError, match="local changes"):
+        Git(workspace, Settings()).prepare("release", "release", new=False)
+    assert not path.exists()
+    assert command(workspace, "branch", "--show-current") == "main"
+    assert command(workspace, "show-ref") == before
+    assert command(remote, "show-ref") == remote_before
+
+
+@pytest.mark.parametrize("ignored", [False, True])
+@pytest.mark.parametrize("new", [False, True])
+def test_checkout_preserves_untracked_and_ignored_obstructions(
+    repository: tuple[Path, Path], tmp_path: Path, ignored: bool, new: bool
+) -> None:
+    workspace, remote = repository
+    other = tmp_path / "other"
+    command(tmp_path, "clone", remote.as_uri(), str(other))
+    (other / "generated.txt").write_text("remote work")
+    command(other, "add", "--", "generated.txt")
+    command(other, "commit", "-m", "Track generated file")
+    command(other, "push")
+    if ignored:
+        (workspace / ".gitignore").write_text("generated.txt\n")
+    (workspace / "generated.txt").write_text("local work")
+    before = command(workspace, "show-ref", "--heads")
+    remote_before = command(remote, "show-ref")
+    with pytest.raises(GitError):
+        Git(workspace, Settings()).prepare("main", "notes" if new else "main", new=new)
+    assert (workspace / "generated.txt").read_text() == "local work"
+    assert command(workspace, "branch", "--show-current") == "main"
+    assert command(workspace, "show-ref", "--heads") == before
+    assert command(remote, "show-ref") == remote_before
+
+
+@pytest.mark.parametrize("filename", ["CHANGELOG.md", "other.txt"])
+@pytest.mark.parametrize("resolved", [False, True])
+@pytest.mark.parametrize("operation", ["merge", "cherry-pick", "revert", "rebase"])
+def test_refuses_unfinished_operation_without_changing_it(
+    repository: tuple[Path, Path], filename: str, resolved: bool, operation: str
+) -> None:
+    workspace, remote = repository
+    command(workspace, "checkout", "-b", "conflicting")
+    (workspace / filename).write_text("branch change\n")
+    command(workspace, "commit", "-am", "Branch change")
+    command(workspace, "checkout", "main")
+    (workspace / filename).write_text("main change\n")
+    command(workspace, "commit", "-am", "Main change")
+    command(workspace, "push", "origin", "main")
+    with pytest.raises(subprocess.CalledProcessError):
+        command(workspace, operation, "conflicting")
+    if resolved:
+        (workspace / filename).write_text("resolved change\n")
+        command(workspace, "add", "--", filename)
+    before = (workspace / filename).read_bytes()
+    index_before = command(workspace, "ls-files", "--stage", "-z")
+    refs_before = command(workspace, "show-ref")
+    remote_before = command(remote, "show-ref")
+    state_name = {
+        "merge": "MERGE_HEAD",
+        "cherry-pick": "CHERRY_PICK_HEAD",
+        "revert": "REVERT_HEAD",
+        "rebase": "rebase-merge/head-name",
+    }[operation]
+    state_file = workspace / ".git" / state_name
+    state_before = state_file.read_bytes()
+    git = Git(workspace, Settings())
+    with pytest.raises(ConfigurationError, match="current Git operation|unresolved"):
+        git.prepare("main", "notes", new=True)
+    assert (workspace / filename).read_bytes() == before
+    assert command(workspace, "ls-files", "--stage", "-z") == index_before
+    assert command(workspace, "show-ref") == refs_before
+    assert command(remote, "show-ref") == remote_before
+    assert state_file.read_bytes() == state_before
 
 
 @pytest.mark.parametrize(
@@ -236,7 +505,7 @@ def test_branch_switch_refuses_overwriting_unrelated_work(
     command(other, "commit", "-am", "Remote work")
     command(other, "push")
     (workspace / "other.txt").write_text("unsaved local work")
-    with pytest.raises(GitError):
+    with pytest.raises(ConfigurationError, match="local changes"):
         Git(workspace, Settings()).prepare("main", "release", new=True)
     assert (workspace / "other.txt").read_text() == "unsaved local work"
     assert command(workspace, "branch", "--show-current") == "main"

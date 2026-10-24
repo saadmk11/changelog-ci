@@ -14,8 +14,8 @@ from .errors import APIError, ChangelogError, ConfigurationError
 from .files import file_diff, output_path, prepend_content, write_atomic
 from .generate import generate
 from .github import GitHub
+from .log import Reporter, TerminalReporter
 from .models import GenerationRequest, GroupBy, OutputMode, Settings, Source
-from .reporting import Reporter, TerminalReporter
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -126,6 +126,7 @@ def generate_command(settings: Settings, github: GitHub, reporter: Reporter) -> 
 def execute(ctx: typer.Context, *, actions: bool) -> None:
     """Resolve settings and execute the selected command."""
     reporter: Reporter = TerminalReporter()
+    legacy = actions and os.environ.get("_CHANGELOG_CI_COMPOSITE") == "true"
     try:
         if actions:
             from .actions import require_github_actions
@@ -137,22 +138,25 @@ def execute(ctx: typer.Context, *, actions: bool) -> None:
             settings = resolve_actions(explicit, os.environ, TerminalReporter())
         else:
             settings = resolve_standalone(explicit, os.environ)
-        token = (
-            settings.github_token.get_secret_value() if settings.github_token else None
-        )
+        token = settings.github_token
         reporter = TerminalReporter(quiet=settings.quiet)
         if settings.output_mode == OutputMode.GITHUB:
             from .actions import require_github_actions
 
             require_github_actions()
             require_actions()
-            if not os.environ.get("GITHUB_OUTPUT"):
-                raise ConfigurationError("GitHub output requires GITHUB_OUTPUT.")
-            if settings.summary and not os.environ.get("GITHUB_STEP_SUMMARY"):
-                raise ConfigurationError("GitHub summary requires GITHUB_STEP_SUMMARY.")
-            from .actions.reporting import GitHubReporter
+            import github_action_utils as gha
 
-            reporter = GitHubReporter(token, quiet=settings.quiet)
+            if not gha.vars.github.output:
+                raise ConfigurationError("GitHub output requires GITHUB_OUTPUT.")
+            if settings.summary and not gha.vars.github.step_summary:
+                raise ConfigurationError("GitHub summary requires GITHUB_STEP_SUMMARY.")
+
+            from .actions.log import GitHubReporter
+
+            if token:
+                gha.add_mask(token.get_secret_value())
+            reporter = GitHubReporter(quiet=settings.quiet)
         if settings.verbose:
             reporter.notice(f"Collecting {settings.changelog_type.value} changes.")
         with GitHub(settings.api_url, token) as github:
@@ -163,7 +167,7 @@ def execute(ctx: typer.Context, *, actions: bool) -> None:
                     settings,
                     github,
                     reporter,
-                    legacy=os.environ.get("_CHANGELOG_CI_COMPOSITE") == "true",
+                    legacy=legacy,
                 )
             else:
                 generate_command(settings, github, reporter)
@@ -171,8 +175,7 @@ def execute(ctx: typer.Context, *, actions: bool) -> None:
         reporter.error(str(exc))
         # Composite collection failures use the documented success/skip status.
         if (
-            actions
-            and os.environ.get("_CHANGELOG_CI_COMPOSITE") == "true"
+            legacy
             and isinstance(exc, APIError)
             and exc.operation == "collection"
             and exc.status is not None

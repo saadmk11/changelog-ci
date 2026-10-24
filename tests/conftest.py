@@ -4,6 +4,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from pydantic import SecretStr
 
 from gh_changelog_ci.github import GitHub
 from tests.github import pull_request, response
@@ -46,7 +47,7 @@ def cli_api(
         requests.append(request)
         return response(request, changes=cli_changes)
 
-    def factory(api_url: str, token: str | None = None) -> GitHub:
+    def factory(api_url: str, token: SecretStr | None = None) -> GitHub:
         return GitHub(api_url, token, transport=httpx.MockTransport(handle))
 
     monkeypatch.setattr("gh_changelog_ci.cli.GitHub", factory)

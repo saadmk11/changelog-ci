@@ -578,6 +578,12 @@ It never stages, commits, pushes, comments or creates PRs. `--stdout` prints onl
 the section and writes nothing. `--dry-run` previews without writes; combine it
 with `--diff` to preview a unified diff. Diagnostics go to stderr.
 
+GitHub output mode registers the token for runner log masking before reporting.
+Terminal mode does not register masks or add logging commands. On a runner, use
+GitHub output mode for previews or redirect `--stdout` to a file. Generated files
+and workflow outputs retain their original content; changelog generation does
+not remove secrets from source text.
+
 `actions` requires a GitHub Actions runner and the `actions` extra, which the
 composite installs automatically. Local execution is rejected before loading
 workflow context or performing operations, even with the extra installed.
@@ -628,11 +634,22 @@ Options for `actions`, available for execution inside GitHub Actions:
 | `--new-pull-request-title TEXT`, `--commit-message TEXT` | Override generated titles |
 
 Runner context supplies the event, PR and branch details. The destination must
-be a real branch. Comment-only mode needs no checkout. Git writes
-require a matching origin, a clean target changelog and no staged user changes.
-PR commits also require the head repository to be present in the event payload.
-Unrelated unstaged/untracked files are retained. Git uses checkout-provided
-credentials; an API token alone does not configure push authentication.
+be a real branch. Comment-only mode needs no checkout. Git writes require a
+matching origin and a safe, non-ignored changelog path. PR commits also require
+the head repository in the event payload.
+
+The action prepends the generated section to the changelog's working copy and
+commits only that file. The working copy takes precedence over the staged version.
+Untracked changelogs are also supported. Delete the changelog before running the
+action to keep only the new section. Missing parent directories are created when
+writing the changelog. Unrelated staged, unstaged and untracked changes are
+preserved.
+
+Branch preparation stops if switching branches would overwrite local changes.
+This includes local deletions and ignored files. Unfinished merges, rebases,
+cherry-picks and reverts, unresolved conflicts and unpushed commits on the
+destination branch are rejected. Git uses checkout-provided credentials;
+an API token alone does not configure push authentication.
 API writes require a token. Dry runs do not require write credentials. GitHub
 outputs and summaries require the corresponding runner-provided output files.
 
@@ -694,6 +711,13 @@ changes to configuration, rendering, Git operations and credentials.
 macOS and Windows. `action-test.yaml` installs the built wheel through a test
 copy of the composite and checks comments, release-PR commits and new PRs on all
 three platforms. Its API and Git destinations are local test services.
+
+GitHub Action pins are updated weekly by
+[`update-actions.yaml`](.github/workflows/update-actions.yaml), including pins in
+the root `action.yaml`. Updates use release commit SHAs and share one pull request
+branch. Set the `WORKFLOW_SECRET` repository secret to a fine-grained personal
+access token with read/write access to Contents, Workflows and Pull requests for
+this repository. Dependabot updates Python dependencies monthly.
 
 ## Releasing
 

@@ -19,8 +19,8 @@ from gh_changelog_ci.errors import (
     GitError,
 )
 from gh_changelog_ci.github import GitHub
+from gh_changelog_ci.log import TerminalReporter
 from gh_changelog_ci.models import Settings
-from gh_changelog_ci.reporting import TerminalReporter
 from tests.git import command
 from tests.github import linked_issues, pull_request_event, response
 
@@ -102,7 +102,7 @@ def test_action_inputs_group_preview_by_linked_issue_types(
             return httpx.Response(issue_type_status, json=linked_issues("Bug"))
         return response(request)
 
-    def factory(api_url: str, token: str | None = None) -> GitHub:
+    def factory(api_url: str, token: SecretStr | None = None) -> GitHub:
         return GitHub(api_url, token, transport=httpx.MockTransport(handle))
 
     monkeypatch.setattr("gh_changelog_ci.cli.GitHub", factory)
@@ -602,6 +602,132 @@ def test_default_branch_name_and_message(
     )
 
 
+@pytest.mark.parametrize("event", ["push", "workflow_dispatch", "pull_request"])
+@pytest.mark.parametrize("dry_run", [False, True])
+@pytest.mark.parametrize(
+    "state",
+    [
+        "modified",
+        "deleted",
+        "untracked",
+        "staged",
+        "partially-staged",
+        "staged-deletion",
+    ],
+)
+def test_action_updates_only_changelog_and_preserves_other_work(
+    repository: tuple[Path, Path],
+    cli_api: list[httpx.Request],
+    runner_environment: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    event: str,
+    dry_run: bool,
+    state: str,
+) -> None:
+    workspace, remote = repository
+    filename = ".github/changelogs/latest.md"
+    path = workspace / filename
+    path.parent.mkdir(parents=True)
+    if state != "untracked":
+        path.write_text("previous release\n")
+        command(workspace, "add", "--", filename)
+        command(workspace, "commit", "-m", "Previous changelog")
+        command(workspace, "push", "origin", "main")
+    original: str | None = None
+    if state in {"modified", "untracked", "staged", "partially-staged"}:
+        original = "local notes\n"
+        path.write_text(original)
+        if state in {"staged", "partially-staged"}:
+            command(workspace, "add", "--", filename)
+        if state == "partially-staged":
+            original = "working notes\n"
+            path.write_text(original)
+    elif state == "staged-deletion":
+        command(workspace, "rm", "--", filename)
+    else:
+        path.unlink()
+    (workspace / "other.txt").write_text("staged work")
+    command(workspace, "add", "--", "other.txt")
+    unrelated_index = command(
+        workspace, "ls-files", "--stage", "-z", "--", "other.txt", strip=False
+    )
+    (workspace / "other.txt").write_text("local work")
+    monkeypatch.setenv("GITHUB_EVENT_NAME", event)
+    if event == "pull_request":
+        runner_environment.write_text(json.dumps(pull_request_event()))
+    before = command(workspace, "show-ref")
+    remote_before = command(remote, "show-ref")
+    base_before = command(remote, "rev-parse", "main")
+    index_before = command(workspace, "ls-files", "--stage", "-z", strip=False)
+    parent_existed = path.parent.exists()
+    result = CliRunner().invoke(
+        app,
+        [
+            "actions",
+            "--release-version",
+            "v2.0.2",
+            "--changelog-filename",
+            filename,
+            "--github-token",
+            "secret",
+            *([] if event == "pull_request" else ["--new-branch", "notes"]),
+            *(["--dry-run", "--diff"] if dry_run else []),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert (workspace / "other.txt").read_text() == "local work"
+    assert (
+        command(workspace, "ls-files", "--stage", "-z", "--", "other.txt", strip=False)
+        == unrelated_index
+    )
+    expected_requests = [
+        ("GET", "/repos/o/r/releases/latest"),
+        ("GET", "/search/issues"),
+    ]
+    if not dry_run and event != "pull_request":
+        expected_requests.append(("POST", "/repos/o/r/pulls"))
+    assert [
+        (request.method, request.url.path) for request in cli_api
+    ] == expected_requests
+    if dry_run:
+        assert (path.read_text() if path.exists() else None) == original
+        assert path.parent.exists() == parent_existed
+        assert (
+            command(workspace, "ls-files", "--stage", "-z", strip=False) == index_before
+        )
+        assert command(workspace, "show-ref") == before
+        assert command(remote, "show-ref") == remote_before
+        assert not (workspace / ".git/FETCH_HEAD").exists()
+        assert "+# Version: v2.0.2" in result.stdout
+    else:
+        branch = "main" if event == "pull_request" else "notes"
+        section = (
+            "# Version: v2.0.2\n\n* [#1](https://github.com/o/r/pull/1): Change 1\n"
+        )
+        expected = section + ("\n\n" + original if original else "")
+        assert path.read_text() == expected
+        assert command(remote, "show", f"{branch}:{filename}", strip=False) == expected
+        assert (
+            command(
+                remote,
+                "diff",
+                "--no-renames",
+                "--name-only",
+                "-z",
+                f"{branch}^",
+                branch,
+                strip=False,
+            )
+            == filename + "\0"
+        )
+        assert (
+            command(workspace, "diff", "--cached", "--name-only", "-z", strip=False)
+            == "other.txt\0"
+        )
+        if event != "pull_request":
+            assert command(remote, "rev-parse", "main") == base_before
+
+
 def test_commit_dry_run_has_no_git_or_file_mutations(
     repository: tuple[Path, Path], cli_api: list[httpx.Request]
 ) -> None:
@@ -779,7 +905,7 @@ def test_collection_exit_status_boundary(
             else response(request)
         )
 
-    def factory(api_url: str, token: str | None = None) -> GitHub:
+    def factory(api_url: str, token: SecretStr | None = None) -> GitHub:
         return GitHub(api_url, token, transport=httpx.MockTransport(handle))
 
     monkeypatch.setattr("gh_changelog_ci.cli.GitHub", factory)

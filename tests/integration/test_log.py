@@ -1,13 +1,18 @@
 import importlib.util
+import json
+import os
 import re
 from pathlib import Path
+from uuid import UUID
 
 import httpx
 import pytest
+from pydantic import SecretStr
 from typer.testing import CliRunner
 
 from gh_changelog_ci.cli import app
 from gh_changelog_ci.errors import ChangelogError, ConfigurationError
+from gh_changelog_ci.github import GitHub
 from tests.git import command
 
 pytestmark = [
@@ -23,80 +28,138 @@ pytestmark = [
 def test_multiline_output_unicode_delimiters_and_commands(
     legacy: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from gh_changelog_ci.actions.reporting import GitHubReporter
+    from gh_changelog_ci.actions.log import GitHubReporter
 
     path = tmp_path / "output"
     monkeypatch.setenv("GITHUB_OUTPUT", str(path))
     value = "::warning::literal\n__ENV_DELIMITER__\nUnicode 🐛\r\n100%\n"
     GitHubReporter().outputs({"changelog": value}, legacy=legacy)
-    content = path.read_text(encoding="utf-8")
-    header, *body, delimiter = content.splitlines()
-    assert header == f"changelog<<{delimiter}"
-    assert delimiter not in body
-    if legacy:
-        assert body == [
-            "::warning::literal%0A__ENV_DELIMITER__%0AUnicode 🐛%0D%0A100%25%0A"
-        ]
-    else:
-        assert body == [
-            "::warning::literal",
-            "__ENV_DELIMITER__",
-            "Unicode 🐛",
-            "100%",
-            "",
-        ]
+    with path.open(encoding="utf-8", newline="") as stream:
+        content = stream.read()
+    delimiter = content.splitlines()[0].removeprefix("changelog<<")
+    assert delimiter and delimiter not in value
+    expected = (
+        "::warning::literal%0A__ENV_DELIMITER__%0AUnicode 🐛%0D%0A100%25%0A"
+        if legacy
+        else value
+    )
+    assert content == (
+        f"changelog<<{delimiter}{os.linesep}{expected}{os.linesep}"
+        f"{delimiter}{os.linesep}"
+    )
 
 
 @pytest.mark.parametrize("level", ["notice", "warning", "error"])
 @pytest.mark.parametrize("quiet", [False, True])
-def test_diagnostics_redact_secrets_and_escape_commands(
+def test_diagnostics_escape_commands(
     capsys: pytest.CaptureFixture[str], level: str, quiet: bool
 ) -> None:
-    from gh_changelog_ci.actions.reporting import GitHubReporter
+    from gh_changelog_ci.actions.log import GitHubReporter
 
-    reporter = GitHubReporter("secret", quiet=quiet)
-    capsys.readouterr()
-    getattr(reporter, level)("secret\n::error::injected")
+    reporter = GitHubReporter(quiet=quiet)
+    getattr(reporter, level)("message%0A\r\n::error::injected")
     assert capsys.readouterr().out == (
-        "" if quiet and level == "notice" else f"::{level} ::***%0A::error::injected\n"
+        ""
+        if quiet and level == "notice"
+        else f"::{level} ::message%250A%0D%0A::error::injected\n"
     )
 
 
-def test_preview_redacts_secrets_and_resumes_workflow_commands(
+def test_preview_preserves_content_and_resumes_workflow_commands(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    from gh_changelog_ci.actions.reporting import GitHubReporter
+    from gh_changelog_ci.actions.log import GitHubReporter
 
-    reporter = GitHubReporter("secret")
-    capsys.readouterr()
-    reporter.content("::warning::content\nsecret")
+    reporter = GitHubReporter()
+    reporter.content("::warning::content\noriginal")
     output = capsys.readouterr().out
-    assert re.fullmatch(
+    match = re.fullmatch(
         r"::group ::Changelog preview\n"
-        r"::stop-commands::(?P<token>[0-9a-f]{32})\n"
-        r"::warning::content\n\*\*\*\n"
+        r"::stop-commands ::(?P<token>[0-9a-f-]{36})\n"
+        r"::warning::content\noriginal\n"
         r"::(?P=token)::\n"
         r"::endgroup::\n",
         output,
     )
+    assert match is not None
+    assert UUID(match["token"]).version == 4
+
+
+def test_preview_failure_resumes_commands_and_closes_group(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import github_action_utils as gha
+
+    from gh_changelog_ci.actions.log import GitHubReporter
+
+    def fail(message: str) -> None:
+        raise OSError("Preview output failed.")
+
+    monkeypatch.setattr(gha, "echo", fail)
+    with pytest.raises(OSError, match="Preview output failed"):
+        GitHubReporter().content("untrusted content")
+    match = re.fullmatch(
+        r"::group ::Changelog preview\n"
+        r"::stop-commands ::(?P<token>[0-9a-f-]{36})\n"
+        r"::(?P=token)::\n"
+        r"::endgroup::\n",
+        capsys.readouterr().out,
+    )
+    assert match is not None
+    assert UUID(match["token"]).version == 4
+
+
+@pytest.mark.parametrize("quiet", [False, True])
+def test_mask_registration_escapes_commands_before_client_initialization(
+    quiet: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    value = "first%\r\n::error::injected"
+
+    def factory(api_url: str, token: SecretStr | None = None) -> GitHub:
+        assert isinstance(token, SecretStr)
+        assert token.get_secret_value() == value
+        raise ChangelogError("Stopped before making requests.")
+
+    monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "output"))
+    monkeypatch.setenv("CHANGELOG_CI_GITHUB_TOKEN", value)
+    monkeypatch.setattr("gh_changelog_ci.cli.GitHub", factory)
+    result = CliRunner().invoke(
+        app,
+        [
+            "generate",
+            "--repository",
+            "o/r",
+            "--release-version",
+            "1",
+            "--output-mode",
+            "github",
+            *(["--quiet"] if quiet else []),
+        ],
+    )
+    assert result.exit_code == 1, result.output
+    assert result.stderr == ""
+    assert result.stdout == (
+        "::add-mask ::first%25%0D%0A::error::injected\n"
+        "::error ::Stopped before making requests.\n"
+    )
+    assert not (tmp_path / "output").exists()
 
 
 @pytest.mark.parametrize("quiet", [False, True])
 def test_progress_groups_escape_titles_and_close_on_failure(
     quiet: bool, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from gh_changelog_ci.actions.reporting import GitHubReporter
+    from gh_changelog_ci.actions.log import GitHubReporter
 
-    reporter = GitHubReporter("secret", quiet=quiet)
-    capsys.readouterr()
-    with pytest.raises(RuntimeError), reporter.group("secret\n::error::injected"):
+    reporter = GitHubReporter(quiet=quiet)
+    with pytest.raises(RuntimeError), reporter.group("title\n::error::injected"):
         reporter.notice("Working.")
         raise RuntimeError
     output = capsys.readouterr().out
     assert output == (
         ""
         if quiet
-        else "::group ::***%0A::error::injected\n::notice ::Working.\n::endgroup::\n"
+        else "::group ::title%0A::error::injected\n::notice ::Working.\n::endgroup::\n"
     )
 
 
@@ -142,15 +205,31 @@ def test_successful_action_reports_progress_preview_and_results(
     result = CliRunner().invoke(app, args)
     assert result.exit_code == 0, result.output
     assert result.stderr == ""
+    assert result.stdout.startswith("::add-mask ::secret\n")
+    assert result.stdout.count("::add-mask ::secret\n") == 1
     log = result.stdout.removeprefix("::add-mask ::secret\n")
     expected = (
         "# Version: v2.0.2\n\n"
-        "* [#1](https://github.com/o/r/pull/1): Fix ***\n::error::injected\n"
+        "* [#1](https://github.com/o/r/pull/1): Fix secret\n::error::injected\n"
     )
     assert summary.read_text() == expected
-    assert "Fix secret" in command(remote, "show", f"{branch}:CHANGELOG.md")
-    assert "true" in output.read_text()
-    assert "secret" not in log
+    assert command(remote, "show", f"{branch}:CHANGELOG.md", strip=False) == (
+        expected + "\n\nold\n"
+    )
+    content = output.read_text()
+    header = content.splitlines()[0]
+    delimiter = header.removeprefix("changelog<<")
+    assert content.startswith(
+        f"{header}\n# Version: v2.0.2%0A%0A"
+        "* [#1](https://github.com/o/r/pull/1): Fix secret%0A::error::injected%0A\n"
+        f"{delimiter}\n"
+    )
+    assert ("Fix secret" in log) == (mode == "verbose")
+    assert [
+        json.loads(request.content)["body"]
+        for request in cli_api
+        if request.method == "POST"
+    ] == [expected]
     posts = [request.url.path for request in cli_api if request.method == "POST"]
     if event == "pull_request":
         assert posts == ["/repos/o/r/issues/9/comments"]
@@ -194,7 +273,7 @@ def test_successful_action_reports_progress_preview_and_results(
         assert log.count("::group ") == log.count("::endgroup::")
         if mode == "verbose":
             assert re.search(
-                r"::stop-commands::([0-9a-f]{32})\n"
+                r"::stop-commands ::([0-9a-f-]{36})\n"
                 + re.escape(expected)
                 + r"\n::\1::\n",
                 log,
@@ -214,7 +293,7 @@ def test_failed_comment_closes_progress_group_without_success_message(
             return httpx.Response(403)
         return response(request)
 
-    def factory(api_url: str, token: str | None = None) -> GitHub:
+    def factory(api_url: str, token: SecretStr | None = None) -> GitHub:
         return GitHub(api_url, token, transport=httpx.MockTransport(handle))
 
     monkeypatch.setattr("gh_changelog_ci.cli.GitHub", factory)
@@ -285,7 +364,7 @@ def test_action_prints_only_one_explicit_preview(
 def test_output_limit_is_checked_before_writing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, value: str, legacy: bool
 ) -> None:
-    from gh_changelog_ci.actions.reporting import GitHubReporter
+    from gh_changelog_ci.actions.log import GitHubReporter
 
     output = tmp_path / "output"
     monkeypatch.setenv("GITHUB_OUTPUT", str(output))
@@ -297,7 +376,7 @@ def test_output_limit_is_checked_before_writing(
 def test_summary_limit_warns_without_losing_outputs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from gh_changelog_ci.actions.reporting import GitHubReporter
+    from gh_changelog_ci.actions.log import GitHubReporter
 
     output = tmp_path / "output"
     summary = tmp_path / "summary"
@@ -314,8 +393,58 @@ def test_summary_limit_warns_without_losing_outputs(
     assert summary.read_text() == "# Summary\n"
 
 
+def test_outputs_and_summary_preserve_literal_percent_escapes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from gh_changelog_ci.actions.log import GitHubReporter
+
+    output = tmp_path / "output"
+    summary = tmp_path / "summary"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    value = (
+        "[encoded](https://example.com/%250A?q=%0A)\n"
+        "__ENV_DELIMITER__\ninjected=true\n__ENV_DELIMITER__\n"
+        "::error::literal\n"
+    )
+    GitHubReporter().outputs({"changelog": value}, summary=value)
+    content = output.read_text()
+    header = content.splitlines()[0]
+    delimiter = header.removeprefix("changelog<<")
+    assert re.fullmatch("ghadelimiter_[0-9a-f]{32}", delimiter)
+    assert delimiter not in value
+    assert content == f"{header}\n{value}\n{delimiter}\n"
+    assert summary.read_text() == value
+
+
+@pytest.mark.parametrize("trailing_newline", [False, True])
+def test_summary_limit_includes_the_appended_newline(
+    trailing_newline: bool,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from gh_changelog_ci.actions.log import GitHubReporter
+
+    output = tmp_path / "output"
+    summary = tmp_path / "summary"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    value = "x" * (1048576 - int(trailing_newline))
+    if trailing_newline:
+        value += "\n"
+    GitHubReporter().outputs({"changed": "true"}, summary=value)
+    assert "true" in output.read_text()
+    if trailing_newline:
+        assert summary.read_text() == value
+        assert capsys.readouterr().out == ""
+    else:
+        assert not summary.exists()
+        assert "Summary omitted" in capsys.readouterr().out
+
+
 def test_missing_output_file_environment() -> None:
-    from gh_changelog_ci.actions.reporting import GitHubReporter
+    from gh_changelog_ci.actions.log import GitHubReporter
 
     with pytest.raises(ChangelogError, match="GITHUB_OUTPUT"):
         GitHubReporter().outputs({"changed": "false"})
@@ -353,7 +482,7 @@ def test_generate_writes_github_outputs_and_summary_only_on_runner(
     content = output.read_text()
     header = content.splitlines()[0]
     delimiter = header.removeprefix("changelog<<")
-    assert re.fullmatch("[0-9a-f]{32}", delimiter)
+    assert re.fullmatch("ghadelimiter_[0-9a-f]{32}", delimiter)
     assert content.startswith(f"{header}\n{expected}\n{delimiter}\n")
     assert [(request.method, request.url.path) for request in cli_api] == [
         ("GET", "/repos/o/r/releases/latest"),
@@ -364,7 +493,7 @@ def test_generate_writes_github_outputs_and_summary_only_on_runner(
 def test_legacy_escaping_applies_only_to_changelog(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from gh_changelog_ci.actions.reporting import GitHubReporter
+    from gh_changelog_ci.actions.log import GitHubReporter
 
     output = tmp_path / "output"
     monkeypatch.setenv("GITHUB_OUTPUT", str(output))
@@ -376,14 +505,14 @@ def test_legacy_escaping_applies_only_to_changelog(
     assert "100% complete.md" in content
 
 
-def test_reporter_requires_runner_before_masking(
+def test_reporter_requires_runner(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from gh_changelog_ci.actions.reporting import GitHubReporter
+    from gh_changelog_ci.actions.log import GitHubReporter
 
     monkeypatch.delenv("GITHUB_ACTIONS")
     with pytest.raises(ConfigurationError, match="requires a GitHub Actions runner"):
-        GitHubReporter("secret")
+        GitHubReporter()
     assert capsys.readouterr().out == ""
 
 
@@ -396,7 +525,7 @@ def test_reporter_cannot_be_reused_outside_runner(
     capsys: pytest.CaptureFixture[str],
     tmp_path: Path,
 ) -> None:
-    from gh_changelog_ci.actions.reporting import GitHubReporter
+    from gh_changelog_ci.actions.log import GitHubReporter
 
     monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "output"))
     reporter = GitHubReporter()

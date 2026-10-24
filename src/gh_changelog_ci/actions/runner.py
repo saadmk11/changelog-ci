@@ -8,8 +8,8 @@ from ..errors import APIError, ChangelogError, ConfigurationError
 from ..files import file_diff, output_path, prepend_content, write_atomic
 from ..generate import generate
 from ..github import GitHub
+from ..log import Reporter
 from ..models import GenerationRequest, OutputMode, Settings
-from ..reporting import Reporter
 from . import require_github_actions
 from .context import load_context, release_version
 from .git import Git, branch_component
@@ -128,7 +128,7 @@ def run(
     path = output_path(
         settings.workspace,
         settings.changelog_filename,
-        require_parent=settings.commit_changelog,
+        require_parent=False,
     )
     old, new = prepend_content(path, result.section)
     changed = old != new
@@ -181,6 +181,7 @@ def run(
                 if changed:
                     if settings.verbose:
                         reporter.notice(f"Updating {settings.changelog_filename}.")
+                    path.parent.mkdir(parents=True, exist_ok=True)
                     write_atomic(path, new)
                     committed = git.commit(branch, settings.commit_message or title)
                 if committed:

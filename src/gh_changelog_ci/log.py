@@ -1,4 +1,4 @@
-"""Terminal and workflow reporting."""
+"""Terminal logging and the shared reporting interface."""
 
 from contextlib import AbstractContextManager, nullcontext
 from typing import Protocol
