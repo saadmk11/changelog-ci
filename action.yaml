@@ -127,7 +127,6 @@ runs:
       INPUT_VERBOSE: ${{ inputs.verbose }}
       INPUT_QUIET: ${{ inputs.quiet }}
       INPUT_SUMMARY: ${{ inputs.summary }}
-      _CHANGELOG_CI_COMPOSITE: 'true'
       CHANGELOG_CI_UV: ${{ steps.uv.outputs.uv-path }}
     run: |
       for variable in ${!UV_@} ${!PIP_@}; do
@@ -139,7 +138,7 @@ runs:
       export UV_TOOL_DIR="${RUNNER_TEMP}/changelog-ci/tools"
       "$CHANGELOG_CI_UV" --no-config tool run --isolated --no-env-file \
         --managed-python --python 3.15 --default-index https://pypi.org/simple \
-        --from 'gh-changelog-ci[actions]==2.0.2' gh-changelog-ci actions --output-mode github
+        --from 'gh-changelog-ci[actions]==2.0.3' gh-changelog-ci actions --output-mode github
 outputs:
   changelog:
     description: Generated section, retaining legacy percent escaping

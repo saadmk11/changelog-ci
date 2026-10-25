@@ -28,7 +28,7 @@ The workflow can be configured to perform **any (or all)** of the following acti
 
 | | GitHub Action | Python package |
 | --- | --- | --- |
-| Run with | `uses: saadmk11/changelog-ci@v2.0.2` | `pip install gh-changelog-ci` or `uvx gh-changelog-ci` |
+| Run with | `uses: saadmk11/changelog-ci@v2.0.3` | `pip install gh-changelog-ci` or `uvx gh-changelog-ci` |
 | Changelog text | Use the `changelog` output | `gh-changelog-ci generate` |
 | Commit, comment or open a PR | Configure the Action inputs | Install `gh-changelog-ci[actions]` and run `gh-changelog-ci actions` |
 
@@ -105,7 +105,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run Changelog CI
-        uses: saadmk11/changelog-ci@v2.0.2
+        uses: saadmk11/changelog-ci@v2.0.3
 ```
 
 ### Workflow input options
@@ -191,7 +191,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run Changelog CI
-        uses: saadmk11/changelog-ci@v2.0.2
+        uses: saadmk11/changelog-ci@v2.0.3
         with:
           # Optional, you can provide any name for your changelog file,
           # We currently support Markdown (.md) and reStructuredText (.rst) files
@@ -241,7 +241,7 @@ The output can be used in other steps of the action. For example:
 
 ```yaml
 - name: changelog-ci
-  uses: saadmk11/changelog-ci@v2.0.2
+  uses: saadmk11/changelog-ci@v2.0.3
   id: changelog-ci
 
 - name: Get Changelog Output
@@ -279,7 +279,7 @@ For normal runs, keep the default logs and enable the rendered job summary:
 
 ```yaml
 - name: Generate changelog
-  uses: saadmk11/changelog-ci@v2.0.2
+  uses: saadmk11/changelog-ci@v2.0.3
   with:
     summary: 'true'
 ```
@@ -288,7 +288,7 @@ To include extra details and a changelog preview in the log:
 
 ```yaml
 - name: Generate changelog with detailed logs
-  uses: saadmk11/changelog-ci@v2.0.2
+  uses: saadmk11/changelog-ci@v2.0.3
   with:
     verbose: 'true'
     summary: 'true'
@@ -298,7 +298,7 @@ To keep logs quiet while retaining the rendered job summary:
 
 ```yaml
 - name: Generate changelog quietly
-  uses: saadmk11/changelog-ci@v2.0.2
+  uses: saadmk11/changelog-ci@v2.0.3
   with:
     quiet: 'true'
     summary: 'true'
@@ -578,6 +578,12 @@ It never stages, commits, pushes, comments or creates PRs. `--stdout` prints onl
 the section and writes nothing. `--dry-run` previews without writes; combine it
 with `--diff` to preview a unified diff. Diagnostics go to stderr.
 
+GitHub output mode registers the token for runner log masking before reporting.
+Terminal mode does not register masks or add logging commands. On a runner, use
+GitHub output mode for previews or redirect `--stdout` to a file. Generated files
+and workflow outputs retain their original content; changelog generation does
+not remove secrets from source text.
+
 `actions` requires a GitHub Actions runner and the `actions` extra, which the
 composite installs automatically. Local execution is rejected before loading
 workflow context or performing operations, even with the extra installed.
@@ -628,11 +634,22 @@ Options for `actions`, available for execution inside GitHub Actions:
 | `--new-pull-request-title TEXT`, `--commit-message TEXT` | Override generated titles |
 
 Runner context supplies the event, PR and branch details. The destination must
-be a real branch. Comment-only mode needs no checkout. Git writes
-require a matching origin, a clean target changelog and no staged user changes.
-PR commits also require the head repository to be present in the event payload.
-Unrelated unstaged/untracked files are retained. Git uses checkout-provided
-credentials; an API token alone does not configure push authentication.
+be a real branch. Comment-only mode needs no checkout. Git writes require a
+matching origin and a safe, non-ignored changelog path. PR commits also require
+the head repository in the event payload.
+
+The action prepends the generated section to the changelog's working copy and
+commits only that file. The working copy takes precedence over the staged version.
+Untracked changelogs are also supported. Delete the changelog before running the
+action to keep only the new section. Missing parent directories are created when
+writing the changelog. Unrelated staged, unstaged and untracked changes are
+preserved.
+
+Branch preparation stops if switching branches would overwrite local changes.
+This includes local deletions and ignored files. Unfinished merges, rebases,
+cherry-picks and reverts, unresolved conflicts and unpushed commits on the
+destination branch are rejected. Git uses checkout-provided credentials;
+an API token alone does not configure push authentication.
 API writes require a token. Dry runs do not require write credentials. GitHub
 outputs and summaries require the corresponding runner-provided output files.
 
@@ -648,8 +665,10 @@ outputs and summaries require the corresponding runner-provided output files.
 
 `--stdout` conflicts with GitHub output, summary and diff. Summary requires
 GitHub output and `GITHUB_STEP_SUMMARY`; GitHub output requires `GITHUB_OUTPUT`.
-The composite's `changelog` output escapes `%`, carriage returns and newlines as
-`%25`, `%0D` and `%0A`. Standalone GitHub output contains literal multiline text.
+The composite and direct `actions` command escape `%`, carriage returns and
+newlines in the `changelog` output as `%25`, `%0D` and `%0A`. The `generate`
+command's GitHub output contains literal multiline text. Files, previews,
+comments and summaries contain normal text.
 Title mismatches and empty results omit the changelog output. Outputs over 1 MB
 fail with an error; summaries over 1 MB are omitted with a warning.
 
@@ -657,12 +676,11 @@ Exit statuses:
 
 - `generate`: `0` for success or no changes, `1` for API/filesystem failures,
   `2` for invalid options, configuration or missing dependencies.
-- The composite: `0` for success, unmatched PR titles, ordinary collection HTTP
-  failures and recoverable PR/comment warnings; `1` for a missing non-PR version
-  or both operations being disabled. Authentication, permission, collection
-  rate-limit and transport failures are errors.
-- Standalone `actions` reports failed mutations as errors. Git failures return
-  their positive exit status.
+- `actions` (direct or composite): `0` for success, unmatched PR titles, ordinary
+  collection HTTP failures and recoverable PR/comment warnings; `1` for a missing
+  non-PR version or both operations being disabled. Authentication, permission,
+  collection rate-limit and transport failures are errors.
+- Git failures return their positive exit status.
 
 ## Development
 
@@ -694,6 +712,13 @@ changes to configuration, rendering, Git operations and credentials.
 macOS and Windows. `action-test.yaml` installs the built wheel through a test
 copy of the composite and checks comments, release-PR commits and new PRs on all
 three platforms. Its API and Git destinations are local test services.
+
+GitHub Action pins are updated weekly by
+[`update-actions.yaml`](.github/workflows/update-actions.yaml), including pins in
+the root `action.yaml`. Updates use release commit SHAs and share one pull request
+branch. Set the `WORKFLOW_SECRET` repository secret to a fine-grained personal
+access token with read/write access to Contents, Workflows and Pull requests for
+this repository. Dependabot updates Python dependencies monthly.
 
 ## Releasing
 

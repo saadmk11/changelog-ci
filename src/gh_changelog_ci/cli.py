@@ -1,6 +1,5 @@
 """Command-line options and command dispatch."""
 
-import importlib.util
 import json
 import os
 from pathlib import Path
@@ -14,8 +13,8 @@ from .errors import APIError, ChangelogError, ConfigurationError
 from .files import file_diff, output_path, prepend_content, write_atomic
 from .generate import generate
 from .github import GitHub
+from .log import Reporter, TerminalReporter
 from .models import GenerationRequest, GroupBy, OutputMode, Settings, Source
-from .reporting import Reporter, TerminalReporter
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -45,14 +44,6 @@ def main(
     ] = False,
 ) -> None:
     """Generate a changelog or run the optional action integration."""
-
-
-def require_actions() -> None:
-    """Require the actions extra."""
-    if importlib.util.find_spec("github_action_utils") is None:
-        raise ConfigurationError(
-            "Install the optional integration: pip install 'gh-changelog-ci[actions]'."
-        )
 
 
 def collect_options(ctx: typer.Context) -> dict[str, object]:
@@ -128,7 +119,7 @@ def execute(ctx: typer.Context, *, actions: bool) -> None:
     reporter: Reporter = TerminalReporter()
     try:
         if actions:
-            from .actions import require_github_actions
+            from .actions import require_actions, require_github_actions
 
             require_github_actions()
             require_actions()
@@ -137,42 +128,33 @@ def execute(ctx: typer.Context, *, actions: bool) -> None:
             settings = resolve_actions(explicit, os.environ, TerminalReporter())
         else:
             settings = resolve_standalone(explicit, os.environ)
-        token = (
-            settings.github_token.get_secret_value() if settings.github_token else None
-        )
         reporter = TerminalReporter(quiet=settings.quiet)
         if settings.output_mode == OutputMode.GITHUB:
-            from .actions import require_github_actions
+            from .actions import require_actions, require_github_actions
 
             require_github_actions()
             require_actions()
-            if not os.environ.get("GITHUB_OUTPUT"):
-                raise ConfigurationError("GitHub output requires GITHUB_OUTPUT.")
-            if settings.summary and not os.environ.get("GITHUB_STEP_SUMMARY"):
-                raise ConfigurationError("GitHub summary requires GITHUB_STEP_SUMMARY.")
-            from .actions.reporting import GitHubReporter
+            from .actions.log import create_reporter
 
-            reporter = GitHubReporter(token, quiet=settings.quiet)
+            reporter = create_reporter(
+                quiet=settings.quiet,
+                summary=settings.summary,
+                token=settings.github_token,
+            )
         if settings.verbose:
             reporter.notice(f"Collecting {settings.changelog_type.value} changes.")
-        with GitHub(settings.api_url, token) as github:
+        with GitHub(settings.api_url, settings.github_token) as github:
             if actions:
                 from .actions.runner import run
 
-                run(
-                    settings,
-                    github,
-                    reporter,
-                    legacy=os.environ.get("_CHANGELOG_CI_COMPOSITE") == "true",
-                )
+                run(settings, github, reporter)
             else:
                 generate_command(settings, github, reporter)
     except ChangelogError as exc:
         reporter.error(str(exc))
-        # Composite collection failures use the documented success/skip status.
+        # Action collection failures use the documented success/skip status.
         if (
             actions
-            and os.environ.get("_CHANGELOG_CI_COMPOSITE") == "true"
             and isinstance(exc, APIError)
             and exc.operation == "collection"
             and exc.status is not None

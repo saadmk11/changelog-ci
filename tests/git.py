@@ -5,7 +5,8 @@ import subprocess
 from pathlib import Path
 
 
-def command(cwd: Path, *args: str) -> str:
+def command(cwd: Path, *args: str, strip: bool = True) -> str:
+    """Return stdout from a successful Git command."""
     env = {
         **os.environ,
         "GIT_CONFIG_NOSYSTEM": "1",
@@ -15,7 +16,7 @@ def command(cwd: Path, *args: str) -> str:
         "GIT_COMMITTER_NAME": "Test",
         "GIT_COMMITTER_EMAIL": "test@example.com",
     }
-    return subprocess.run(
+    result = subprocess.run(
         ["git", *args],
         cwd=cwd,
         env=env,
@@ -23,4 +24,5 @@ def command(cwd: Path, *args: str) -> str:
         capture_output=True,
         text=True,
         encoding="utf-8",
-    ).stdout.strip()
+    )
+    return result.stdout.strip() if strip else result.stdout

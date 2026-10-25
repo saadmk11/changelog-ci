@@ -139,24 +139,30 @@ class Git:
                 raise ConfigurationError(
                     "Origin does not match the intended destination repository."
                 )
-        self.clean()
+        self.validate_target()
 
-    def clean(self) -> None:
-        """Refuse staged user changes and a dirty/untracked target file."""
-        if self.run("diff", "--cached", "--name-only", "--no-ext-diff").stdout:
-            raise ConfigurationError(
-                "Unrelated or existing changes are staged; refusing to commit."
+    def validate_target(self) -> None:
+        """Require a safe output path and no unfinished Git operation."""
+        self.path = output_path(
+            self.workspace, self.settings.changelog_filename, require_parent=False
+        )
+        if self.run("ls-files", "--unmerged").stdout:
+            raise ConfigurationError("Repository has unresolved merge conflicts.")
+        git_directory = Path(self.run("rev-parse", "--absolute-git-dir").stdout.strip())
+        if any(
+            (git_directory / name).exists()
+            for name in (
+                "MERGE_HEAD",
+                "CHERRY_PICK_HEAD",
+                "REVERT_HEAD",
+                "rebase-merge",
+                "rebase-apply",
+                "sequencer",
             )
-        if self.run(
-            "status",
-            "--porcelain",
-            "--untracked-files=all",
-            "--ignored",
-            "--",
-            self.relative,
-        ).stdout:
+        ):
             raise ConfigurationError(
-                "The changelog already has local changes; refusing to overwrite it."
+                "Finish or abort the current Git operation "
+                "before generating a changelog."
             )
         ignored = self.run(
             "check-ignore", "--quiet", "--", self.relative, check=False
@@ -169,10 +175,19 @@ class Git:
                 "refusing to write an uncommittable file."
             )
 
+    def _changed_paths(self, *revisions: str) -> set[str]:
+        """Return paths changed since a commit or between two commits."""
+        result = self.run(
+            "diff", "--name-only", "-z", "--no-renames", "--no-ext-diff", *revisions
+        )
+        return set(result.stdout.split("\0")) - {""}
+
     def prepare(self, base: str, destination: str, *, new: bool) -> None:
         """Fetch a real branch; safely leave detached merge refs and shallow clones."""
         self.branch(base)
         self.branch(destination)
+        self.validate_target()
+        local_changes = self._changed_paths("HEAD")
         shallow = (
             self.run("rev-parse", "--is-shallow-repository").stdout.strip() == "true"
         )
@@ -183,10 +198,9 @@ class Git:
             "origin",
             f"refs/heads/{base}",
         )
-        if new:
-            self.run("checkout", "--no-guess", "-b", destination, "FETCH_HEAD")
-        elif (
-            self.run(
+        existing = (
+            not new
+            and self.run(
                 "show-ref",
                 "--verify",
                 "--quiet",
@@ -194,10 +208,25 @@ class Git:
                 check=False,
             ).returncode
             == 0
-        ):
-            self.run("checkout", "--no-guess", destination)
+        )
+        # Checkout can silently restore local deletions. Check every changed path
+        # against both the intermediate local branch and the fetched destination.
+        if local_changes:
+            revisions = (
+                ("FETCH_HEAD", f"refs/heads/{destination}")
+                if existing
+                else ("FETCH_HEAD",)
+            )
+            for revision in revisions:
+                if local_changes & self._changed_paths("HEAD", revision):
+                    raise ConfigurationError(
+                        "The destination differs for files with local changes; "
+                        "refusing to overwrite them."
+                    )
+        if existing:
+            self.run("checkout", "--no-guess", "--no-overwrite-ignore", destination)
             # Preserve local commits and fail on divergence.
-            self.run("merge", "--ff-only", "FETCH_HEAD")
+            self.run("merge", "--ff-only", "--no-overwrite-ignore", "FETCH_HEAD")
             if (
                 self.run("rev-parse", "HEAD").stdout
                 != self.run("rev-parse", "FETCH_HEAD").stdout
@@ -207,26 +236,34 @@ class Git:
                     "refusing to include them."
                 )
         else:
-            self.run("checkout", "--no-guess", "-b", destination, "FETCH_HEAD")
-        self.path = output_path(self.workspace, self.settings.changelog_filename)
-        self.clean()
+            self.run(
+                "checkout",
+                "--no-guess",
+                "--no-overwrite-ignore",
+                "-b",
+                destination,
+                "FETCH_HEAD",
+            )
+        self.validate_target()
 
     def commit(self, branch: str, message: str) -> bool:
-        """Stage only the changelog and push only the intended branch."""
+        """Commit only the changelog, preserving unrelated staged and unstaged work."""
         self.branch(branch)
+        self.validate_target()
         self.run("add", "--", self.relative)
-        if (
-            self.run(
-                "diff", "--cached", "--quiet", "--no-ext-diff", check=False
-            ).returncode
-            == 0
-        ):
+        difference = self.run(
+            "diff",
+            "--cached",
+            "--quiet",
+            "--no-ext-diff",
+            "--",
+            self.relative,
+            check=False,
+        ).returncode
+        if difference not in {0, 1}:
+            raise GitError("diff", difference)
+        if not difference:
             return False
-        staged = self.run(
-            "diff", "--cached", "--name-only", "-z", "--no-ext-diff"
-        ).stdout.split("\0")
-        if [p for p in staged if p] != [self.relative]:
-            raise ConfigurationError("Staging includes files other than the changelog.")
-        self.run("commit", "-m", message, "--", self.relative)
+        self.run("commit", "--only", "-m", message, "--", self.relative)
         self.run("push", "origin", f"HEAD:refs/heads/{branch}")
         return True

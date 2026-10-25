@@ -1,5 +1,6 @@
 import httpx
 import pytest
+from pydantic import SecretStr
 
 from gh_changelog_ci.actions.github import comment, create_pull_request
 from gh_changelog_ci.errors import APIError, ChangelogError
@@ -52,7 +53,9 @@ def test_created_pr_requires_valid_response_fields(payload: dict[str, object]) -
 
     with (
         GitHub(
-            "https://api.github.com", "secret", transport=httpx.MockTransport(handle)
+            "https://api.github.com",
+            SecretStr("secret"),
+            transport=httpx.MockTransport(handle),
         ) as github,
         pytest.raises(ChangelogError, match="invalid response") as error,
     ):

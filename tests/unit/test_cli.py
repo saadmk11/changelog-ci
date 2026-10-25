@@ -2,11 +2,13 @@ import importlib.util
 import json
 import subprocess
 import sys
+from contextlib import redirect_stderr, redirect_stdout
 from importlib.metadata import version
 from pathlib import Path
 
 import httpx
 import pytest
+from pydantic import SecretStr
 from typer.testing import CliRunner
 
 from gh_changelog_ci.cli import app
@@ -85,7 +87,7 @@ def test_issue_type_grouping_does_not_query_excluded_pull_requests(
             changes=[pull_request(1), pull_request(2, labels=("skip",))],
         )
 
-    def factory(api_url: str, token: str | None = None) -> GitHub:
+    def factory(api_url: str, token: SecretStr | None = None) -> GitHub:
         return GitHub(api_url, token, transport=httpx.MockTransport(handle))
 
     monkeypatch.setattr("gh_changelog_ci.cli.GitHub", factory)
@@ -134,7 +136,7 @@ def test_cli_groups_by_linked_issue_types(
             return httpx.Response(200, json=linked_issues("Bug"))
         return response(request, changes=[pull_request(labels=("feature",))])
 
-    def factory(api_url: str, token: str | None = None) -> GitHub:
+    def factory(api_url: str, token: SecretStr | None = None) -> GitHub:
         return GitHub(api_url, token, transport=httpx.MockTransport(handle))
 
     monkeypatch.setattr("gh_changelog_ci.cli.GitHub", factory)
@@ -573,17 +575,36 @@ def test_missing_actions_dependency_does_not_prevent_help(
     assert "--comment-changelog" in help_result.stdout
 
 
-def test_api_failure_exit_and_token_redaction(
-    cli_api: list[httpx.Request], monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(
+    "failure,message,request_count",
+    [
+        ("http", "403", 1),
+        ("transport", "request failed", 3),
+        ("invalid-json", "invalid response", 1),
+    ],
+)
+def test_api_failures_do_not_expose_credentials(
+    failure: str,
+    message: str,
+    request_count: int,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from gh_changelog_ci.github import GitHub
+    requests: list[httpx.Request] = []
 
-    def fail(self: GitHub, repository: str) -> None:
-        from gh_changelog_ci.errors import APIError
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if failure == "transport":
+            raise httpx.ConnectError("Connection failed: top-secret", request=request)
+        return httpx.Response(
+            403 if failure == "http" else 200, text="Invalid response: top-secret"
+        )
 
-        raise APIError("read", 403)
+    def factory(api_url: str, token: SecretStr | None = None) -> GitHub:
+        return GitHub(api_url, token, transport=httpx.MockTransport(handle))
 
-    monkeypatch.setattr(GitHub, "latest_release", fail)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("gh_changelog_ci.cli.GitHub", factory)
     result = runner.invoke(
         app,
         [
@@ -597,7 +618,9 @@ def test_api_failure_exit_and_token_redaction(
         ],
     )
     assert result.exit_code == 1, result.output
-    assert "403" in result.output
+    assert len(requests) == request_count
+    assert all(r.headers["Authorization"] == "Bearer top-secret" for r in requests)
+    assert message in result.output
     assert "top-secret" not in result.output and "Traceback" not in result.output
 
 
@@ -622,3 +645,100 @@ def test_environment_token_and_enterprise_url(
     assert cli_api[0].headers["Authorization"] == "Bearer secret"
     assert cli_api[0].url.host == "ghe.example"
     assert cli_api[0].url.path == "/api/v3/repos/o/r/releases/latest"
+
+
+@pytest.mark.parametrize("github_actions", [None, "false", "true"])
+@pytest.mark.parametrize("quiet", [False, True])
+def test_terminal_output_keeps_token_wrapped_without_workflow_commands(
+    github_actions: str | None,
+    quiet: bool,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tokens: list[SecretStr | None] = []
+
+    def factory(api_url: str, token: SecretStr | None = None) -> GitHub:
+        tokens.append(token)
+        return GitHub(api_url, token, transport=httpx.MockTransport(response))
+
+    if github_actions is not None:
+        monkeypatch.setenv("GITHUB_ACTIONS", github_actions)
+    monkeypatch.setattr(importlib.util, "find_spec", lambda name: None)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("gh_changelog_ci.cli.GitHub", factory)
+    result = runner.invoke(
+        app,
+        [
+            "generate",
+            "--repository",
+            "o/r",
+            "--release-version",
+            "1",
+            "--github-token",
+            "test-sensitive-token",
+            "--stdout",
+            *(["--quiet"] if quiet else []),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert len(tokens) == 1
+    assert isinstance(tokens[0], SecretStr)
+    assert tokens[0].get_secret_value() == "test-sensitive-token"
+    assert result.stderr == ""
+    assert result.stdout == (
+        "# Version: 1\n\n* [#1](https://github.com/o/r/pull/1): Change 1\n"
+    )
+
+
+@pytest.mark.parametrize("token", [None, ""])
+def test_empty_cli_tokens_leave_requests_unauthenticated(
+    token: str | None,
+    cli_api: list[httpx.Request],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    result = runner.invoke(
+        app,
+        [
+            "generate",
+            "--repository",
+            "o/r",
+            "--release-version",
+            "1",
+            "--stdout",
+            *(["--github-token", token] if token is not None else []),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert result.stderr == ""
+    assert result.stdout.startswith("# Version: 1\n")
+    assert len(cli_api) == 2
+    assert all("Authorization" not in request.headers for request in cli_api)
+
+
+def test_terminal_output_does_not_disclose_token_in_redirected_streams(
+    cli_api: list[httpx.Request],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    value = "test-sensitive-token"
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("CHANGELOG_CI_GITHUB_TOKEN", value)
+    output = tmp_path / "changelog.md"
+    errors = tmp_path / "errors.log"
+    with (
+        output.open("w") as stdout,
+        errors.open("w") as stderr,
+        redirect_stdout(stdout),
+        redirect_stderr(stderr),
+    ):
+        app(
+            ["generate", "--repository", "o/r", "--release-version", "1", "--stdout"],
+            standalone_mode=False,
+        )
+    assert errors.read_text() == ""
+    assert output.read_text() == (
+        "# Version: 1\n\n* [#1](https://github.com/o/r/pull/1): Change 1\n"
+    )
+    assert len(cli_api) == 2
+    assert all(r.headers["Authorization"] == f"Bearer {value}" for r in cli_api)

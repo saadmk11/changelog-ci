@@ -8,6 +8,7 @@ import sys
 from unittest.mock import patch
 
 import httpx
+from pydantic import SecretStr
 from typer.testing import CliRunner
 
 from gh_changelog_ci.cli import app
@@ -40,7 +41,7 @@ def response(request: httpx.Request) -> httpx.Response:
             raise AssertionError(f"Unexpected API request: {request.url.path}")
 
 
-def client(api_url: str, token: str | None = None) -> GitHub:
+def client(api_url: str, token: SecretStr | None = None) -> GitHub:
     """Create an API client with the test transport."""
     return GitHub(api_url, token, transport=httpx.MockTransport(response))
 
@@ -77,6 +78,28 @@ def base() -> None:
     assert importlib.util.find_spec("github_action_utils") is None
     assert importlib.resources.files("gh_changelog_ci").joinpath("py.typed").is_file()
     generation()
+    with patch.dict(
+        os.environ,
+        {"GITHUB_ACTIONS": "true", "CHANGELOG_CI_GITHUB_TOKEN": "test-sensitive-token"},
+    ):
+        generation()
+        for args in (
+            ["actions"],
+            [
+                "generate",
+                "--repository",
+                "o/r",
+                "--release-version",
+                "2.0.2",
+                "--output-mode",
+                "github",
+            ],
+        ):
+            result = CliRunner().invoke(app, args)
+            assert result.exit_code == 2, result.output
+            assert "gh-changelog-ci[actions]" in result.output
+            assert "test-sensitive-token" not in result.output
+            assert "github_action_utils" not in sys.modules
 
 
 def actions() -> None:
@@ -88,7 +111,7 @@ def actions() -> None:
     assert "requires a GitHub Actions runner" in result.output
     assert "github_action_utils" not in sys.modules
     with patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}):
-        importlib.import_module("gh_changelog_ci.actions.reporting")
+        importlib.import_module("gh_changelog_ci.actions.log")
         result = CliRunner().invoke(app, ["actions"])
     assert result.exit_code == 2, result.output
     assert "GITHUB_EVENT_NAME" in result.output

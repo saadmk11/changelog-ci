@@ -10,8 +10,8 @@ from typer.main import get_command
 
 from gh_changelog_ci.cli import app
 from gh_changelog_ci.config import ACTION_FIELDS, resolve_actions
+from gh_changelog_ci.log import TerminalReporter
 from gh_changelog_ci.models import Settings
-from gh_changelog_ci.reporting import TerminalReporter
 from tests.packaging import release
 
 ROOT = Path(__file__).resolve().parents[2]

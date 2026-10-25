@@ -1,4 +1,4 @@
-"""Terminal and workflow reporting."""
+"""Terminal logging and the shared reporting interface."""
 
 from contextlib import AbstractContextManager, nullcontext
 from typing import Protocol
@@ -29,9 +29,7 @@ class Reporter(Protocol):
         """Show untrusted generated content safely."""
         ...
 
-    def outputs(
-        self, values: dict[str, str], *, summary: str = "", legacy: bool = False
-    ) -> None:
+    def outputs(self, values: dict[str, str], *, summary: str = "") -> None:
         """Publish workflow results when applicable."""
         ...
 
@@ -64,7 +62,5 @@ class TerminalReporter:
         """Write the changelog section to stdout."""
         typer.echo(text, nl=False)
 
-    def outputs(
-        self, values: dict[str, str], *, summary: str = "", legacy: bool = False
-    ) -> None:
+    def outputs(self, values: dict[str, str], *, summary: str = "") -> None:
         """Ignore workflow outputs in terminal mode."""
