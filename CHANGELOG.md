@@ -1,3 +1,13 @@
+# Version: 2.0.3
+
+* [#128](https://github.com/saadmk11/changelog-ci/pull/128): Commit only the generated changelog while preserving unrelated staged, unstaged and untracked files. Refuse branch changes that would overwrite local work.
+* [#128](https://github.com/saadmk11/changelog-ci/pull/128): Protect GitHub tokens with `SecretStr` and runner log masking. Prevent mask commands from exposing tokens in redirected terminal output.
+* [#128](https://github.com/saadmk11/changelog-ci/pull/128): Upgrade `github-action-utils` to 2.0.0 and require `certifi` 2026.10.19 or newer for safer workflow reporting and TLS validation.
+* [#128](https://github.com/saadmk11/changelog-ci/pull/128): Make the direct `actions` command use the composite Action's existing output and error handling without a private environment flag.
+* [#128](https://github.com/saadmk11/changelog-ci/pull/128): Use GitHub Actions Version Updater for weekly release SHA updates in workflows and the root `action.yaml`.
+* [#128](https://github.com/saadmk11/changelog-ci/pull/128): Install the Actions extra in the isolated typing environment so CI can check the optional integration.
+
+
 # Version: 2.0.2
 
 * [#126](https://github.com/saadmk11/changelog-ci/pull/126): Restore grouped action reporting and verbosity controls
