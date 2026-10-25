@@ -4,14 +4,10 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 
 import github_action_utils as gha
+from pydantic import SecretStr
 
-from ..errors import ChangelogError
+from ..errors import ChangelogError, ConfigurationError
 from . import require_github_actions
-
-
-def _legacy_changelog(text: str) -> str:
-    """Keep percent escaping in the composite action's changelog output."""
-    return text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
 
 
 class GitHubReporter:
@@ -54,15 +50,9 @@ class GitHubReporter:
         with gha.group("Changelog preview"), gha.stop_commands():
             gha.echo(text)
 
-    def outputs(
-        self, values: dict[str, str], *, summary: str = "", legacy: bool = False
-    ) -> None:
+    def outputs(self, values: dict[str, str], *, summary: str = "") -> None:
         """Write outputs and an optional job summary."""
         require_github_actions()
-        values = {
-            key: _legacy_changelog(value) if legacy and key == "changelog" else value
-            for key, value in values.items()
-        }
         if (
             sum(len(value.encode("utf-16-le")) for value in values.values())
             > 1024 * 1024
@@ -85,3 +75,17 @@ class GitHubReporter:
                 gha.append_job_summary(summary)
             else:
                 raise ChangelogError("GitHub summary requires GITHUB_STEP_SUMMARY.")
+
+
+def create_reporter(
+    *, quiet: bool = False, summary: bool = False, token: SecretStr | None = None
+) -> GitHubReporter:
+    """Require output variables and register token masking before reporting."""
+    require_github_actions()
+    if not gha.vars.github.output:
+        raise ConfigurationError("GitHub output requires GITHUB_OUTPUT.")
+    if summary and not gha.vars.github.step_summary:
+        raise ConfigurationError("GitHub summary requires GITHUB_STEP_SUMMARY.")
+    if token:
+        gha.add_mask(token.get_secret_value())
+    return GitHubReporter(quiet=quiet)

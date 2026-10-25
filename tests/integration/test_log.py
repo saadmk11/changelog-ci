@@ -24,28 +24,21 @@ pytestmark = [
 ]
 
 
-@pytest.mark.parametrize("legacy", [False, True])
 def test_multiline_output_unicode_delimiters_and_commands(
-    legacy: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from gh_changelog_ci.actions.log import GitHubReporter
 
     path = tmp_path / "output"
     monkeypatch.setenv("GITHUB_OUTPUT", str(path))
     value = "::warning::literal\n__ENV_DELIMITER__\nUnicode 🐛\r\n100%\n"
-    GitHubReporter().outputs({"changelog": value}, legacy=legacy)
+    GitHubReporter().outputs({"changelog": value})
     with path.open(encoding="utf-8", newline="") as stream:
         content = stream.read()
     delimiter = content.splitlines()[0].removeprefix("changelog<<")
     assert delimiter and delimiter not in value
-    expected = (
-        "::warning::literal%0A__ENV_DELIMITER__%0AUnicode 🐛%0D%0A100%25%0A"
-        if legacy
-        else value
-    )
     assert content == (
-        f"changelog<<{delimiter}{os.linesep}{expected}{os.linesep}"
-        f"{delimiter}{os.linesep}"
+        f"changelog<<{delimiter}{os.linesep}{value}{os.linesep}{delimiter}{os.linesep}"
     )
 
 
@@ -183,7 +176,6 @@ def test_successful_action_reports_progress_preview_and_results(
         "GITHUB_EVENT_NAME": event,
         "GITHUB_OUTPUT": str(output),
         "GITHUB_STEP_SUMMARY": str(summary),
-        "_CHANGELOG_CI_COMPOSITE": "true",
     }.items():
         monkeypatch.setenv(key, value)
     args = [
@@ -355,21 +347,37 @@ def test_action_prints_only_one_explicit_preview(
 
 
 @pytest.mark.parametrize(
-    "value,legacy",
+    "value",
     [
-        pytest.param("x" * 524289, False, id="raw"),
-        pytest.param("\n" * 200000, True, id="escaped"),
+        pytest.param("x" * 524289, id="plain"),
+        pytest.param("\n" * 200000, id="escaped"),
     ],
 )
 def test_output_limit_is_checked_before_writing(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, value: str, legacy: bool
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    value: str,
+    pr_event: Path,
+    cli_api: list[httpx.Request],
+    cli_changes: list[dict[str, object]],
 ) -> None:
-    from gh_changelog_ci.actions.log import GitHubReporter
-
     output = tmp_path / "output"
     monkeypatch.setenv("GITHUB_OUTPUT", str(output))
-    with pytest.raises(ChangelogError, match="output limit"):
-        GitHubReporter().outputs({"changelog": value}, legacy=legacy)
+    cli_changes[0]["title"] = value
+    result = CliRunner().invoke(
+        app,
+        [
+            "actions",
+            "--no-commit-changelog",
+            "--comment-changelog",
+            "--output-mode",
+            "github",
+            "--quiet",
+        ],
+    )
+    assert result.exit_code == 1
+    assert "output limit" in result.stdout
+    assert len(cli_api) == 2 and all(request.method == "GET" for request in cli_api)
     assert not output.exists()
 
 
@@ -490,19 +498,37 @@ def test_generate_writes_github_outputs_and_summary_only_on_runner(
     ]
 
 
-def test_legacy_escaping_applies_only_to_changelog(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_action_escapes_only_changelog_output(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    pr_event: Path,
+    cli_api: list[httpx.Request],
+    cli_changes: list[dict[str, object]],
 ) -> None:
-    from gh_changelog_ci.actions.log import GitHubReporter
-
     output = tmp_path / "output"
     monkeypatch.setenv("GITHUB_OUTPUT", str(output))
-    GitHubReporter().outputs(
-        {"changelog": "100%\n", "changelog-file": "100% complete.md"}, legacy=True
+    cli_changes[0]["title"] = "100%\r\n::error::literal"
+    result = CliRunner().invoke(
+        app,
+        [
+            "actions",
+            "--no-commit-changelog",
+            "--comment-changelog",
+            "--github-token",
+            "secret",
+            "--changelog-filename",
+            "100% complete.md",
+            "--output-mode",
+            "github",
+        ],
     )
+    assert result.exit_code == 0, result.output
     content = output.read_text()
-    assert "100%25%0A" in content
+    assert "100%25%0D%0A::error::literal%0A" in content
     assert "100% complete.md" in content
+    posts = [request for request in cli_api if request.method == "POST"]
+    assert len(posts) == 1
+    assert "100%\r\n::error::literal" in json.loads(posts[0].content)["body"]
 
 
 def test_reporter_requires_runner(

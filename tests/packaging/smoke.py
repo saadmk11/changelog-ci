@@ -83,6 +83,23 @@ def base() -> None:
         {"GITHUB_ACTIONS": "true", "CHANGELOG_CI_GITHUB_TOKEN": "test-sensitive-token"},
     ):
         generation()
+        for args in (
+            ["actions"],
+            [
+                "generate",
+                "--repository",
+                "o/r",
+                "--release-version",
+                "2.0.2",
+                "--output-mode",
+                "github",
+            ],
+        ):
+            result = CliRunner().invoke(app, args)
+            assert result.exit_code == 2, result.output
+            assert "gh-changelog-ci[actions]" in result.output
+            assert "test-sensitive-token" not in result.output
+            assert "github_action_utils" not in sys.modules
 
 
 def actions() -> None:

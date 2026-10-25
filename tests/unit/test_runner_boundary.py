@@ -32,8 +32,7 @@ def test_local_actions_stop_before_dependency_and_configuration_loading(
 ) -> None:
     if flag is not None:
         monkeypatch.setenv("GITHUB_ACTIONS", flag)
-    monkeypatch.setenv("_CHANGELOG_CI_COMPOSITE", "true")
-    monkeypatch.setattr("gh_changelog_ci.cli.require_actions", unexpected)
+    monkeypatch.setattr("gh_changelog_ci.actions.require_actions", unexpected)
     monkeypatch.setattr("gh_changelog_ci.cli.resolve_actions", unexpected)
     result = CliRunner().invoke(
         app, ["actions", "--config-file", "missing.json", "--dry-run"]
@@ -133,7 +132,7 @@ def test_local_generation_cannot_enable_workflow_reporting(
 ) -> None:
     monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "output"))
     monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(tmp_path / "summary"))
-    monkeypatch.setattr("gh_changelog_ci.cli.require_actions", unexpected)
+    monkeypatch.setattr("gh_changelog_ci.actions.require_actions", unexpected)
     result = CliRunner().invoke(
         app,
         [

@@ -20,8 +20,6 @@ def run(
     settings: Settings,
     github: GitHub,
     reporter: Reporter,
-    *,
-    legacy: bool = False,
 ) -> None:
     """Generate the changelog and apply the requested operations."""
     require_github_actions()
@@ -43,17 +41,12 @@ def run(
     )
     if create_pr and event.is_pull_request:
         raise ConfigurationError("PR creation requires a non-pull-request event.")
-    if create_pr and not settings.github_token and not legacy and not settings.dry_run:
-        raise ConfigurationError("A GitHub token is required to create a pull request.")
     if event.is_pull_request and (
         settings.new_branch or settings.new_pull_request_title
     ):
         raise ConfigurationError("New-PR overrides require a non-pull-request event.")
-    if settings.comment_changelog and event.is_pull_request:
-        if not event.number:
-            raise ConfigurationError("A pull request number is required to comment.")
-        if not settings.github_token and not legacy and not settings.dry_run:
-            raise ConfigurationError("A GitHub token is required to comment.")
+    if settings.comment_changelog and event.is_pull_request and not event.number:
+        raise ConfigurationError("A pull request number is required to comment.")
     title = f"[Changelog CI] Add Changelog for Version {version}"
     branch = (
         event.head
@@ -132,8 +125,11 @@ def run(
     )
     old, new = prepend_content(path, result.section)
     changed = old != new
+    # Preserve the Action output format; files and summaries use the original text.
     values = {
-        "changelog": result.section,
+        "changelog": (
+            result.section.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        ),
         "changed": str(changed).lower(),
         "changelog-file": settings.changelog_filename,
         "pull-request-number": "",
@@ -211,7 +207,7 @@ def run(
                         )
                         reporter.notice(f"Pull request opened at {created.html_url}.")
                     except APIError as exc:
-                        if not legacy or exc.status is None or exc.status in {401, 403}:
+                        if exc.status is None or exc.status in {401, 403}:
                             raise
                         reporter.warning(str(exc))
         if settings.comment_changelog:
@@ -231,11 +227,9 @@ def run(
                             f"Changelog comment added to pull request #{event.number}."
                         )
                     except APIError as exc:
-                        if not legacy or exc.status is None or exc.status in {401, 403}:
+                        if exc.status is None or exc.status in {401, 403}:
                             raise
                         reporter.warning(str(exc))
-    reporter.outputs(
-        values, summary=result.markdown if settings.summary else "", legacy=legacy
-    )
+    reporter.outputs(values, summary=result.markdown if settings.summary else "")
     if not settings.dry_run:
         reporter.notice("Changelog CI complete.")

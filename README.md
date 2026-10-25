@@ -28,7 +28,7 @@ The workflow can be configured to perform **any (or all)** of the following acti
 
 | | GitHub Action | Python package |
 | --- | --- | --- |
-| Run with | `uses: saadmk11/changelog-ci@v2.0.2` | `pip install gh-changelog-ci` or `uvx gh-changelog-ci` |
+| Run with | `uses: saadmk11/changelog-ci@v2.0.3` | `pip install gh-changelog-ci` or `uvx gh-changelog-ci` |
 | Changelog text | Use the `changelog` output | `gh-changelog-ci generate` |
 | Commit, comment or open a PR | Configure the Action inputs | Install `gh-changelog-ci[actions]` and run `gh-changelog-ci actions` |
 
@@ -105,7 +105,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run Changelog CI
-        uses: saadmk11/changelog-ci@v2.0.2
+        uses: saadmk11/changelog-ci@v2.0.3
 ```
 
 ### Workflow input options
@@ -191,7 +191,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run Changelog CI
-        uses: saadmk11/changelog-ci@v2.0.2
+        uses: saadmk11/changelog-ci@v2.0.3
         with:
           # Optional, you can provide any name for your changelog file,
           # We currently support Markdown (.md) and reStructuredText (.rst) files
@@ -241,7 +241,7 @@ The output can be used in other steps of the action. For example:
 
 ```yaml
 - name: changelog-ci
-  uses: saadmk11/changelog-ci@v2.0.2
+  uses: saadmk11/changelog-ci@v2.0.3
   id: changelog-ci
 
 - name: Get Changelog Output
@@ -279,7 +279,7 @@ For normal runs, keep the default logs and enable the rendered job summary:
 
 ```yaml
 - name: Generate changelog
-  uses: saadmk11/changelog-ci@v2.0.2
+  uses: saadmk11/changelog-ci@v2.0.3
   with:
     summary: 'true'
 ```
@@ -288,7 +288,7 @@ To include extra details and a changelog preview in the log:
 
 ```yaml
 - name: Generate changelog with detailed logs
-  uses: saadmk11/changelog-ci@v2.0.2
+  uses: saadmk11/changelog-ci@v2.0.3
   with:
     verbose: 'true'
     summary: 'true'
@@ -298,7 +298,7 @@ To keep logs quiet while retaining the rendered job summary:
 
 ```yaml
 - name: Generate changelog quietly
-  uses: saadmk11/changelog-ci@v2.0.2
+  uses: saadmk11/changelog-ci@v2.0.3
   with:
     quiet: 'true'
     summary: 'true'
@@ -665,8 +665,10 @@ outputs and summaries require the corresponding runner-provided output files.
 
 `--stdout` conflicts with GitHub output, summary and diff. Summary requires
 GitHub output and `GITHUB_STEP_SUMMARY`; GitHub output requires `GITHUB_OUTPUT`.
-The composite's `changelog` output escapes `%`, carriage returns and newlines as
-`%25`, `%0D` and `%0A`. Standalone GitHub output contains literal multiline text.
+The composite and direct `actions` command escape `%`, carriage returns and
+newlines in the `changelog` output as `%25`, `%0D` and `%0A`. The `generate`
+command's GitHub output contains literal multiline text. Files, previews,
+comments and summaries contain normal text.
 Title mismatches and empty results omit the changelog output. Outputs over 1 MB
 fail with an error; summaries over 1 MB are omitted with a warning.
 
@@ -674,12 +676,11 @@ Exit statuses:
 
 - `generate`: `0` for success or no changes, `1` for API/filesystem failures,
   `2` for invalid options, configuration or missing dependencies.
-- The composite: `0` for success, unmatched PR titles, ordinary collection HTTP
-  failures and recoverable PR/comment warnings; `1` for a missing non-PR version
-  or both operations being disabled. Authentication, permission, collection
-  rate-limit and transport failures are errors.
-- Standalone `actions` reports failed mutations as errors. Git failures return
-  their positive exit status.
+- `actions` (direct or composite): `0` for success, unmatched PR titles, ordinary
+  collection HTTP failures and recoverable PR/comment warnings; `1` for a missing
+  non-PR version or both operations being disabled. Authentication, permission,
+  collection rate-limit and transport failures are errors.
+- Git failures return their positive exit status.
 
 ## Development
 

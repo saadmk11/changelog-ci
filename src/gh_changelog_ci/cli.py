@@ -1,6 +1,5 @@
 """Command-line options and command dispatch."""
 
-import importlib.util
 import json
 import os
 from pathlib import Path
@@ -45,14 +44,6 @@ def main(
     ] = False,
 ) -> None:
     """Generate a changelog or run the optional action integration."""
-
-
-def require_actions() -> None:
-    """Require the actions extra."""
-    if importlib.util.find_spec("github_action_utils") is None:
-        raise ConfigurationError(
-            "Install the optional integration: pip install 'gh-changelog-ci[actions]'."
-        )
 
 
 def collect_options(ctx: typer.Context) -> dict[str, object]:
@@ -126,10 +117,9 @@ def generate_command(settings: Settings, github: GitHub, reporter: Reporter) -> 
 def execute(ctx: typer.Context, *, actions: bool) -> None:
     """Resolve settings and execute the selected command."""
     reporter: Reporter = TerminalReporter()
-    legacy = actions and os.environ.get("_CHANGELOG_CI_COMPOSITE") == "true"
     try:
         if actions:
-            from .actions import require_github_actions
+            from .actions import require_actions, require_github_actions
 
             require_github_actions()
             require_actions()
@@ -138,44 +128,33 @@ def execute(ctx: typer.Context, *, actions: bool) -> None:
             settings = resolve_actions(explicit, os.environ, TerminalReporter())
         else:
             settings = resolve_standalone(explicit, os.environ)
-        token = settings.github_token
         reporter = TerminalReporter(quiet=settings.quiet)
         if settings.output_mode == OutputMode.GITHUB:
-            from .actions import require_github_actions
+            from .actions import require_actions, require_github_actions
 
             require_github_actions()
             require_actions()
-            import github_action_utils as gha
+            from .actions.log import create_reporter
 
-            if not gha.vars.github.output:
-                raise ConfigurationError("GitHub output requires GITHUB_OUTPUT.")
-            if settings.summary and not gha.vars.github.step_summary:
-                raise ConfigurationError("GitHub summary requires GITHUB_STEP_SUMMARY.")
-
-            from .actions.log import GitHubReporter
-
-            if token:
-                gha.add_mask(token.get_secret_value())
-            reporter = GitHubReporter(quiet=settings.quiet)
+            reporter = create_reporter(
+                quiet=settings.quiet,
+                summary=settings.summary,
+                token=settings.github_token,
+            )
         if settings.verbose:
             reporter.notice(f"Collecting {settings.changelog_type.value} changes.")
-        with GitHub(settings.api_url, token) as github:
+        with GitHub(settings.api_url, settings.github_token) as github:
             if actions:
                 from .actions.runner import run
 
-                run(
-                    settings,
-                    github,
-                    reporter,
-                    legacy=legacy,
-                )
+                run(settings, github, reporter)
             else:
                 generate_command(settings, github, reporter)
     except ChangelogError as exc:
         reporter.error(str(exc))
-        # Composite collection failures use the documented success/skip status.
+        # Action collection failures use the documented success/skip status.
         if (
-            legacy
+            actions
             and isinstance(exc, APIError)
             and exc.operation == "collection"
             and exc.status is not None

@@ -112,7 +112,6 @@ def test_action_inputs_group_preview_by_linked_issue_types(
         "INPUT_GROUP_CONFIG": '[{"title":"Fixes","issue_types":["Bug"]}]',
         "INPUT_GITHUB_TOKEN": "secret",
         "GITHUB_OUTPUT": str(output),
-        "_CHANGELOG_CI_COMPOSITE": "true",
     }.items():
         monkeypatch.setenv(key, value)
     result = CliRunner().invoke(
@@ -169,7 +168,7 @@ def test_legacy_skip_and_version_outcomes(
             else "commit_changelog and comment_changelog are both false"
         )
         with pytest.raises(ChangelogError, match=message) as error:
-            run(settings, github, TerminalReporter(), legacy=True)
+            run(settings, github, TerminalReporter())
         assert error.value.exit_code == outcome.exit_code
     else:
         assert release_version(settings, load_context(settings)) == outcome.selected
@@ -181,7 +180,7 @@ def test_legacy_skip_and_version_outcomes(
             with GitHub(
                 "https://api.github.com", transport=httpx.MockTransport(unexpected)
             ) as client:
-                run(settings, client, TerminalReporter(), legacy=True)
+                run(settings, client, TerminalReporter())
 
 
 def test_context_uses_runner_payload(pr_event: Path) -> None:
@@ -322,18 +321,17 @@ def test_actions_dry_run_suppresses_comment_and_files(
 
 
 @pytest.mark.parametrize(
-    "status,legacy,raises",
+    "status,raises",
     [
-        (422, True, False),
-        (500, True, False),
-        (403, True, True),
-        (401, True, True),
-        (422, False, True),
+        (422, False),
+        (429, False),
+        (500, False),
+        (403, True),
+        (401, True),
     ],
 )
 def test_comment_failure_mapping(
     status: int,
-    legacy: bool,
     raises: bool,
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -360,9 +358,9 @@ def test_comment_failure_mapping(
     ) as github:
         if raises:
             with pytest.raises(APIError, match=str(status)):
-                run(settings, github, TerminalReporter(), legacy=legacy)
+                run(settings, github, TerminalReporter())
         else:
-            run(settings, github, TerminalReporter(), legacy=legacy)
+            run(settings, github, TerminalReporter())
             assert str(status) in capsys.readouterr().err
     assert len(posts) == 1
     assert posts[0].url.path == "/repos/o/r/issues/1/comments"
@@ -400,7 +398,6 @@ def test_non_pr_comment_remains_warning(
         ),
         github,
         TerminalReporter(),
-        legacy=True,
     )
     assert "only supported" in capsys.readouterr().err
 
@@ -455,10 +452,6 @@ def test_version_extracted_from_title_must_be_single_line() -> None:
         (["--create-pull-request"], "PR creation requires a non-pull-request event"),
         (["--new-branch", "notes"], "New-PR overrides require"),
         (["--new-pull-request-title", "Notes"], "New-PR overrides require"),
-        (
-            ["--no-commit-changelog", "--comment-changelog"],
-            "A GitHub token is required to comment",
-        ),
     ],
 )
 def test_invalid_pr_operations_fail_before_collection(
@@ -884,14 +877,12 @@ def test_ambiguous_comment_transport_failure_is_not_swallowed(
         ) as github,
         pytest.raises(APIError),
     ):
-        run(settings, github, TerminalReporter(), legacy=True)
+        run(settings, github, TerminalReporter())
     assert len(requests) == 1
 
 
-@pytest.mark.parametrize("legacy", [False, True])
 @pytest.mark.parametrize("status", [401, 403, 429, 500])
 def test_collection_exit_status_boundary(
-    legacy: bool,
     status: int,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -910,8 +901,6 @@ def test_collection_exit_status_boundary(
 
     monkeypatch.setattr("gh_changelog_ci.cli.GitHub", factory)
     monkeypatch.chdir(tmp_path)
-    if legacy:
-        monkeypatch.setenv("_CHANGELOG_CI_COMPOSITE", "true")
     result = CliRunner().invoke(
         app,
         [
@@ -922,13 +911,13 @@ def test_collection_exit_status_boundary(
             "secret",
         ],
     )
-    assert result.exit_code == (0 if legacy and status == 500 else 1), result.output
+    assert result.exit_code == (0 if status == 500 else 1), result.output
     assert "secret" not in result.output and "Traceback" not in result.output
     assert not list(tmp_path.iterdir())
 
 
-@pytest.mark.parametrize("missing", ["token", "output", "summary"])
-def test_missing_mutation_context_fails_before_any_operation(
+@pytest.mark.parametrize("missing", ["output", "summary"])
+def test_missing_output_context_fails_before_any_operation(
     missing: str,
     cli_api: list[httpx.Request],
     tmp_path: Path,
@@ -938,20 +927,33 @@ def test_missing_mutation_context_fails_before_any_operation(
         "actions",
         "--release-version",
         "2.0.2",
+        "--github-token",
+        "secret",
+        "--output-mode",
+        "github",
     ]
-    if missing != "token":
-        args += ["--github-token", "secret", "--output-mode", "github"]
     if missing == "summary":
         monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "output"))
         args.append("--summary")
     result = CliRunner().invoke(app, args)
     assert result.exit_code == 2, result.output
     assert {
-        "token": "token",
         "output": "GITHUB_OUTPUT",
         "summary": "GITHUB_STEP_SUMMARY",
     }[missing] in result.output
     assert not cli_api and (not list(tmp_path.iterdir()))
+
+
+def test_missing_comment_token_warns_without_posting(
+    pr_event: Path, cli_api: list[httpx.Request], tmp_path: Path
+) -> None:
+    result = CliRunner().invoke(
+        app, ["actions", "--no-commit-changelog", "--comment-changelog"]
+    )
+    assert result.exit_code == 0, result.output
+    assert "A GitHub token is required to comment." in result.stderr
+    assert len(cli_api) == 2 and all(request.method == "GET" for request in cli_api)
+    assert not list(tmp_path.iterdir())
 
 
 @pytest.mark.parametrize("writable", [False, True])
@@ -1014,9 +1016,9 @@ def test_fork_destination_uses_checkout_credentials(
     assert command(remote, "show", "main:CHANGELOG.md") == "old"
 
 
-@pytest.mark.parametrize("status,legacy", [(422, True), (422, False), (403, True)])
+@pytest.mark.parametrize("status", [422, 403])
 def test_new_pr_failure_status_does_not_retry_or_change_base(
-    repository: tuple[Path, Path], status: int, legacy: bool
+    repository: tuple[Path, Path], status: int
 ) -> None:
     workspace, remote = repository
     posts: list[httpx.Request] = []
@@ -1037,11 +1039,11 @@ def test_new_pr_failure_status_does_not_retry_or_change_base(
     with GitHub(
         "https://api.github.com", transport=httpx.MockTransport(handle)
     ) as github:
-        if legacy and status == 422:
-            run(settings, github, TerminalReporter(), legacy=legacy)
+        if status == 422:
+            run(settings, github, TerminalReporter())
         else:
             with pytest.raises(APIError):
-                run(settings, github, TerminalReporter(), legacy=legacy)
+                run(settings, github, TerminalReporter())
     assert len(posts) == 1
     assert command(remote, "show", "notes:CHANGELOG.md").startswith("# Version: 2.0.2")
     assert command(remote, "show", "main:CHANGELOG.md") == "old"
