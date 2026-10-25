@@ -42,7 +42,7 @@ Documentation = "https://github.com/saadmk11/changelog-ci#readme"
 test = ["pytest>=9.1.1", "pytest-cov>=7"]
 lint = ["ruff>=0.14"]
 typing = ["mypy>=1.18", "types-PyYAML>=6"]
-build = ["twine>=6", "uv==0.13.1"]
+build = ["twine>=6", "uv==0.13.5"]
 dev = [
   {include-group = "test"},
   {include-group = "lint"},
