@@ -21,7 +21,7 @@ jobs:
         with:
           token: ${{ secrets.WORKFLOW_SECRET }}
       - name: Update action pins
-        uses: saadmk11/github-actions-version-updater@6f0526e530aad279895d63087f14110de732d878  # v1.0.2
+        uses: saadmk11/github-actions-version-updater@764bee6cd2905c6c91624f35332f1472fa736c23  # v1.0.3
         with:
           token: ${{ secrets.WORKFLOW_SECRET }}
           update_version_with: release-commit-sha
